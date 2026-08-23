@@ -1,4 +1,5 @@
 import type { JsonObject } from '../core/types.ts';
+import type { ChatGptTabRegistrySnapshot } from '../tabs/types.ts';
 
 export const CONTROL_PLANE_SCHEMA_VERSION = 1 as const;
 export const CONTROL_PLANE_PORT_NAME = 'chatgpt-iterator.panel.v1' as const;
@@ -14,6 +15,7 @@ export interface ControlPlaneSnapshot extends JsonObject {
   readonly runtime: {
     readonly state: 'ready';
   };
+  readonly tabs: ChatGptTabRegistrySnapshot;
 }
 
 export interface ControlPlaneInvalidationHint extends JsonObject {

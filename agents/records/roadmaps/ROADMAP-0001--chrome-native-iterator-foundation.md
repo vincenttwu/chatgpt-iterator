@@ -225,24 +225,30 @@ Establish the browser/platform contract and the smallest correct cross-context a
 
 #### Work items
 
-- [ ] Discover/load eligible ChatGPT tabs and capability/readiness state.
-- [ ] Bind operations to explicit `tabId`/window identity.
-- [ ] Observe update/remove/replace/frozen/discarded state.
-- [ ] Implement reversible active-run `autoDiscardable` guard ownership.
-- [ ] Define reconnect behavior after target reload and clear behavior after target close.
+- [x] Discover/load eligible ChatGPT tabs and capability/readiness state.
+- [x] Bind operations to explicit `tabId`/window identity.
+- [x] Observe update/remove/replace/frozen/discarded state.
+- [x] Implement reversible active-run `autoDiscardable` guard ownership.
+- [x] Define reconnect behavior after target reload and clear behavior after target close.
 
 #### Step acceptance evidence
 
-- [ ] Switching active browser tabs never changes an existing target binding.
-- [ ] frozen/discarded/closed states produce explicit normalized state rather than hanging.
+- [x] Switching active browser tabs never changes an existing target binding.
+- [x] frozen/discarded/closed states produce explicit normalized state rather than hanging.
+
+**STEP-05 result (`v0.0.5`):** Added a background-owned `src/tabs/` registry and lifecycle runtime for explicitly bound ChatGPT targets. Discovery combines Chrome tab identity/lifecycle facts with the STEP-04 content adapter snapshot; target state is normalized as ready/degraded/loading/frozen/discarded/unavailable, while close/navigation/replacement terminal facts are explicit. Active-tab changes only update presentation metadata and never retarget an existing binding. Content-script adapter-state commands reconnect the same target after reload. `AutoDiscardGuardManager` provides reference-counted run ownership of reversible `autoDiscardable=false` protection and preserves the original browser value. `onUpdated`, `onRemoved`, `onReplaced` and `onActivated` are coordinated without adding the broad `tabs` permission. Focused STEP-05 validation passes 9/9 and the strict dependency-free core/chatgpt-types/tabs/runtime/control-plane TypeScript lane passes; WXT hydration/build remains inherited `deferred_environment`.
 
 ## Phase P1 success criteria
 
-- [ ] Buildable MV3/Side Panel shell exists.
-- [ ] Messaging/control plane is versioned and reconstructable.
-- [ ] ChatGPT DOM volatility is isolated behind one tested adapter.
-- [ ] Explicit target-tab lifecycle is observable and independent from active-tab navigation.
-- [ ] UI-bearing work complies with `CONSTRAINT-0001`.
+- [x] Buildable MV3/Side Panel shell exists at repository-source authority; hydrated WXT build remains environment-deferred.
+- [x] Messaging/control plane is versioned and reconstructable.
+- [x] ChatGPT DOM volatility is isolated behind one tested adapter.
+- [x] Explicit target-tab lifecycle is observable and independent from active-tab navigation.
+- [x] UI-bearing work complies with `CONSTRAINT-0001`.
+
+## Phase P1 completion evidence
+
+STEP-01 through STEP-05 are complete through v0.0.5. The accumulated repository-controlled contract covers the MV3/WXT/Vue shell, versioned cross-context control plane, centralized ChatGPT adapter, explicit tab target registry, reload/replacement/close lifecycle and reversible discard-guard ownership. Package hydration/WXT build remains the previously recorded environment-only deferral and does not reopen completed P1 semantics.
 
 # Phase P2 — Durable Persistence and Execution Engines
 
@@ -522,7 +528,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-02 — MV3 WXT Vue Foundation and Team-Standard Side Panel Shell (`v0.0.2`) — executable shell/static contracts complete; package hydration/build lane deferred_environment.
 - [x] STEP-03 — Versioned Cross-Context Contracts and Control Plane (`v0.0.3`) — strict envelopes, background authority, bounded hydration/invalidation, reconnect and stale-response protection complete.
 - [x] STEP-04 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract (`v0.0.4`) — centralized selectors, semantic content adapter/server, MutationObserver state stream, response tracker and diagnostics complete.
-- [ ] STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle (`v0.0.5`).
+- [x] STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle (`v0.0.5`) — explicit targets, lifecycle normalization, reload/replacement handling and reversible discard guard complete; Phase P1 closed.
 - [ ] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`).
 - [ ] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`).
 - [ ] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
@@ -558,4 +564,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 1 | Open ROADMAP-0001 and complete STEP-01 platform contract. | historical |
 | 2026-08-24 | 2 | Accept explicit continuation from the v0.0.1 overlay, complete STEP-02 executable WXT/Vue Side Panel shell, and carry exact v0.0.0 byte reconciliation plus package hydration as explicit provenance/environment deferrals. | historical |
 | 2026-08-24 | 3 | Complete STEP-03 versioned JSON-safe cross-context contracts, background-owned control-plane hydration/invalidation and Side Panel freshness/reconnect semantics; v0.0.4 STEP-04 next. | historical |
-| 2026-08-24 | 4 | Complete STEP-04 product-owned ChatGPT selector/adapter/observation/diagnostics boundary with userscript semantics and no remote runtime code; v0.0.5 STEP-05 next. | active |
+| 2026-08-24 | 4 | Complete STEP-04 product-owned ChatGPT selector/adapter/observation/diagnostics boundary with userscript semantics and no remote runtime code; v0.0.5 STEP-05 next. | historical |
+| 2026-08-24 | 5 | Complete STEP-05 explicit ChatGPT tab registry, target binding, lifecycle normalization, reload/replacement/close handling and reversible autoDiscardable guard; close Phase P1 and authorize v0.0.6 STEP-06 next. | active |
