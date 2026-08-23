@@ -382,6 +382,7 @@ progress {
 
 .state-badge[data-state="failed"],
 .state-badge[data-state="discarded"],
+.state-badge[data-state="reconnecting"],
 .state-badge[data-state="unavailable"] {
   border-color: var(--border-strong);
   font-weight: 700;

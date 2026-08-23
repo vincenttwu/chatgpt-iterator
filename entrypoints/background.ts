@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '../src/control-plane/index.ts';
-import { BackgroundMessageRouter, DiagnosticsRuntimeServer, HistoryRuntimeServer, PortabilityRuntimeServer, PresetRuntimeServer, QueueRuntimeServer, RunRuntimeServer, SettingsRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
+import { BackgroundMessageRouter, BrowserSessionTracker, DiagnosticsRuntimeServer, HistoryRuntimeServer, PortabilityRuntimeServer, PresetRuntimeServer, QueueRuntimeServer, RunRuntimeServer, SettingsRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
 import { bootstrapApplicationPersistence, createChromeStorageTiers, restrictChromeStorageToTrustedContexts, type ChromeStorageLike, type PersistenceRuntime } from '../src/persistence/index.ts';
 import {
@@ -33,7 +33,8 @@ const controlServer = new ControlPlaneServer(authority);
 const ports = new ControlPlanePortHub();
 const tabs = new ChatGptTabRegistry(tabBrowser);
 const observations = new ChatGptObservationHub();
-const discardGuards = new AutoDiscardGuardManager(tabBrowser);
+const discardGuards = new AutoDiscardGuardManager(tabBrowser, storageTiers.session);
+const browserSessions = new BrowserSessionTracker(storageTiers.session);
 const tabServer = new TabRuntimeServer(tabs, (tabId, _windowId, snapshot) => observations.note(tabId, snapshot));
 let persistencePromise: Promise<PersistenceRuntime> | undefined;
 let runRuntimePromise: Promise<{ manager: DurableRunManager; coordinator: RepeatRunCoordinator }> | undefined;
@@ -102,43 +103,60 @@ tabs.subscribe((snapshot) => {
   if (runRuntimePromise !== undefined) {
     void runRuntimePromise.then(async ({ manager, coordinator }) => {
       await manager.reconcileTabs(snapshot);
-      coordinator.recover(await manager.list());
+      const runs = await manager.list();
+      for (const run of runs) {
+        if (isRunTerminal(run.lifecycleState)) await coordinator.cancel(run.id);
+        else if (run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded' || run.lifecycleState === 'reconnecting') await coordinator.suspend(run.id);
+      }
+      coordinator.recover(runs);
     }).catch(reportRunError);
   }
 });
 
 export default defineBackground(() => {
   void restrictChromeStorageToTrustedContexts(chromeStorage).catch((error: unknown) => { console.error('chatgpt-iterator: failed to restrict extension storage access', error); });
+  const tabReadyPromise = lifecycle.start();
+  const browserSessionPromise = browserSessions.begin();
+  const discardGuardReadyPromise = discardGuards.ready();
 
-  persistencePromise = bootstrapApplicationPersistence();
-  templateServicePromise = persistencePromise.then((runtime) => new TemplateService(runtime.repositories));
-  presetServicePromise = persistencePromise.then((runtime) => new PresetService(runtime.repositories));
-  queueServicePromise = persistencePromise.then((runtime) => new QueueService(runtime.repositories));
-  historyServicePromise = persistencePromise.then((runtime) => new RunHistoryService(runtime.repositories));
-  portabilityServicePromise = persistencePromise.then((runtime) => new PortabilityService(runtime.repositories, settingsService, browser.runtime.getManifest().version));
-  runRuntimePromise = persistencePromise.then(async (runtime) => {
+  const persistence = bootstrapApplicationPersistence();
+  persistencePromise = persistence;
+  templateServicePromise = persistence.then((runtime) => new TemplateService(runtime.repositories));
+  presetServicePromise = persistence.then((runtime) => new PresetService(runtime.repositories));
+  queueServicePromise = persistence.then((runtime) => new QueueService(runtime.repositories));
+  historyServicePromise = persistence.then((runtime) => new RunHistoryService(runtime.repositories));
+  portabilityServicePromise = persistence.then((runtime) => new PortabilityService(runtime.repositories, settingsService, browser.runtime.getManifest().version));
+  runRuntimePromise = Promise.all([persistence, tabReadyPromise, browserSessionPromise, discardGuardReadyPromise]).then(async ([runtime, _tabSnapshot, browserSession]) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
     manager.subscribe((snapshot) => {
       ports.broadcast('run_changed');
       if (isRunTerminal(snapshot.lifecycleState)) { ports.broadcast('history_changed'); void pruneHistoryIfNeeded().catch(reportRunError); }
     });
-    const recovered = await manager.recoverWorker();
     const client = new ChatGptRunClient(tabBrowser);
     const waiter = new EventDrivenChatGptWaiter(client, observations);
     const scheduler = new DurableRunScheduler(browser.alarms as unknown as AlarmBrowserLike);
     const coordinator = new RepeatRunCoordinator(manager, client, waiter, scheduler, discardGuards);
+    if (browserSession.recoveryKind === 'browser_session_reset') await manager.recoverBrowserSession();
+    else await manager.recoverWorker();
+    await manager.reconcileTabs(tabs.snapshot());
+    let startupRuns = await manager.list();
     const settings = await settingsService.get();
-    if (settings.recoveryPolicy === 'pause') {
-      for (const snapshot of recovered) {
+    if (browserSession.recoveryKind === 'worker_restart' && settings.recoveryPolicy === 'pause') {
+      for (const snapshot of startupRuns) {
         if (snapshot.lifecycleState === 'ready' || snapshot.lifecycleState === 'paused' || isRunTerminal(snapshot.lifecycleState)) continue;
-        await manager.pause(snapshot.id, snapshot.generation, manager.createCommandId());
+        const paused = (await manager.pause(snapshot.id, snapshot.generation, manager.createCommandId())).snapshot;
+        await coordinator.cancel(paused.id);
       }
-    } else {
-      coordinator.recover(recovered);
+      startupRuns = await manager.list();
     }
+    for (const snapshot of startupRuns) {
+      if (isRunTerminal(snapshot.lifecycleState)) await coordinator.cancel(snapshot.id);
+      else if (snapshot.lifecycleState === 'frozen' || snapshot.lifecycleState === 'discarded' || snapshot.lifecycleState === 'reconnecting') await coordinator.suspend(snapshot.id);
+    }
+    coordinator.recover(startupRuns);
     return { manager, coordinator };
   });
-  diagnosticsServicePromise = persistencePromise.then(async (runtime) => {
+  diagnosticsServicePromise = persistence.then(async (runtime) => {
     const client = new ChatGptRunClient(tabBrowser);
     return new DiagnosticsService(runtime.repositories, {
       appVersion: browser.runtime.getManifest().version,
@@ -164,5 +182,4 @@ export default defineBackground(() => {
 
   browser.runtime.onMessage.addListener((message: unknown, sender) => router.handle(message, sender));
   browser.runtime.onConnect.addListener((port) => { ports.attach(port); });
-  lifecycle.start();
 });

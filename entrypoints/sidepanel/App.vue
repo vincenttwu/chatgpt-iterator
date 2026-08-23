@@ -216,6 +216,7 @@ function runStateKey(state: RunLifecycleState): UiMessageKey {
     paused: 'runStatePaused',
     frozen: 'runStateFrozen',
     discarded: 'runStateDiscarded',
+    reconnecting: 'runStateReconnecting',
     completed: 'runStateCompleted',
     failed: 'runStateFailed',
     stopped: 'runStateStopped',
@@ -573,6 +574,13 @@ async function mutateCurrent(kind: 'start' | 'pause' | 'resume' | 'stop'): Promi
       : kind === 'resume'
         ? operationalClient.resume(run)
         : operationalClient.stop(run));
+}
+
+async function rebindCurrent(): Promise<void> {
+  const run = currentRun.value;
+  const target = selectedTarget.value;
+  if (run === undefined || run.suspensionReason !== 'browser_session_reset' || target?.lifecycleState !== 'ready') return;
+  await executeRunMutation(() => operationalClient.rebind(run, target.tabId, target.windowId));
 }
 
 async function applyRunPreset(): Promise<void> {
@@ -962,6 +970,8 @@ onUnmounted(() => connection?.stop());
             </div>
             <div v-if="currentRun.lifecycleState === 'frozen'" class="inline-warning" role="status">{{ ui('frozenExplanation') }}</div>
             <div v-else-if="currentRun.lifecycleState === 'discarded'" class="inline-warning" role="status">{{ ui('discardedExplanation') }}</div>
+            <div v-else-if="currentRun.lifecycleState === 'reconnecting'" class="inline-warning" role="status">{{ ui('targetReconnectExplanation') }}</div>
+            <div v-else-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'browser_session_reset'" class="inline-warning" role="status">{{ ui('browserSessionResetExplanation') }}</div>
             <div v-else-if="connectionState === 'reconnecting'" class="inline-warning" role="status">{{ ui('reconnectExplanation') }}</div>
             <div v-else-if="currentRun.lifecycleState === 'failed'" class="inline-error" role="alert">
               {{ ui('failedExplanation') }}<template v-if="currentRun.failure"> {{ currentRun.failure.message }}</template>
@@ -969,7 +979,8 @@ onUnmounted(() => connection?.stop());
             <div class="actions">
               <button v-if="canStartExistingRun(currentRun.lifecycleState)" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('start')">{{ ui('startExisting') }}</button>
               <button v-if="canPauseRun(currentRun.lifecycleState)" type="button" class="secondary-action" :disabled="operationBusy" @click="mutateCurrent('pause')">{{ ui('pause') }}</button>
-              <button v-if="canResumeRun(currentRun.lifecycleState)" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('resume')">{{ ui('resume') }}</button>
+              <button v-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'browser_session_reset'" type="button" class="primary-action" :disabled="operationBusy || selectedTarget?.lifecycleState !== 'ready'" @click="rebindCurrent">{{ ui('rebindTarget') }}</button>
+              <button v-if="canResumeRun(currentRun.lifecycleState) && currentRun.suspensionReason !== 'browser_session_reset'" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('resume')">{{ ui('resume') }}</button>
               <button v-if="canStopRun(currentRun.lifecycleState)" type="button" class="danger-action" :disabled="operationBusy" @click="mutateCurrent('stop')">{{ ui('stop') }}</button>
             </div>
           </template>

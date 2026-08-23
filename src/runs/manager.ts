@@ -145,18 +145,35 @@ export class DurableRunManager {
 
   async pause(runId: string, expectedGeneration: unknown, commandId: string): Promise<RunMutationResult> {
     return await this.#transition(runId, expectedGeneration, commandId, 'paused', (current, now) => {
-      if (!(isRunActive(current.lifecycleState) || current.lifecycleState === 'frozen' || current.lifecycleState === 'discarded')) {
+      if (!(isRunActive(current.lifecycleState) || current.lifecycleState === 'frozen' || current.lifecycleState === 'discarded' || current.lifecycleState === 'reconnecting')) {
         throw new ContractError(ERROR_CODES.staleRequest, `cannot pause run from ${current.lifecycleState}`);
       }
-      return nextRunState(current, { lifecycleState: 'paused', resumeState: resumeBase(current), now });
+      return nextRunState(current, { lifecycleState: 'paused', resumeState: resumeBase(current), suspensionReason: 'user', now });
     });
   }
 
   async resume(runId: string, expectedGeneration: unknown, commandId: string): Promise<RunMutationResult> {
     return await this.#transition(runId, expectedGeneration, commandId, 'resumed', (current, now) => {
       if (current.lifecycleState !== 'paused') throw new ContractError(ERROR_CODES.staleRequest, `cannot resume run from ${current.lifecycleState}`);
-      return nextRunState(current, { lifecycleState: current.resumeState ?? 'running', now });
+      if (current.suspensionReason === 'browser_session_reset') throw new ContractError(ERROR_CODES.staleRequest, 'rebind the intended ChatGPT tab before resuming after a browser-session reset');
+      return nextRunState(current, { lifecycleState: current.resumeState ?? 'running', suspensionReason: null, now });
     });
+  }
+
+  async rebind(runId: string, expectedGeneration: unknown, commandId: string, targetTabId: unknown, targetWindowId: unknown): Promise<RunMutationResult> {
+    return await this.#transition(runId, expectedGeneration, commandId, 'target_rebound', (current, now) => {
+      if (current.lifecycleState !== 'paused' || current.suspensionReason !== 'browser_session_reset') {
+        throw new ContractError(ERROR_CODES.staleRequest, 'run target can only be rebound after a browser-session reset');
+      }
+      return nextRunState(current, {
+        lifecycleState: 'paused',
+        resumeState: current.resumeState,
+        suspensionReason: null,
+        targetTabId: requireTabId(targetTabId, 'targetTabId'),
+        targetWindowId: requireTabId(targetWindowId, 'targetWindowId'),
+        now,
+      });
+    }, { recovery: 'browser_session_reset' });
   }
 
   async stop(runId: string, expectedGeneration: unknown, commandId: string): Promise<RunMutationResult> {
@@ -189,6 +206,23 @@ export class DurableRunManager {
     return recovered;
   }
 
+  async recoverBrowserSession(commandIdFactory: () => string = () => this.#repository.createId()): Promise<DurableRunSnapshot[]> {
+    const runs = await this.#repository.list();
+    const recovered: DurableRunSnapshot[] = [];
+    for (const run of runs) {
+      if (isRunTerminal(run.lifecycleState)) continue;
+      const suspend = run.lifecycleState !== 'ready' && run.lifecycleState !== 'paused';
+      const result = await this.#transition(run.id, run.generation, commandIdFactory(), 'browser_session_recovered', (current, now) => nextRunState(current, {
+        lifecycleState: suspend ? 'paused' : current.lifecycleState,
+        resumeState: suspend ? resumeBase(current) : current.resumeState,
+        suspensionReason: suspend ? 'browser_session_reset' : current.suspensionReason,
+        now,
+      }), { recovery: 'browser_session_reset' });
+      recovered.push(result.snapshot);
+    }
+    return recovered;
+  }
+
   async reconcileTabs(snapshot: ChatGptTabRegistrySnapshot, commandIdFactory: () => string = () => this.#repository.createId()): Promise<void> {
     const runs = await this.#repository.list();
     for (const run of runs) {
@@ -199,6 +233,8 @@ export class DurableRunManager {
           const termination = snapshot.lastTermination;
           if (termination?.tabId === run.targetTabId && termination.windowId === run.targetWindowId) {
             await this.fail(run.id, run.generation, commandIdFactory(), { code: termination.reason, message: 'Target ChatGPT tab is no longer available.' });
+          } else {
+            await this.#applyTabLifecycle(run, 'unavailable', commandIdFactory);
           }
           continue;
         }
@@ -211,19 +247,23 @@ export class DurableRunManager {
   }
 
   async #applyTabLifecycle(run: DurableRunSnapshot, lifecycle: ChatGptTabLifecycleState, commandIdFactory: () => string): Promise<void> {
-    if (lifecycle === 'frozen' || lifecycle === 'discarded') {
-      if (run.lifecycleState === lifecycle) return;
-      if (!(isRunActive(run.lifecycleState) || run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded')) return;
+    if (lifecycle === 'frozen' || lifecycle === 'discarded' || lifecycle === 'loading' || lifecycle === 'unavailable') {
+      const nextLifecycle = lifecycle === 'loading' || lifecycle === 'unavailable' ? 'reconnecting' : lifecycle;
+      if (run.lifecycleState === nextLifecycle) return;
+      if (!(isRunActive(run.lifecycleState) || run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded' || run.lifecycleState === 'reconnecting')) return;
+      const reason = nextLifecycle === 'frozen' ? 'tab_frozen' : nextLifecycle === 'discarded' ? 'tab_discarded' : 'tab_reconnecting';
       await this.#transition(run.id, run.generation, commandIdFactory(), 'tab_suspended', (current, now) => nextRunState(current, {
-        lifecycleState: lifecycle,
+        lifecycleState: nextLifecycle,
         resumeState: resumeBase(current),
+        suspensionReason: reason,
         now,
       }), { tabLifecycle: lifecycle });
       return;
     }
-    if ((lifecycle === 'ready' || lifecycle === 'degraded') && (run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded')) {
+    if ((lifecycle === 'ready' || lifecycle === 'degraded') && (run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded' || run.lifecycleState === 'reconnecting')) {
       await this.#transition(run.id, run.generation, commandIdFactory(), 'tab_recovered', (current, now) => nextRunState(current, {
         lifecycleState: current.resumeState ?? 'running',
+        suspensionReason: null,
         now,
       }), { tabLifecycle: lifecycle });
     }

@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 14
+revision: 15
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T04:24:00+08:00
+updated_at: 2026-08-24T04:34:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -493,18 +493,20 @@ Make durable user state portable and prove the product behaves truthfully across
 
 #### Work items
 
-- [ ] Inactive-tab execution without active-tab dependency.
-- [ ] frozen target detection/recovery messaging and no false progress claim.
-- [ ] discarded/reloaded target reconnection and adapter re-handshake.
-- [ ] service-worker restart during waiting-response/waiting-delay.
-- [ ] Side Panel close/reopen during active run.
-- [ ] browser restart policy for unfinished runs: recover as explicit suspended/reconcilable state rather than silently duplicate sends.
-- [ ] restore target `autoDiscardable` ownership after every terminal path.
+- [x] Inactive-tab execution without active-tab dependency.
+- [x] frozen target detection/recovery messaging and no false progress claim.
+- [x] discarded/reloaded target reconnection and adapter re-handshake.
+- [x] service-worker restart during waiting-response/waiting-delay.
+- [x] Side Panel close/reopen during active run.
+- [x] browser restart policy for unfinished runs: recover as explicit suspended/reconcilable state rather than silently duplicate sends.
+- [x] restore target `autoDiscardable` ownership after every terminal path.
 
 #### Step acceptance evidence
 
-- [ ] Repository-controlled lifecycle simulations pass.
-- [ ] Real packaged Chrome lanes run where available; environment-only unavailable lanes are `deferred_environment` rather than blockers or passes.
+- [x] Repository-controlled lifecycle simulations pass.
+- [x] Real packaged Chrome lanes run where available; environment-only unavailable lanes are `deferred_environment` rather than blockers or passes.
+
+**STEP-15 fast-path result:** hardened lifecycle recovery without adding a second execution engine. A `chrome.storage.session` startup marker now distinguishes same-session service-worker restart from browser/extension-session reset. Same-session recovery preserves prepared waiting-response authority and persisted waiting-delay deadlines without blind resend; session reset advances the generation fence and pauses nonterminal work with durable `browser_session_reset` reason because tab IDs are browser-session scoped. Resume is blocked until the user explicitly rebinds a currently ready ChatGPT target, and rebind itself does not send or advance work. Loading/unavailable targets now enter durable `reconnecting`; frozen, discarded and reconnecting states suspend the coordinator without false completion/progress and recover the prior active state only after target readiness/adapter re-handshake. Side Panel closure remains presentation-only. Discard-guard ownership/original `autoDiscardable` provenance is persisted in `storage.session`, reconstructed after worker termination and restored on terminal/paused ownership release. Focused STEP-15 lifecycle simulations passed 10/10, strict lifecycle/run/tab/runtime/UI TypeScript passed with TypeScript 5.8.3, and the single STEP-14 portability predecessor smoke passed 10/10. Real packaged Chrome verification is `deferred_environment`: Chromium is available, but this accepted snapshot has no hydrated WXT/node_modules package build to launch. IndexedDB remains physical v1, export format v1 and permissions remain `sidePanel`, `storage`, `alarms`.
 
 ### STEP-16 — Integrated Product/UI Standard/Accessibility/Package Closure
 
@@ -535,8 +537,8 @@ Make durable user state portable and prove the product behaves truthfully across
 
 ## Phase P4 success criteria
 
-- [ ] Durable user definitions are portable and recoverable.
-- [ ] Runtime survives/reconciles browser context churn without duplicate-send authority errors.
+- [x] Durable user definitions are portable and recoverable.
+- [x] Runtime survives/reconciles browser context churn without duplicate-send authority errors.
 - [ ] Product UI conforms to team standard and accessibility/responsive contracts.
 - [ ] Package/install authority matches the actual extension.
 
@@ -556,7 +558,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`) — transactional ordered queues, frozen resolved run items, same-coordinator Queue execution and team-standard Queue workspace complete.
 - [x] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`) — sync-backed defaults, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surface complete; Phase P3 closed.
 - [x] STEP-14 — Versioned Export, Import, Merge/Replace and Backup Semantics (`v0.0.14`) — versioned configuration/full-backup portability, previewed conflict modes, rollback-safe application and explicit adapter registry complete.
-- [ ] STEP-15 — Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening (`v0.0.15`).
+- [x] STEP-15 — Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening (`v0.0.15`) — browser-session-aware recovery, explicit target rebind, reconnecting suspension and persistent discard-guard restoration complete.
 - [ ] STEP-16 — Integrated Product/UI Standard/Accessibility/Package Closure (`v0.0.16`).
 
 ## Roadmap change control
@@ -591,4 +593,6 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 10 | Complete STEP-10 persistence-backed Templates workspace with stable IDs/revisions, exact bounded Repeat variables, preview/validation, team-standard lifecycle, and dirty/stale working-copy protection; v0.0.11 STEP-11 next. | historical |
 | 2026-08-24 | 11 | Complete STEP-11 persistence-backed Presets workspace with stable Template/Queue references, explicit disposable Run hydration, team-standard lifecycle, dirty/stale protection and effective prevent-discard defaults; v0.0.12 STEP-12 next. | historical |
 | 2026-08-24 | 12 | Complete STEP-12 transactional Queue workspace/execution mode with stable ordered items, frozen Template/literal resolution, per-item delay overrides, Queue Preset hydration and same-coordinator Repeat/Queue lifecycle; v0.0.13 STEP-13 next. | historical |
-| 2026-08-24 | 13 | Complete STEP-13 sync-backed Settings, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surfaces; close Phase P3 and make v0.0.14 STEP-14 portability next. | active |
+| 2026-08-24 | 13 | Complete STEP-13 sync-backed Settings, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surfaces; close Phase P3 and make v0.0.14 STEP-14 portability next. | historical |
+| 2026-08-24 | 14 | Complete STEP-14 versioned configuration/full-backup portability, previewed merge/replace semantics, stable-ID/reference preservation and rollback-safe application; v0.0.15 STEP-15 lifecycle hardening next. | historical |
+| 2026-08-24 | 15 | Complete STEP-15 browser-session-aware lifecycle hardening, explicit rebind after session reset, reconnecting suspension, same-session no-resend recovery and persistent discard-guard restoration; v0.0.16 STEP-16 integrated closure next. | active |

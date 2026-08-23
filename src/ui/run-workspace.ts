@@ -118,6 +118,16 @@ export class SidePanelOperationalClient {
     }));
   }
 
+  async rebind(run: DurableRunSnapshot, targetTabId: number, targetWindowId: number): Promise<DurableRunSnapshot> {
+    await this.bindTarget(targetTabId);
+    return requireRunMutation(await this.#request('command', RUN_RUNTIME_OPERATIONS.rebind, {
+      runId: run.id,
+      expectedGeneration: run.generation,
+      targetTabId,
+      targetWindowId,
+    }));
+  }
+
   async pause(run: DurableRunSnapshot): Promise<DurableRunSnapshot> {
     return requireRunMutation(await this.#request('command', RUN_RUNTIME_OPERATIONS.pause, {
       runId: run.id,
@@ -184,7 +194,7 @@ export function runProgress(run: DurableRunSnapshot): RunProgressView {
 }
 
 export function canPauseRun(state: RunLifecycleState): boolean {
-  return state === 'running' || state === 'waiting_response' || state === 'waiting_delay' || state === 'frozen' || state === 'discarded';
+  return state === 'running' || state === 'waiting_response' || state === 'waiting_delay' || state === 'frozen' || state === 'discarded' || state === 'reconnecting';
 }
 
 export function canResumeRun(state: RunLifecycleState): boolean {

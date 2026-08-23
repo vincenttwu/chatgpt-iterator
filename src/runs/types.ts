@@ -8,12 +8,13 @@ export const RUN_RESPONSE_STABLE_MS = 3_500 as const;
 export const RUN_SHORT_DELAY_THRESHOLD_MS = 30_000 as const;
 
 export const RUN_RUNTIME_OPERATIONS = Object.freeze({
-  create: 'run.create', start: 'run.start', get: 'run.get', list: 'run.list', pause: 'run.pause', resume: 'run.resume', stop: 'run.stop',
+  create: 'run.create', start: 'run.start', get: 'run.get', list: 'run.list', pause: 'run.pause', resume: 'run.resume', stop: 'run.stop', rebind: 'run.rebind',
 } as const);
 
-export type RunLifecycleState = 'ready'|'running'|'waiting_response'|'waiting_delay'|'paused'|'frozen'|'discarded'|'completed'|'failed'|'stopped';
+export type RunLifecycleState = 'ready'|'running'|'waiting_response'|'waiting_delay'|'paused'|'frozen'|'discarded'|'reconnecting'|'completed'|'failed'|'stopped';
 export type RunActiveState = 'running'|'waiting_response'|'waiting_delay';
-export type RunSuspendedState = 'paused'|'frozen'|'discarded';
+export type RunSuspendedState = 'paused'|'frozen'|'discarded'|'reconnecting';
+export type RunSuspensionReason = 'user'|'tab_frozen'|'tab_discarded'|'tab_reconnecting'|'browser_session_reset'|'worker_recovery_policy'|null;
 export type RunTerminalState = 'completed'|'failed'|'stopped';
 export type RunMode = 'repeat'|'queue';
 
@@ -66,13 +67,14 @@ export interface DurableRunSnapshot extends JsonObject {
   readonly targetTabId: number;
   readonly targetWindowId: number;
   readonly resumeState: RunActiveState|null;
+  readonly suspensionReason: RunSuspensionReason;
   readonly failure: RunFailure|null;
   readonly execution: RunExecutionState;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
 
-export type RunEventType = 'created'|'started'|'state_changed'|'iteration_prepared'|'iteration_completed'|'delay_elapsed'|'paused'|'resumed'|'stopped'|'completed'|'failed'|'tab_suspended'|'tab_recovered'|'worker_recovered';
+export type RunEventType = 'created'|'started'|'state_changed'|'iteration_prepared'|'iteration_completed'|'delay_elapsed'|'paused'|'resumed'|'stopped'|'completed'|'failed'|'tab_suspended'|'tab_recovered'|'worker_recovered'|'browser_session_recovered'|'target_rebound';
 export interface RunTransitionCommand { readonly runId:string; readonly expectedGeneration:number; readonly commandId:string; }
 export function isRunTerminal(state: RunLifecycleState): state is RunTerminalState { return state==='completed'||state==='failed'||state==='stopped'; }
 export function isRunActive(state: RunLifecycleState): state is RunActiveState { return state==='running'||state==='waiting_response'||state==='waiting_delay'; }
