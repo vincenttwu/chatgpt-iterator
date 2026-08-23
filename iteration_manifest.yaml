@@ -1,26 +1,26 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.8
+version: v0.0.9
 status: accepted_implementation_overlay
 iteration:
   kind: implementation
   roadmap: ROADMAP-0001
-  step: STEP-08
+  step: STEP-09
   step_status: complete
-  phase: P2
-  phase_status: complete
+  phase: P3
+  phase_status: active
 baseline:
-  working_parent: v0.0.7
+  working_parent: v0.0.8
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step08: "9/9 pass"
-  core_persistence_tabs_chatgpt_messages_runs_runtime_typescript: "pass with TypeScript 5.8.3"
-  predecessor_run_smoke: "8/8 pass"
+  focused_step09: "8/8 pass"
+  core_runs_tabs_ui_typescript: "pass with TypeScript 5.8.3"
+  predecessor_repeat_smoke: "9/9 pass"
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build: inherited_deferred_environment
 next:
-  version: v0.0.9
-  step: STEP-09
-  title: Run Workspace and Five-Tab Product Shell
+  version: v0.0.10
+  step: STEP-10
+  title: Templates Workspace and Variable Contract

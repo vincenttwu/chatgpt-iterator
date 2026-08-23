@@ -1,43 +1,11 @@
 import { browser } from 'wxt/browser';
 
-export type UiMessageKey =
-  | 'appName'
-  | 'appDescription'
-  | 'localeCode'
-  | 'workspaceStatus'
-  | 'extensionReady'
-  | 'foundationState'
-  | 'primaryWorkspaces'
-  | 'run'
-  | 'queue'
-  | 'presets'
-  | 'templates'
-  | 'settings'
-  | 'runWorkspace'
-  | 'queueWorkspace'
-  | 'presetsWorkspace'
-  | 'templatesWorkspace'
-  | 'settingsWorkspace'
-  | 'foundation'
-  | 'runFoundationDescription'
-  | 'queueFoundationDescription'
-  | 'presetsFoundationDescription'
-  | 'templatesFoundationDescription'
-  | 'settingsFoundationDescription'
-  | 'futureCapability'
-  | 'versionLabel'
-  | 'runtimeConnected'
-  | 'runtimeReconnecting'
-  | 'runtimeStopped'
-  | 'controlPlaneRevision'
-  | 'controlPlaneUnavailable';
-
-const FALLBACK_MESSAGES: Readonly<Record<UiMessageKey, string>> = Object.freeze({
+const FALLBACK_MESSAGES = Object.freeze({
   appName: 'ChatGPT Iterator',
   appDescription: 'Chrome-native Side Panel controller for durable ChatGPT iteration workflows.',
   localeCode: 'en',
   workspaceStatus: 'Workspace status',
-  extensionReady: 'Extension shell ready',
+  extensionReady: 'Extension ready',
   foundationState: 'Control plane',
   primaryWorkspaces: 'Primary workspaces',
   run: 'Run',
@@ -51,19 +19,86 @@ const FALLBACK_MESSAGES: Readonly<Record<UiMessageKey, string>> = Object.freeze(
   templatesWorkspace: 'Templates workspace',
   settingsWorkspace: 'Settings workspace',
   foundation: 'Foundation',
-  runFoundationDescription: 'Run controls arrive with the durable execution program. This step establishes only the team-standard workspace shell.',
+  runFoundationDescription: 'Run directly against an explicitly selected ChatGPT tab using durable Repeat execution.',
   queueFoundationDescription: 'Ordered message queue behavior arrives in its owning roadmap step. The workspace destination is reserved now.',
-  presetsFoundationDescription: 'Preset lifecycle behavior arrives after durable repositories exist. The workspace destination is reserved now.',
-  templatesFoundationDescription: 'Template editing and variables arrive in their owning roadmap step. The workspace destination is reserved now.',
-  settingsFoundationDescription: 'Settings, diagnostics, and data controls arrive in later bounded steps. The workspace destination is reserved now.',
+  presetsFoundationDescription: 'Preset lifecycle behavior arrives in its owning roadmap step. Direct runs do not require a preset.',
+  templatesFoundationDescription: 'Reusable template editing arrives in its owning roadmap step. Repeat text can already use the bounded built-in variables.',
+  settingsFoundationDescription: 'Settings, diagnostics, history, and data controls arrive in their owning roadmap step.',
   futureCapability: 'Domain behavior is intentionally deferred to its roadmap owner.',
-  versionLabel: 'Version 0.0.3',
+  versionLabel: 'Version',
   runtimeConnected: 'Control plane connected',
   runtimeReconnecting: 'Control plane reconnecting',
   runtimeStopped: 'Control plane stopped',
   controlPlaneRevision: 'Authority revision',
   controlPlaneUnavailable: 'Control plane unavailable',
-});
+  runTarget: 'Target',
+  targetChatGptTab: 'ChatGPT tab',
+  targetDescription: 'Choose the exact ChatGPT tab this run owns. Changing the browser active tab never retargets an existing run.',
+  targetSelectLabel: 'Target ChatGPT tab',
+  chooseTarget: 'Choose a ChatGPT tab',
+  refreshTargets: 'Refresh tabs',
+  noChatGptTabs: 'No eligible ChatGPT tabs are currently available.',
+  targetReady: 'Ready',
+  targetDegraded: 'Degraded',
+  targetLoading: 'Loading',
+  targetFrozen: 'Frozen',
+  targetDiscarded: 'Discarded',
+  targetUnavailable: 'Unavailable',
+  activeTabSuffix: 'active',
+  tabIdLabel: 'Tab',
+  connectedLabel: 'Connected',
+  yes: 'Yes',
+  no: 'No',
+  runConfiguration: 'Run configuration',
+  repeatMode: 'Repeat',
+  directRun: 'Direct run',
+  preset: 'Preset',
+  noPresetDirect: 'No preset — direct configuration',
+  presetDeferredHelp: 'Presets are optional. Saved preset lifecycle arrives in the Presets step.',
+  message: 'Message',
+  messageHelp: 'Supported variables: {iteration}, {total}, {remaining}, {timestamp}.',
+  iterations: 'Iterations',
+  delaySeconds: 'Delay (seconds)',
+  autoContinue: 'Auto-continue',
+  autoContinueHelp: 'Click ChatGPT Continue when a partial response exposes it.',
+  autoScroll: 'Auto-scroll',
+  autoScrollHelp: 'Scroll the target conversation to the bottom before sending.',
+  startRun: 'Start run',
+  currentRun: 'Current run',
+  noCurrentRun: 'No run has been started yet.',
+  runId: 'Run ID',
+  runState: 'State',
+  progress: 'Progress',
+  updated: 'Updated',
+  target: 'Target',
+  currentIteration: 'Current iteration',
+  completedIterations: 'Completed',
+  pause: 'Pause',
+  resume: 'Resume',
+  stop: 'Stop',
+  startExisting: 'Start',
+  working: 'Working…',
+  runStateReady: 'Ready',
+  runStateRunning: 'Running',
+  runStateWaitingResponse: 'Waiting for response',
+  runStateWaitingDelay: 'Waiting for delay',
+  runStatePaused: 'Paused',
+  runStateFrozen: 'Tab frozen',
+  runStateDiscarded: 'Tab discarded',
+  runStateCompleted: 'Completed',
+  runStateFailed: 'Failed',
+  runStateStopped: 'Stopped',
+  frozenExplanation: 'Chrome has frozen the target tab. DOM work cannot execute until Chrome unfreezes it, usually when the tab is activated.',
+  discardedExplanation: 'Chrome discarded the target tab and unloaded its page. The run remains durable and will reconcile after the tab reloads and reconnects.',
+  reconnectExplanation: 'The Side Panel is reconnecting to the extension runtime. The durable run continues under background authority.',
+  failedExplanation: 'The run stopped because an execution error was persisted.',
+  runError: 'Run operation failed',
+  targetNotReady: 'Select a ready ChatGPT tab before starting.',
+  invalidRunConfiguration: 'Enter a message, 1–10000 iterations, and a delay from 5–3600 seconds.',
+  directConfiguration: 'Direct configuration',
+} as const);
+
+export type UiMessageKey = keyof typeof FALLBACK_MESSAGES;
 
 export function ui(key: UiMessageKey): string {
   const localized = browser.i18n.getMessage(key);

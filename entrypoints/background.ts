@@ -45,7 +45,7 @@ function reportRunError(error: unknown): void {
 
 tabs.subscribe((snapshot) => {
   authority.setTabs(snapshot);
-  ports.broadcast('authority_changed');
+  ports.broadcast('tab_changed');
   if (runRuntimePromise !== undefined) {
     void runRuntimePromise.then(async ({ manager, coordinator }) => {
       await manager.reconcileTabs(snapshot);
@@ -61,6 +61,7 @@ export default defineBackground(() => {
 
   runRuntimePromise = bootstrapApplicationPersistence().then(async (runtime) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
+    manager.subscribe(() => ports.broadcast('run_changed'));
     const recovered = await manager.recoverWorker();
     const client = new ChatGptRunClient(tabBrowser);
     const waiter = new EventDrivenChatGptWaiter(client, observations);

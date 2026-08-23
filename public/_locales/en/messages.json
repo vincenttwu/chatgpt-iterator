@@ -12,7 +12,7 @@
     "message": "Workspace status"
   },
   "extensionReady": {
-    "message": "Extension shell ready"
+    "message": "Extension ready"
   },
   "foundationState": {
     "message": "Control plane"
@@ -54,25 +54,25 @@
     "message": "Foundation"
   },
   "runFoundationDescription": {
-    "message": "Run controls arrive with the durable execution program. This step establishes only the team-standard workspace shell."
+    "message": "Run directly against an explicitly selected ChatGPT tab using durable Repeat execution."
   },
   "queueFoundationDescription": {
     "message": "Ordered message queue behavior arrives in its owning roadmap step. The workspace destination is reserved now."
   },
   "presetsFoundationDescription": {
-    "message": "Preset lifecycle behavior arrives after durable repositories exist. The workspace destination is reserved now."
+    "message": "Preset lifecycle behavior arrives in its owning roadmap step. Direct runs do not require a preset."
   },
   "templatesFoundationDescription": {
-    "message": "Template editing and variables arrive in their owning roadmap step. The workspace destination is reserved now."
+    "message": "Reusable template editing arrives in its owning roadmap step. Repeat text can already use the bounded built-in variables."
   },
   "settingsFoundationDescription": {
-    "message": "Settings, diagnostics, and data controls arrive in later bounded steps. The workspace destination is reserved now."
+    "message": "Settings, diagnostics, history, and data controls arrive in their owning roadmap step."
   },
   "futureCapability": {
     "message": "Domain behavior is intentionally deferred to its roadmap owner."
   },
   "versionLabel": {
-    "message": "Version 0.0.3"
+    "message": "Version"
   },
   "runtimeConnected": {
     "message": "Control plane connected"
@@ -88,5 +88,200 @@
   },
   "controlPlaneUnavailable": {
     "message": "Control plane unavailable"
+  },
+  "runTarget": {
+    "message": "Target"
+  },
+  "targetChatGptTab": {
+    "message": "ChatGPT tab"
+  },
+  "targetDescription": {
+    "message": "Choose the exact ChatGPT tab this run owns. Changing the browser active tab never retargets an existing run."
+  },
+  "targetSelectLabel": {
+    "message": "Target ChatGPT tab"
+  },
+  "chooseTarget": {
+    "message": "Choose a ChatGPT tab"
+  },
+  "refreshTargets": {
+    "message": "Refresh tabs"
+  },
+  "noChatGptTabs": {
+    "message": "No eligible ChatGPT tabs are currently available."
+  },
+  "targetReady": {
+    "message": "Ready"
+  },
+  "targetDegraded": {
+    "message": "Degraded"
+  },
+  "targetLoading": {
+    "message": "Loading"
+  },
+  "targetFrozen": {
+    "message": "Frozen"
+  },
+  "targetDiscarded": {
+    "message": "Discarded"
+  },
+  "targetUnavailable": {
+    "message": "Unavailable"
+  },
+  "activeTabSuffix": {
+    "message": "active"
+  },
+  "tabIdLabel": {
+    "message": "Tab"
+  },
+  "connectedLabel": {
+    "message": "Connected"
+  },
+  "yes": {
+    "message": "Yes"
+  },
+  "no": {
+    "message": "No"
+  },
+  "runConfiguration": {
+    "message": "Run configuration"
+  },
+  "repeatMode": {
+    "message": "Repeat"
+  },
+  "directRun": {
+    "message": "Direct run"
+  },
+  "preset": {
+    "message": "Preset"
+  },
+  "noPresetDirect": {
+    "message": "No preset — direct configuration"
+  },
+  "presetDeferredHelp": {
+    "message": "Presets are optional. Saved preset lifecycle arrives in the Presets step."
+  },
+  "message": {
+    "message": "Message"
+  },
+  "messageHelp": {
+    "message": "Supported variables: {iteration}, {total}, {remaining}, {timestamp}."
+  },
+  "iterations": {
+    "message": "Iterations"
+  },
+  "delaySeconds": {
+    "message": "Delay (seconds)"
+  },
+  "autoContinue": {
+    "message": "Auto-continue"
+  },
+  "autoContinueHelp": {
+    "message": "Click ChatGPT Continue when a partial response exposes it."
+  },
+  "autoScroll": {
+    "message": "Auto-scroll"
+  },
+  "autoScrollHelp": {
+    "message": "Scroll the target conversation to the bottom before sending."
+  },
+  "startRun": {
+    "message": "Start run"
+  },
+  "currentRun": {
+    "message": "Current run"
+  },
+  "noCurrentRun": {
+    "message": "No run has been started yet."
+  },
+  "runId": {
+    "message": "Run ID"
+  },
+  "runState": {
+    "message": "State"
+  },
+  "progress": {
+    "message": "Progress"
+  },
+  "updated": {
+    "message": "Updated"
+  },
+  "target": {
+    "message": "Target"
+  },
+  "currentIteration": {
+    "message": "Current iteration"
+  },
+  "completedIterations": {
+    "message": "Completed"
+  },
+  "pause": {
+    "message": "Pause"
+  },
+  "resume": {
+    "message": "Resume"
+  },
+  "stop": {
+    "message": "Stop"
+  },
+  "startExisting": {
+    "message": "Start"
+  },
+  "working": {
+    "message": "Working…"
+  },
+  "runStateReady": {
+    "message": "Ready"
+  },
+  "runStateRunning": {
+    "message": "Running"
+  },
+  "runStateWaitingResponse": {
+    "message": "Waiting for response"
+  },
+  "runStateWaitingDelay": {
+    "message": "Waiting for delay"
+  },
+  "runStatePaused": {
+    "message": "Paused"
+  },
+  "runStateFrozen": {
+    "message": "Tab frozen"
+  },
+  "runStateDiscarded": {
+    "message": "Tab discarded"
+  },
+  "runStateCompleted": {
+    "message": "Completed"
+  },
+  "runStateFailed": {
+    "message": "Failed"
+  },
+  "runStateStopped": {
+    "message": "Stopped"
+  },
+  "frozenExplanation": {
+    "message": "Chrome has frozen the target tab. DOM work cannot execute until Chrome unfreezes it, usually when the tab is activated."
+  },
+  "discardedExplanation": {
+    "message": "Chrome discarded the target tab and unloaded its page. The run remains durable and will reconcile after the tab reloads and reconnects."
+  },
+  "reconnectExplanation": {
+    "message": "The Side Panel is reconnecting to the extension runtime. The durable run continues under background authority."
+  },
+  "failedExplanation": {
+    "message": "The run stopped because an execution error was persisted."
+  },
+  "runError": {
+    "message": "Run operation failed"
+  },
+  "targetNotReady": {
+    "message": "Select a ready ChatGPT tab before starting."
+  },
+  "invalidRunConfiguration": {
+    "message": "Enter a message, 1–10000 iterations, and a delay from 5–3600 seconds."
+  },
+  "directConfiguration": {
+    "message": "Direct configuration"
   }
 }

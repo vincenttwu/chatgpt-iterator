@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 8
+revision: 9
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T03:19:00+08:00
+updated_at: 2026-08-24T03:29:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -348,17 +348,19 @@ Expose the durable runtime through the five agreed workspaces without turning UI
 
 #### Work items
 
-- [ ] Run / Queue / Presets / Templates / Settings tabs using team-standard tab semantics.
-- [ ] Run target picker/load current ChatGPT tabs.
-- [ ] Preset selector without requiring a saved preset to run.
-- [ ] Repeat form, iterations/delay/auto-continue controls and Start/Pause/Resume/Stop.
-- [ ] Live run state/progress and frozen/discarded/reconnect explanations.
-- [ ] 320px/narrow reflow, keyboard/focus/status lane and reduced-motion compliance.
+- [x] Run / Queue / Presets / Templates / Settings tabs using team-standard tab semantics.
+- [x] Run target picker/load current ChatGPT tabs.
+- [x] Preset selector without requiring a saved preset to run.
+- [x] Repeat form, iterations/delay/auto-continue controls and Start/Pause/Resume/Stop.
+- [x] Live run state/progress and frozen/discarded/reconnect explanations.
+- [x] 320px/narrow reflow, keyboard/focus/status lane and reduced-motion compliance.
 
 #### Step acceptance evidence
 
-- [ ] Focused Run UI/control-plane tests pass.
-- [ ] `CONSTRAINT-0001` compliance is explicit; no competing layout grammar is introduced.
+- [x] Focused Run UI/control-plane tests pass.
+- [x] `CONSTRAINT-0001` compliance is explicit; no competing layout grammar is introduced.
+
+**STEP-09 fast-path result:** replaced the placeholder Run destination with the normal direct-first operational workspace while preserving the exact five-tab CRSniffer team-standard shell. The Run workspace now loads/refreshes eligible ChatGPT tabs, binds an explicit target, keeps Presets optional through a direct-configuration selector, exposes Repeat message/iteration/delay/auto-continue/auto-scroll controls, creates and starts durable runs, and provides Start/Pause/Resume/Stop over persisted generation-fenced authority. Live run state/progress is rehydrated independently from presentation state; frozen, discarded and Side Panel reconnect states are explained truthfully. Control-plane invalidations now distinguish `tab_changed` from `run_changed`, preventing streaming tab observations from forcing unnecessary run-list hydration. Focused STEP-09 validation passed 8/8, strict dependency-free UI/run contract TypeScript passed with TypeScript 5.8.3, and STEP-08 remained the one predecessor smoke at 9/9. The existing WXT dependency-hydration/full Vue build lane remains `deferred_environment`.
 
 ### STEP-10 — Templates Workspace and Variable Contract
 
@@ -538,7 +540,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`) — IndexedDB physical v1, repository/transaction boundaries, logical migrations and trusted Chrome storage tiers complete.
 - [x] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`) — durable lifecycle, generation fencing, idempotent commands, worker/tab reconciliation and bounded events complete.
 - [x] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
-- [ ] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`).
+- [x] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`) — direct-first Run workspace, explicit target picker, live durable controls/progress and enforced team-standard shell complete.
 - [ ] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`).
 - [ ] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`).
 - [ ] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`).
@@ -574,4 +576,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 5 | Complete STEP-05 explicit ChatGPT tab registry, target binding, lifecycle normalization, reload/replacement/close handling and reversible autoDiscardable guard; close Phase P1 and authorize v0.0.6 STEP-06 next. | historical |
 | 2026-08-24 | 6 | Complete STEP-06 IndexedDB physical v1, repositories, storage tiers, transaction boundaries and logical migration authority; v0.0.7 STEP-07 next. | historical |
 | 2026-08-24 | 7 | Complete STEP-07 durable run lifecycle, generation/idempotency fences, worker/tab recovery semantics and bounded run-event history; v0.0.8 STEP-08 next. | historical |
-| 2026-08-24 | 8 | Complete STEP-08 Repeat execution, message-source/template rendering, event-driven response orchestration, conservative recovery, short-delay timers and coarse alarm scheduling; close Phase P2 and make v0.0.9 STEP-09 next. | active |
+| 2026-08-24 | 8 | Complete STEP-08 Repeat execution, message-source/template rendering, event-driven response orchestration, conservative recovery, short-delay timers and coarse alarm scheduling; close Phase P2 and make v0.0.9 STEP-09 next. | historical |
+| 2026-08-24 | 9 | Complete STEP-09 direct-first Run workspace and five-tab product shell with explicit target selection, optional preset path, durable lifecycle controls/progress, truthful frozen/discarded/reconnect states and separated tab/run invalidations; v0.0.10 STEP-10 next. | active |
