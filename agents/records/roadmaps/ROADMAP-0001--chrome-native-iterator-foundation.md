@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 2
+revision: 3
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-23T18:42:00Z
+updated_at: 2026-08-23T18:45:00Z
 created_by: agent
 updated_by: agent
 owners: []
@@ -181,15 +181,17 @@ Establish the browser/platform contract and the smallest correct cross-context a
 
 #### Work items
 
-- [ ] Stable IDs, protocol/schema versions and normalized error categories.
-- [ ] One-shot command/query messages and bounded invalidation/event notifications.
-- [ ] Panel hydration/reconnect that never makes panel-local state canonical.
-- [ ] Request freshness/out-of-order protection.
+- [x] Stable IDs, protocol/schema versions and normalized error categories.
+- [x] One-shot command/query messages and bounded invalidation/event notifications.
+- [x] Panel hydration/reconnect that never makes panel-local state canonical.
+- [x] Request freshness/out-of-order protection.
 
 #### Step acceptance evidence
 
-- [ ] Focused contract/message tests pass.
-- [ ] Panel closure/reopen reconstructs test state from application authority.
+- [x] Focused STEP-03 contract/control-plane tests pass 8/8 and the dependency-free `src/core` + `src/control-plane` TypeScript lane passes under available TypeScript 5.8.3.
+- [x] Panel closure/reopen reconstructs test state from application authority; stale out-of-order hydration is ignored and Port reconnect carries hints only.
+
+**STEP-03 result (`v0.0.3`):** Added strict JSON-safe versioned request/response envelopes with UUID-v4 message/request identity, runtime source/target context, query/command intent, normalized error categories/codes, correlation and schema/protocol rejection. Added a background-owned `ControlPlaneAuthority`, bounded `panel.hydrate` server, ephemeral Port invalidation hub, and Side Panel client with latest-request freshness, response correlation, reconnect scheduling and rehydration. The Vue shell now reflects control-plane connection/revision state without becoming canonical. No ChatGPT content script/selector, host/scripting permission, persistence, run engine or later-domain behavior is introduced. The previously deferred WXT/package-hydration lane remains `deferred_environment`; STEP-03's dependency-free TypeScript and Node contract lanes execute locally.
 
 ### STEP-04 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract
 
@@ -516,7 +518,7 @@ Make durable user state portable and prove the product behaves truthfully across
 
 - [x] STEP-01 — Platform Contract, Team UI Authority, and Roadmap Freeze (`v0.0.1`) — research/records complete; exact starter merge deferred because baseline bytes unavailable.
 - [x] STEP-02 — MV3 WXT Vue Foundation and Team-Standard Side Panel Shell (`v0.0.2`) — executable shell/static contracts complete; package hydration/build lane deferred_environment.
-- [ ] STEP-03 — Versioned Cross-Context Contracts and Control Plane (`v0.0.3`).
+- [x] STEP-03 — Versioned Cross-Context Contracts and Control Plane (`v0.0.3`) — strict envelopes, background authority, bounded hydration/invalidation, reconnect and stale-response protection complete.
 - [ ] STEP-04 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract (`v0.0.4`).
 - [ ] STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle (`v0.0.5`).
 - [ ] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`).
@@ -552,4 +554,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | Date | Revision | Change | Status |
 | --- | ---: | --- | --- |
 | 2026-08-24 | 1 | Open ROADMAP-0001 and complete STEP-01 platform contract. | historical |
-| 2026-08-24 | 2 | Accept explicit continuation from the v0.0.1 overlay, complete STEP-02 executable WXT/Vue Side Panel shell, and carry exact v0.0.0 byte reconciliation plus package hydration as explicit provenance/environment deferrals. | active |
+| 2026-08-24 | 2 | Accept explicit continuation from the v0.0.1 overlay, complete STEP-02 executable WXT/Vue Side Panel shell, and carry exact v0.0.0 byte reconciliation plus package hydration as explicit provenance/environment deferrals. | historical |
+| 2026-08-24 | 3 | Complete STEP-03 versioned JSON-safe cross-context contracts, background-owned control-plane hydration/invalidation and Side Panel freshness/reconnect semantics; v0.0.4 STEP-04 next. | active |

@@ -25,7 +25,12 @@ export type UiMessageKey =
   | 'templatesFoundationDescription'
   | 'settingsFoundationDescription'
   | 'futureCapability'
-  | 'versionLabel';
+  | 'versionLabel'
+  | 'runtimeConnected'
+  | 'runtimeReconnecting'
+  | 'runtimeStopped'
+  | 'controlPlaneRevision'
+  | 'controlPlaneUnavailable';
 
 const FALLBACK_MESSAGES: Readonly<Record<UiMessageKey, string>> = Object.freeze({
   appName: 'ChatGPT Iterator',
@@ -33,7 +38,7 @@ const FALLBACK_MESSAGES: Readonly<Record<UiMessageKey, string>> = Object.freeze(
   localeCode: 'en',
   workspaceStatus: 'Workspace status',
   extensionReady: 'Extension shell ready',
-  foundationState: 'Foundation',
+  foundationState: 'Control plane',
   primaryWorkspaces: 'Primary workspaces',
   run: 'Run',
   queue: 'Queue',
@@ -52,7 +57,12 @@ const FALLBACK_MESSAGES: Readonly<Record<UiMessageKey, string>> = Object.freeze(
   templatesFoundationDescription: 'Template editing and variables arrive in their owning roadmap step. The workspace destination is reserved now.',
   settingsFoundationDescription: 'Settings, diagnostics, and data controls arrive in later bounded steps. The workspace destination is reserved now.',
   futureCapability: 'Domain behavior is intentionally deferred to its roadmap owner.',
-  versionLabel: 'Version 0.0.2',
+  versionLabel: 'Version 0.0.3',
+  runtimeConnected: 'Control plane connected',
+  runtimeReconnecting: 'Control plane reconnecting',
+  runtimeStopped: 'Control plane stopped',
+  controlPlaneRevision: 'Authority revision',
+  controlPlaneUnavailable: 'Control plane unavailable',
 });
 
 export function ui(key: UiMessageKey): string {

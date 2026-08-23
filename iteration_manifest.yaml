@@ -1,22 +1,24 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.2
+version: v0.0.3
 status: accepted_implementation_overlay
 iteration:
   kind: implementation
   roadmap: ROADMAP-0001
-  step: STEP-02
+  step: STEP-03
   step_status: complete
 baseline:
-  working_parent: v0.0.1-planning-overlay
+  working_parent: v0.0.2
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step02: "6/6 pass"
-  package_hydration: deferred_environment
-  wxt_prepare_typecheck_build: deferred_environment
+  focused_step03: "8/8 pass"
+  core_control_plane_typescript: "pass with TypeScript 5.8.3"
+  predecessor_shell_smoke: pass
+  package_hydration: inherited_deferred_environment
+  wxt_prepare_typecheck_build: inherited_deferred_environment
 next:
-  version: v0.0.3
-  step: STEP-03
-  title: Versioned Cross-Context Contracts and Control Plane
+  version: v0.0.4
+  step: STEP-04
+  title: ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract

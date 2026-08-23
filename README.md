@@ -1,32 +1,34 @@
-# ChatGPT Iterator — v0.0.2
+# ChatGPT Iterator — v0.0.3
 
-Chrome-native Side Panel foundation for durable ChatGPT iteration workflows.
+Chrome-native Side Panel controller for durable ChatGPT iteration workflows.
 
 ## Current status
 
-ROADMAP-0001 STEP-02 is complete. This version introduces the first executable WXT + Vue 3 + TypeScript Manifest V3 shell and enforces the CRSniffer Side Panel interaction system as the team UI standard.
+ROADMAP-0001 STEP-03 is complete. This version establishes the versioned cross-context contract and reconstructable Side Panel control plane that later ChatGPT/tab/run domains will use.
 
-The exact originally requested `chatgpt-iterator-v0.0.0` archive is still unavailable in this execution context. The user explicitly authorized continuation from the accepted v0.0.1 planning overlay, so v0.0.2 is the forward implementation root. It does **not** claim fabricated byte-for-byte ancestry from the missing archive; if that archive becomes available later it is provenance/reconciliation input, not permission to overwrite accepted successor work.
+The exact originally requested `chatgpt-iterator-v0.0.0` archive remains unavailable. The accepted v0.0.1 overlay and v0.0.2 executable shell remain the authorized forward lineage; no byte-for-byte ancestry claim is fabricated.
 
-## Implemented in v0.0.2
+## Implemented in v0.0.3
 
-- WXT `0.21.4`, Vue `3.5.41`, `@wxt-dev/module-vue` `1.0.3`, TypeScript `7.0.2`, and `vue-tsc` `3.3.11` exact pins.
-- Chrome 132+ Manifest V3 configuration.
-- Minimal `sidePanel` permission floor; no host, scripting, debugger, activeTab, storage, or unrelated permissions yet.
-- Toolbar action opens the global Side Panel.
-- Five team-standard workspaces: **Run · Queue · Presets · Templates · Settings**.
-- CRSniffer-standard accessible tabs, header/status lane, surface/card grammar, icon component, narrow-panel icon compression, focus visibility, reduced-motion and forced-color behavior.
-- Native-aware system-color theme instead of fixed Google/Material palette.
-- UI copy externalized through Chrome localization messages.
+- Dependency-free `src/core/` contract layer with strict JSON-safe values, UUID-v4 stable IDs, protocol/schema versions, request correlation, runtime source/target context and query/command intent.
+- Normalized bounded error categories/codes and versioned error payloads.
+- Background-owned `ControlPlaneAuthority` and bounded `panel.hydrate` query server.
+- Ephemeral Port invalidation hints that carry no canonical snapshot state.
+- Side Panel hydration with response correlation and latest-request/out-of-order protection.
+- Reconnect scheduling and rehydration after Port disconnect; panel closure/reopen reconstructs from background authority.
+- Existing five-tab CRSniffer-standard Side Panel now presents control-plane connection/revision status without becoming canonical.
+- No ChatGPT content script, selector registry, host/scripting permission, IndexedDB, run engine or Queue behavior yet.
 
 ## Validation
 
-- `npm run test:step02`: **6/6 PASS**.
-- One package hydration attempt (`npm install --ignore-scripts --no-audit --no-fund`) timed out after 120 seconds and produced no lockfile/node_modules. WXT prepare/typecheck/build are **DEFERRED_ENVIRONMENT**, not passes and not blocking under fast-path policy.
+- `npm run test:step03`: **8/8 PASS** using Node's TypeScript stripping lane.
+- Dependency-free `src/core/*.ts` + `src/control-plane/*.ts` strict TypeScript check: **PASS** with available TypeScript 5.8.3.
+- STEP-02 shell regression smoke is retained as the one narrow predecessor check for this iteration.
+- WXT dependency hydration/prepare/full extension typecheck/build remain inherited **DEFERRED_ENVIRONMENT** from v0.0.2; they are not reported as passes.
 
 ## Next authorized step
 
-ROADMAP-0001 **STEP-03 / v0.0.3 — Versioned Cross-Context Contracts and Control Plane**.
+ROADMAP-0001 **STEP-04 / v0.0.4 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract**.
 
 ## Reference inputs
 
