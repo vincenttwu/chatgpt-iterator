@@ -171,7 +171,7 @@ test('STEP-10 template invalidation is isolated and UI copy is localized', async
   for (const key of ['templateLibrary', 'templateWorkingCopy', 'templateName', 'templateBody', 'saveAs', 'updateTemplate', 'resetTemplate', 'duplicateTemplate', 'deleteTemplate']) assert.equal(typeof messages[key]?.message, 'string');
 });
 
-test('STEP-10 introduces no scripting/eval DSL, no schema/permission churn, and does not pull Presets/Queue ownership forward', async () => {
+test('STEP-10 template domain introduces no scripting/eval DSL or schema/permission churn and remains separate from Queue execution', async () => {
   const [model, app, schema, config, pkg] = await Promise.all([
     text('src/templates/model.ts'), text('entrypoints/sidepanel/App.vue'), text('src/persistence/schema.ts'), text('wxt.config.ts'), text('package.json'),
   ]);
@@ -179,6 +179,6 @@ test('STEP-10 introduces no scripting/eval DSL, no schema/permission churn, and 
   assert.match(schema, /PHYSICAL_DB_VERSION/);
   assert.match(config, /permissions:\s*\[['"]sidePanel['"],\s*['"]storage['"],\s*['"]alarms['"]\]/);
   assert.equal(JSON.parse(pkg).dependencies.bootstrap, undefined);
-  assert.doesNotMatch(app, /savePreset|updatePreset|duplicatePreset|deletePreset/);
+  assert.doesNotMatch(model, /PresetService|preset\.create|preset\.update/);
   assert.doesNotMatch(app, /queue\.create|queue\.execute/);
 });

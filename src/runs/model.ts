@@ -87,6 +87,7 @@ export function requireRepeatRunState(value: unknown): RepeatRunState {
     delaySeconds,
     autoContinue: requireBoolean(raw.autoContinue, 'autoContinue'),
     autoScroll: requireBoolean(raw.autoScroll, 'autoScroll'),
+    preventDiscard: raw.preventDiscard === undefined ? true : requireBoolean(raw.preventDiscard, 'preventDiscard'),
     assistantBaselineSignature: baseline as string | null,
     nextDueAt: optionalTimestamp(raw.nextDueAt, 'nextDueAt'),
   });
@@ -98,6 +99,7 @@ export function createRepeatRunState(input: {
   delaySeconds?: unknown;
   autoContinue?: unknown;
   autoScroll?: unknown;
+  preventDiscard?: unknown;
 } = {}): RepeatRunState {
   return requireRepeatRunState({
     mode: 'repeat',
@@ -109,6 +111,7 @@ export function createRepeatRunState(input: {
     delaySeconds: input.delaySeconds ?? DEFAULT_REPEAT_DELAY_SECONDS,
     autoContinue: input.autoContinue ?? true,
     autoScroll: input.autoScroll ?? true,
+    preventDiscard: input.preventDiscard ?? true,
     assistantBaselineSignature: null,
     nextDueAt: null,
   });

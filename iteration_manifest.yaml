@@ -1,26 +1,26 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.10
+version: v0.0.11
 status: accepted_implementation_overlay
 iteration:
   kind: implementation
   roadmap: ROADMAP-0001
-  step: STEP-10
+  step: STEP-11
   step_status: complete
   phase: P3
   phase_status: active
 baseline:
-  working_parent: v0.0.9
+  working_parent: v0.0.10
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step10: "9/9 pass"
-  template_domain_runtime_ui_typescript: "pass with TypeScript 5.8.3"
-  predecessor_team_ui_smoke: "2/2 pass"
+  focused_step11: "10/10 pass"
+  preset_domain_runtime_ui_typescript: "pass with TypeScript 5.8.3"
+  predecessor_template_smoke: "9/9 pass"
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build: inherited_deferred_environment
 next:
-  version: v0.0.11
-  step: STEP-11
-  title: Presets Workspace and Run Configuration Hydration
+  version: v0.0.12
+  step: STEP-12
+  title: Queue Workspace and Queue Execution Mode

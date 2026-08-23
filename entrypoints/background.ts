@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '../src/control-plane/index.ts';
-import { BackgroundMessageRouter, RunRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
+import { BackgroundMessageRouter, PresetRuntimeServer, RunRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
 import { bootstrapApplicationPersistence, restrictChromeStorageToTrustedContexts, type ChromeStorageLike, type PersistenceRuntime } from '../src/persistence/index.ts';
 import {
@@ -14,6 +14,7 @@ import {
   type AlarmBrowserLike,
 } from '../src/runs/index.ts';
 import { TemplateService } from '../src/templates/index.ts';
+import { PresetService } from '../src/presets/index.ts';
 import { ContractError, ERROR_CODES } from '../src/core/index.ts';
 
 const tabBrowser = browser.tabs as unknown as TabBrowserLike;
@@ -27,6 +28,7 @@ const tabServer = new TabRuntimeServer(tabs, (tabId, _windowId, snapshot) => obs
 let persistencePromise: Promise<PersistenceRuntime> | undefined;
 let runRuntimePromise: Promise<{ manager: DurableRunManager; coordinator: RepeatRunCoordinator }> | undefined;
 let templateServicePromise: Promise<TemplateService> | undefined;
+let presetServicePromise: Promise<PresetService> | undefined;
 const runServer = new RunRuntimeServer(
   async () => {
     if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized');
@@ -44,7 +46,14 @@ const templateServer = new TemplateRuntimeServer(
   },
   () => ports.broadcast('template_changed'),
 );
-const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer);
+const presetServer = new PresetRuntimeServer(
+  async () => {
+    if (presetServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'preset persistence is not initialized');
+    return await presetServicePromise;
+  },
+  () => ports.broadcast('preset_changed'),
+);
+const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer);
 const lifecycle = new TabLifecycleCoordinator(tabBrowser, tabs, discardGuards, (error) => {
   console.error('chatgpt-iterator: tab lifecycle error', error);
 });
@@ -71,6 +80,7 @@ export default defineBackground(() => {
 
   persistencePromise = bootstrapApplicationPersistence();
   templateServicePromise = persistencePromise.then((runtime) => new TemplateService(runtime.repositories));
+  presetServicePromise = persistencePromise.then((runtime) => new PresetService(runtime.repositories));
   runRuntimePromise = persistencePromise.then(async (runtime) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
     manager.subscribe(() => ports.broadcast('run_changed'));
@@ -78,7 +88,7 @@ export default defineBackground(() => {
     const client = new ChatGptRunClient(tabBrowser);
     const waiter = new EventDrivenChatGptWaiter(client, observations);
     const scheduler = new DurableRunScheduler(browser.alarms as unknown as AlarmBrowserLike);
-    const coordinator = new RepeatRunCoordinator(manager, client, waiter, scheduler);
+    const coordinator = new RepeatRunCoordinator(manager, client, waiter, scheduler, discardGuards);
     coordinator.recover(recovered);
     return { manager, coordinator };
   });
@@ -87,6 +97,9 @@ export default defineBackground(() => {
   });
   void templateServicePromise.catch((error: unknown) => {
     console.error('chatgpt-iterator: failed to initialize template runtime', error);
+  });
+  void presetServicePromise.catch((error: unknown) => {
+    console.error('chatgpt-iterator: failed to initialize preset runtime', error);
   });
 
   if (browser.sidePanel?.setPanelBehavior) {

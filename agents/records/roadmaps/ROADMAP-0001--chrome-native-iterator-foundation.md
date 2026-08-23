@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 10
+revision: 11
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T03:43:00+08:00
+updated_at: 2026-08-24T03:52:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -392,14 +392,16 @@ Expose the durable runtime through the five agreed workspaces without turning UI
 
 #### Work items
 
-- [ ] Preset references template or queue IDs plus mode/iterations/delay/auto-continue/tab-behavior defaults.
-- [ ] Loading a preset hydrates a disposable run working copy; it never mutates an active run silently.
-- [ ] Same reusable-definition lifecycle and stale/dirty protection as Templates.
+- [x] Preset references template or queue IDs plus mode/iterations/delay/auto-continue/tab-behavior defaults.
+- [x] Loading a preset hydrates a disposable run working copy; it never mutates an active run silently.
+- [x] Same reusable-definition lifecycle and stale/dirty protection as Templates.
 
 #### Step acceptance evidence
 
-- [ ] Preset/template reference integrity and hydration tests pass.
-- [ ] Run without preset remains supported.
+- [x] Preset/template reference integrity and hydration tests pass.
+- [x] Run without preset remains supported.
+
+**STEP-11 fast-path result:** added a persistence-backed Preset domain/runtime over the existing physical-v1 `presets` store with stable UUID identity, monotonic revision fencing and request-ID identity for create/duplicate replay. Presets encode complete reusable execution defaults by stable Template/Queue IDs; writes transactionally validate references, Template deletion now fails closed while a Preset references it, Repeat hydration resolves the latest enabled Template revision, and Queue-shaped Presets are valid configuration but intentionally remain non-executable until STEP-12. The Presets Side Panel workspace reuses the enforced team-standard New/Load/Save As/Update/Reset/Duplicate/Delete lifecycle with dirty/stale working-copy protection. Applying a Preset explicitly hydrates only the disposable local Run draft, never an active durable run, and direct no-Preset execution remains first-class. The existing `preventDiscard` Preset default now flows into durable Run state and the existing reference-counted discard guard so the setting is effective rather than dead configuration. Focused STEP-11 validation passed 10/10, strict preset/domain/runtime/router/UI TypeScript passed with TypeScript 5.8.3, and the single STEP-10 Templates predecessor smoke passed 9/9. IndexedDB remains physical v1, Chrome permissions remain `sidePanel`, `storage`, `alarms`, and the inherited WXT dependency-hydration/full Vue build lane remains `deferred_environment`.
 
 ### STEP-12 — Queue Workspace and Queue Execution Mode
 
@@ -544,7 +546,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
 - [x] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`) — direct-first Run workspace, explicit target picker, live durable controls/progress and enforced team-standard shell complete.
 - [x] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`) — stable IDs/revisions, bounded preview grammar and team-standard dirty/stale working-copy lifecycle complete.
-- [ ] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`).
+- [x] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`) — stable referenced presets, explicit disposable Run hydration, team-standard lifecycle and reference integrity complete.
 - [ ] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`).
 - [ ] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`).
 - [ ] STEP-14 — Versioned Export, Import, Merge/Replace and Backup Semantics (`v0.0.14`).
@@ -580,4 +582,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 7 | Complete STEP-07 durable run lifecycle, generation/idempotency fences, worker/tab recovery semantics and bounded run-event history; v0.0.8 STEP-08 next. | historical |
 | 2026-08-24 | 8 | Complete STEP-08 Repeat execution, message-source/template rendering, event-driven response orchestration, conservative recovery, short-delay timers and coarse alarm scheduling; close Phase P2 and make v0.0.9 STEP-09 next. | historical |
 | 2026-08-24 | 9 | Complete STEP-09 direct-first Run workspace and five-tab product shell with explicit target selection, optional preset path, durable lifecycle controls/progress, truthful frozen/discarded/reconnect states and separated tab/run invalidations; v0.0.10 STEP-10 next. | historical |
-| 2026-08-24 | 10 | Complete STEP-10 persistence-backed Templates workspace with stable IDs/revisions, exact bounded Repeat variables, preview/validation, team-standard lifecycle, and dirty/stale working-copy protection; v0.0.11 STEP-11 next. | active |
+| 2026-08-24 | 10 | Complete STEP-10 persistence-backed Templates workspace with stable IDs/revisions, exact bounded Repeat variables, preview/validation, team-standard lifecycle, and dirty/stale working-copy protection; v0.0.11 STEP-11 next. | historical |
+| 2026-08-24 | 11 | Complete STEP-11 persistence-backed Presets workspace with stable Template/Queue references, explicit disposable Run hydration, team-standard lifecycle, dirty/stale protection and effective prevent-discard defaults; v0.0.12 STEP-12 next. | active |

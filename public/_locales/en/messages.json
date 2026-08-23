@@ -60,7 +60,7 @@
     "message": "Ordered message queue behavior arrives in its owning roadmap step. The workspace destination is reserved now."
   },
   "presetsFoundationDescription": {
-    "message": "Preset lifecycle behavior arrives in its owning roadmap step. Direct runs do not require a preset."
+    "message": "Save complete reusable run configurations while keeping direct runs first-class and preset-free."
   },
   "templatesFoundationDescription": {
     "message": "Create and manage reusable message templates with bounded variables and revision-safe working copies."
@@ -159,7 +159,7 @@
     "message": "No preset — direct configuration"
   },
   "presetDeferredHelp": {
-    "message": "Presets are optional. Saved preset lifecycle arrives in the Presets step."
+    "message": "Presets are optional. Apply one to hydrate this disposable working copy, or keep editing a direct configuration."
   },
   "message": {
     "message": "Message"
@@ -373,5 +373,104 @@
   },
   "templateOperationFailed": {
     "message": "Template operation failed"
+  },
+  "applyPreset": {
+    "message": "Apply"
+  },
+  "presetHydrationFailed": {
+    "message": "Preset hydration failed"
+  },
+  "preventDiscard": {
+    "message": "Prevent discard"
+  },
+  "preventDiscardHelp": {
+    "message": "Keep the target tab ineligible for automatic discard while this run remains active."
+  },
+  "presetLibrary": {
+    "message": "Preset library"
+  },
+  "presetLibraryDescription": {
+    "message": "Load a saved complete run configuration into a revision-safe working copy. Presets remain optional for direct runs."
+  },
+  "savedPreset": {
+    "message": "Saved preset"
+  },
+  "choosePreset": {
+    "message": "Choose a preset"
+  },
+  "loadPreset": {
+    "message": "Load"
+  },
+  "noPresets": {
+    "message": "No presets have been saved yet."
+  },
+  "presetWorkingCopy": {
+    "message": "Working copy"
+  },
+  "newPreset": {
+    "message": "New"
+  },
+  "presetNewState": {
+    "message": "New"
+  },
+  "presetSavedState": {
+    "message": "Saved"
+  },
+  "presetModifiedState": {
+    "message": "Modified"
+  },
+  "presetStaleState": {
+    "message": "Stale"
+  },
+  "presetName": {
+    "message": "Name"
+  },
+  "presetMode": {
+    "message": "Mode"
+  },
+  "queueMode": {
+    "message": "Queue"
+  },
+  "presetTemplate": {
+    "message": "Message template"
+  },
+  "presetQueue": {
+    "message": "Queue"
+  },
+  "chooseTemplateForPreset": {
+    "message": "Choose a template"
+  },
+  "chooseQueueForPreset": {
+    "message": "Choose a queue"
+  },
+  "noQueuesForPreset": {
+    "message": "No queues exist yet. Queue authoring arrives in the Queue step."
+  },
+  "templateDisabledState": {
+    "message": "disabled"
+  },
+  "presetRevision": {
+    "message": "Revision"
+  },
+  "updatePreset": {
+    "message": "Update"
+  },
+  "resetPreset": {
+    "message": "Reset"
+  },
+  "duplicatePreset": {
+    "message": "Duplicate"
+  },
+  "deletePreset": {
+    "message": "Delete"
+  },
+  "presetDirtyGuard": {
+    "message": "This working copy has unsaved changes. Save As, Update, or Reset before replacing it."
+  },
+  "presetStaleGuard": {
+    "message": "A newer saved revision exists. Your working copy was preserved; Reset reloads the latest saved revision."
+  },
+  "presetOperationFailed": {
+    "message": "Preset operation failed"
   }
 }

@@ -16,6 +16,7 @@ export interface RepeatRunDraft {
   readonly delaySeconds: number;
   readonly autoContinue: boolean;
   readonly autoScroll: boolean;
+  readonly preventDiscard: boolean;
 }
 
 export interface RunProgressView {
@@ -76,6 +77,7 @@ export class SidePanelOperationalClient {
       delaySeconds: draft.delaySeconds,
       autoContinue: draft.autoContinue,
       autoScroll: draft.autoScroll,
+      preventDiscard: draft.preventDiscard,
     }));
     return requireRunMutation(await this.#request('command', RUN_RUNTIME_OPERATIONS.start, {
       runId: created.id,

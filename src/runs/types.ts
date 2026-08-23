@@ -48,6 +48,7 @@ export interface RepeatRunState extends JsonObject {
   readonly delaySeconds: number;
   readonly autoContinue: boolean;
   readonly autoScroll: boolean;
+  readonly preventDiscard: boolean;
   readonly assistantBaselineSignature: string | null;
   readonly nextDueAt: string | null;
 }

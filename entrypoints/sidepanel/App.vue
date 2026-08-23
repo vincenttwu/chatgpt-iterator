@@ -5,6 +5,7 @@ import { SidePanelControlClient, type ControlPlaneInvalidationReason, type Contr
 import { DEFAULT_REPEAT_DELAY_SECONDS, DEFAULT_REPEAT_ITERATIONS, DEFAULT_REPEAT_MESSAGE, isRunTerminal, type DurableRunSnapshot, type RunLifecycleState } from '../../src/runs/index.ts';
 import type { ChatGptTabLifecycleState, ChatGptTabRegistrySnapshot, ChatGptTabTarget } from '../../src/tabs/index.ts';
 import type { TemplateSnapshot } from '../../src/templates/index.ts';
+import type { PresetReferenceCatalog, PresetSnapshot } from '../../src/presets/index.ts';
 import {
   SidePanelOperationalClient,
   canPauseRun,
@@ -25,6 +26,17 @@ import {
   TEMPLATE_VARIABLES,
   type TemplateDraft,
 } from '../../src/ui/template-workspace.ts';
+import {
+  SidePanelPresetClient,
+  blankPresetDraft,
+  isPresetDraftDirty,
+  isPresetDraftStale,
+  normalizePresetDraftMode,
+  presetDraftFrom,
+  repeatRunWorkingCopyFromPreset,
+  validatePresetDraft,
+  type PresetDraft,
+} from '../../src/ui/preset-workspace.ts';
 import { ui, type UiMessageKey } from '../../src/ui/messages';
 import { WORKSPACES, type WorkspaceId } from '../../src/ui/workspaces';
 import Icon from './components/Icon.vue';
@@ -42,6 +54,7 @@ const version = browser.runtime.getManifest().version;
 const controlClient = new SidePanelControlClient(browser.runtime);
 const operationalClient = new SidePanelOperationalClient(browser.runtime);
 const templateClient = new SidePanelTemplateClient(browser.runtime);
+const presetClient = new SidePanelPresetClient(browser.runtime);
 const templates = ref<TemplateSnapshot[]>([]);
 const selectedTemplateId = ref('');
 const templateBase = ref<TemplateSnapshot>();
@@ -49,6 +62,14 @@ const templateDraft = reactive<TemplateDraft>(blankTemplateDraft());
 const templateBusy = ref(false);
 const templateError = ref<string>();
 const templateStale = ref(false);
+const presets = ref<PresetSnapshot[]>([]);
+const presetReferences = ref<PresetReferenceCatalog>({ templates: [], queues: [] });
+const selectedPresetId = ref('');
+const presetBase = ref<PresetSnapshot>();
+const presetDraft = reactive<PresetDraft>(blankPresetDraft());
+const presetBusy = ref(false);
+const presetError = ref<string>();
+const presetStale = ref(false);
 let connection: { stop(): void } | undefined;
 
 const draft = reactive({
@@ -58,6 +79,7 @@ const draft = reactive({
   delaySeconds: DEFAULT_REPEAT_DELAY_SECONDS,
   autoContinue: true,
   autoScroll: true,
+  preventDiscard: true,
 });
 
 const connectionLabel = computed(() => connectionState.value === 'connected'
@@ -77,6 +99,15 @@ const templatePreview = computed(() => {
   try { return { value: previewTemplateDraft(templateDraft), error: undefined as string | undefined }; }
   catch (error) { return { value: '', error: error instanceof Error ? error.message : ui('templatePreviewUnavailable') }; }
 });
+const presetDirty = computed(() => isPresetDraftDirty(presetDraft, presetBase.value));
+const presetLatest = computed(() => presetBase.value === undefined ? undefined : presets.value.find((item) => item.id === presetBase.value?.id));
+const presetStateKey = computed<UiMessageKey>(() => presetStale.value
+  ? 'presetStaleState'
+  : presetBase.value === undefined
+    ? 'presetNewState'
+    : presetDirty.value
+      ? 'presetModifiedState'
+      : 'presetSavedState');
 const templateStateKey = computed<UiMessageKey>(() => templateStale.value
   ? 'templateStaleState'
   : templateBase.value === undefined
@@ -188,6 +219,48 @@ function clearTemplateWorkingCopy(): void {
   templateError.value = undefined;
 }
 
+function replacePresetDraft(next: PresetDraft): void { Object.assign(presetDraft, next); }
+
+function loadPresetRecord(record: PresetSnapshot): void {
+  presetBase.value = record;
+  selectedPresetId.value = record.id;
+  replacePresetDraft(presetDraftFrom(record));
+  presetStale.value = false;
+  presetError.value = undefined;
+}
+
+function clearPresetWorkingCopy(): void {
+  presetBase.value = undefined;
+  selectedPresetId.value = '';
+  replacePresetDraft(blankPresetDraft());
+  presetStale.value = false;
+  presetError.value = undefined;
+}
+
+async function hydratePresets(): Promise<void> {
+  try {
+    const next = await presetClient.list();
+    presets.value = next;
+    const base = presetBase.value;
+    if (base !== undefined) {
+      const latest = next.find((item) => item.id === base.id);
+      if (latest === undefined || latest.revision !== base.revision) {
+        if (presetDirty.value) presetStale.value = true;
+        else if (latest !== undefined) loadPresetRecord(latest);
+        else clearPresetWorkingCopy();
+      }
+    }
+    presetError.value = undefined;
+  } catch (error) {
+    presetError.value = error instanceof Error ? error.message : ui('presetOperationFailed');
+  }
+}
+
+async function hydratePresetReferences(): Promise<void> {
+  try { presetReferences.value = await presetClient.references(); }
+  catch (error) { presetError.value = error instanceof Error ? error.message : ui('presetOperationFailed'); }
+}
+
 async function hydrateTemplates(): Promise<void> {
   try {
     const next = await templateClient.list();
@@ -208,7 +281,7 @@ async function hydrateTemplates(): Promise<void> {
 }
 
 async function hydrateAll(): Promise<void> {
-  await Promise.all([hydrateControl(), hydrateRuns(), hydrateTemplates()]);
+  await Promise.all([hydrateControl(), hydrateRuns(), hydrateTemplates(), hydratePresets(), hydratePresetReferences()]);
 }
 
 function onInvalidation(reason: ControlPlaneInvalidationReason): void {
@@ -221,7 +294,11 @@ function onInvalidation(reason: ControlPlaneInvalidationReason): void {
     return;
   }
   if (reason === 'template_changed') {
-    void hydrateTemplates();
+    void Promise.all([hydrateTemplates(), hydratePresetReferences()]);
+    return;
+  }
+  if (reason === 'preset_changed') {
+    void hydratePresets();
     return;
   }
   void hydrateAll();
@@ -286,6 +363,7 @@ async function startNewRun(): Promise<void> {
     delaySeconds: draft.delaySeconds,
     autoContinue: draft.autoContinue,
     autoScroll: draft.autoScroll,
+    preventDiscard: draft.preventDiscard,
   }));
 }
 
@@ -299,6 +377,104 @@ async function mutateCurrent(kind: 'start' | 'pause' | 'resume' | 'stop'): Promi
       : kind === 'resume'
         ? operationalClient.resume(run)
         : operationalClient.stop(run));
+}
+
+async function applyRunPreset(): Promise<void> {
+  if (!draft.presetId || hasNonTerminalRun.value) return;
+  operationBusy.value = true;
+  runError.value = undefined;
+  try {
+    const copy = repeatRunWorkingCopyFromPreset(await presetClient.hydrate(draft.presetId));
+    draft.presetId = copy.presetId;
+    draft.messageTemplate = copy.messageTemplate;
+    draft.totalIterations = copy.totalIterations;
+    draft.delaySeconds = copy.delaySeconds;
+    draft.autoContinue = copy.autoContinue;
+    draft.autoScroll = copy.autoScroll;
+    draft.preventDiscard = copy.preventDiscard;
+  } catch (error) {
+    runError.value = error instanceof Error ? error.message : ui('presetHydrationFailed');
+  } finally {
+    operationBusy.value = false;
+  }
+}
+
+function guardPresetDiscard(): boolean {
+  if (!presetDirty.value) return true;
+  presetError.value = ui('presetDirtyGuard');
+  selectedPresetId.value = presetBase.value?.id ?? '';
+  return false;
+}
+
+function beginNewPreset(): void {
+  if (!guardPresetDiscard()) return;
+  clearPresetWorkingCopy();
+}
+
+function loadSelectedPreset(): void {
+  if (!guardPresetDiscard()) return;
+  const record = presets.value.find((item) => item.id === selectedPresetId.value);
+  if (record === undefined) { clearPresetWorkingCopy(); return; }
+  loadPresetRecord(record);
+}
+
+function onPresetModeChange(): void { normalizePresetDraftMode(presetDraft); }
+
+async function executePresetMutation(action: () => Promise<PresetSnapshot>): Promise<void> {
+  presetBusy.value = true;
+  presetError.value = undefined;
+  try {
+    const record = await action();
+    loadPresetRecord(record);
+    await Promise.all([hydratePresets(), hydratePresetReferences()]);
+  } catch (error) {
+    presetError.value = error instanceof Error ? error.message : ui('presetOperationFailed');
+    if (isPresetDraftStale(presetDraft, presetLatest.value)) presetStale.value = true;
+  } finally {
+    presetBusy.value = false;
+  }
+}
+
+async function savePresetAs(): Promise<void> {
+  try { validatePresetDraft(presetDraft); }
+  catch (error) { presetError.value = error instanceof Error ? error.message : ui('presetOperationFailed'); return; }
+  await executePresetMutation(() => presetClient.create(presetDraft));
+}
+
+async function updatePreset(): Promise<void> {
+  if (presetStale.value) { presetError.value = ui('presetStaleGuard'); return; }
+  await executePresetMutation(() => presetClient.update(presetDraft));
+}
+
+function resetPreset(): void {
+  const latest = presetLatest.value;
+  if (latest !== undefined) loadPresetRecord(latest);
+  else if (presetBase.value !== undefined) loadPresetRecord(presetBase.value);
+  else clearPresetWorkingCopy();
+}
+
+async function duplicatePreset(): Promise<void> {
+  const base = presetBase.value;
+  if (base === undefined || presetDirty.value || presetStale.value) return;
+  await executePresetMutation(() => presetClient.duplicate(base));
+}
+
+async function deletePreset(): Promise<void> {
+  const base = presetBase.value;
+  if (base === undefined || presetDirty.value || presetStale.value) return;
+  presetBusy.value = true;
+  presetError.value = undefined;
+  try {
+    await presetClient.delete(base);
+    if (draft.presetId === base.id) draft.presetId = '';
+    clearPresetWorkingCopy();
+    await hydratePresets();
+  } catch (error) {
+    presetError.value = error instanceof Error ? error.message : ui('presetOperationFailed');
+    if (isPresetDraftStale(presetDraft, presetLatest.value)) presetStale.value = true;
+  } finally {
+    presetBusy.value = false;
+  }
 }
 
 function guardTemplateDiscard(): boolean {
@@ -497,12 +673,16 @@ onUnmounted(() => connection?.stop());
             </div>
             <span class="state-badge">{{ ui('directRun') }}</span>
           </summary>
-          <div class="field-stack">
-            <label for="run-preset">{{ ui('preset') }}</label>
-            <select id="run-preset" v-model="draft.presetId" :disabled="operationBusy || hasNonTerminalRun">
-              <option value="">{{ ui('noPresetDirect') }}</option>
-            </select>
-            <small>{{ ui('presetDeferredHelp') }}</small>
+          <div class="field-with-action">
+            <div class="field-stack">
+              <label for="run-preset">{{ ui('preset') }}</label>
+              <select id="run-preset" v-model="draft.presetId" :disabled="operationBusy || hasNonTerminalRun">
+                <option value="">{{ ui('noPresetDirect') }}</option>
+                <option v-for="item in presets" :key="item.id" :value="item.id">{{ item.name }} · {{ item.mode === 'repeat' ? ui('repeatMode') : ui('queueMode') }} · r{{ item.revision }}</option>
+              </select>
+              <small>{{ ui('presetDeferredHelp') }}</small>
+            </div>
+            <button type="button" class="secondary-action" :disabled="operationBusy || hasNonTerminalRun || !draft.presetId" @click="applyRunPreset">{{ ui('applyPreset') }}</button>
           </div>
           <div class="field-stack">
             <label for="run-message">{{ ui('message') }}</label>
@@ -526,6 +706,10 @@ onUnmounted(() => connection?.stop());
           <label class="check-row">
             <input v-model="draft.autoScroll" type="checkbox" :disabled="operationBusy || hasNonTerminalRun">
             <span><strong>{{ ui('autoScroll') }}</strong><small>{{ ui('autoScrollHelp') }}</small></span>
+          </label>
+          <label class="check-row">
+            <input v-model="draft.preventDiscard" type="checkbox" :disabled="operationBusy || hasNonTerminalRun">
+            <span><strong>{{ ui('preventDiscard') }}</strong><small>{{ ui('preventDiscardHelp') }}</small></span>
           </label>
           <div class="actions">
             <button type="button" class="primary-action" :disabled="!canStartNew" @click="startNewRun">{{ operationBusy ? ui('working') : ui('startRun') }}</button>
@@ -574,6 +758,102 @@ onUnmounted(() => connection?.stop());
         <div v-if="controlError || runError" class="inline-error" role="alert">
           {{ runError || `${ui('controlPlaneUnavailable')}: ${controlError}` }}
         </div>
+      </div>
+
+      <div v-else-if="activeWorkspace === 'presets'" class="workspace-stack">
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading">
+            <div>
+              <p class="eyebrow">{{ ui('presetLibrary') }}</p>
+              <h2>{{ ui('presetsWorkspace') }}</h2>
+            </div>
+            <span class="state-badge">{{ presets.length }}</span>
+          </summary>
+          <p>{{ ui('presetLibraryDescription') }}</p>
+          <div class="field-with-action">
+            <div class="field-stack">
+              <label for="preset-select">{{ ui('savedPreset') }}</label>
+              <select id="preset-select" v-model="selectedPresetId" :disabled="presetBusy">
+                <option value="">{{ ui('choosePreset') }}</option>
+                <option v-for="item in presets" :key="item.id" :value="item.id">{{ item.name }} · {{ item.mode === 'repeat' ? ui('repeatMode') : ui('queueMode') }} · r{{ item.revision }}</option>
+              </select>
+            </div>
+            <button type="button" class="secondary-action" :disabled="presetBusy || !selectedPresetId" @click="loadSelectedPreset">{{ ui('loadPreset') }}</button>
+          </div>
+          <p v-if="presets.length === 0" class="compact-empty">{{ ui('noPresets') }}</p>
+        </details>
+
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading">
+            <div>
+              <p class="eyebrow">{{ ui('presetWorkingCopy') }}</p>
+              <h2>{{ presetDraft.name.trim() || ui('newPreset') }}</h2>
+            </div>
+            <span class="state-badge" :data-state="presetStale ? 'failed' : undefined">{{ ui(presetStateKey) }}</span>
+          </summary>
+          <div v-if="presetStale" class="inline-warning" role="status">{{ ui('presetStaleGuard') }}</div>
+          <div class="field-stack">
+            <label for="preset-name">{{ ui('presetName') }}</label>
+            <input id="preset-name" v-model="presetDraft.name" type="text" maxlength="120" :disabled="presetBusy">
+          </div>
+          <div class="field-stack">
+            <label for="preset-mode">{{ ui('presetMode') }}</label>
+            <select id="preset-mode" v-model="presetDraft.mode" :disabled="presetBusy" @change="onPresetModeChange">
+              <option value="repeat">{{ ui('repeatMode') }}</option>
+              <option value="queue">{{ ui('queueMode') }}</option>
+            </select>
+          </div>
+          <div v-if="presetDraft.mode === 'repeat'" class="field-stack">
+            <label for="preset-template">{{ ui('presetTemplate') }}</label>
+            <select id="preset-template" v-model="presetDraft.templateId" :disabled="presetBusy">
+              <option :value="null">{{ ui('chooseTemplateForPreset') }}</option>
+              <option v-for="item in presetReferences.templates" :key="item.id" :value="item.id">{{ item.name }} · r{{ item.revision }}{{ !item.enabled ? ` · ${ui('templateDisabledState')}` : '' }}</option>
+            </select>
+          </div>
+          <div v-else class="field-stack">
+            <label for="preset-queue">{{ ui('presetQueue') }}</label>
+            <select id="preset-queue" v-model="presetDraft.queueId" :disabled="presetBusy">
+              <option :value="null">{{ ui('chooseQueueForPreset') }}</option>
+              <option v-for="item in presetReferences.queues" :key="item.id" :value="item.id">{{ item.name }} · r{{ item.revision }}</option>
+            </select>
+            <small v-if="presetReferences.queues.length === 0">{{ ui('noQueuesForPreset') }}</small>
+          </div>
+          <div class="editor-grid">
+            <div v-if="presetDraft.mode === 'repeat'" class="field-stack">
+              <label for="preset-iterations">{{ ui('iterations') }}</label>
+              <input id="preset-iterations" v-model.number="presetDraft.iterationCount" type="number" min="1" max="10000" step="1" :disabled="presetBusy">
+            </div>
+            <div class="field-stack">
+              <label for="preset-delay">{{ ui('delaySeconds') }}</label>
+              <input id="preset-delay" v-model.number="presetDraft.delaySeconds" type="number" min="5" max="3600" step="1" :disabled="presetBusy">
+            </div>
+          </div>
+          <label class="check-row">
+            <input v-model="presetDraft.autoContinue" type="checkbox" :disabled="presetBusy">
+            <span><strong>{{ ui('autoContinue') }}</strong><small>{{ ui('autoContinueHelp') }}</small></span>
+          </label>
+          <label class="check-row">
+            <input v-model="presetDraft.autoScroll" type="checkbox" :disabled="presetBusy">
+            <span><strong>{{ ui('autoScroll') }}</strong><small>{{ ui('autoScrollHelp') }}</small></span>
+          </label>
+          <label class="check-row">
+            <input v-model="presetDraft.preventDiscard" type="checkbox" :disabled="presetBusy">
+            <span><strong>{{ ui('preventDiscard') }}</strong><small>{{ ui('preventDiscardHelp') }}</small></span>
+          </label>
+          <dl v-if="presetBase" class="status-grid">
+            <div><dt>{{ ui('presetRevision') }}</dt><dd>{{ presetBase.revision }}</dd></div>
+            <div><dt>{{ ui('updated') }}</dt><dd>{{ new Date(presetBase.updatedAt).toLocaleTimeString() }}</dd></div>
+          </dl>
+          <div class="actions">
+            <button type="button" class="secondary-action" :disabled="presetBusy || presetDirty" @click="beginNewPreset">{{ ui('newPreset') }}</button>
+            <button type="button" class="primary-action" :disabled="presetBusy" @click="savePresetAs">{{ ui('saveAs') }}</button>
+            <button type="button" class="primary-action" :disabled="presetBusy || !presetBase || !presetDirty || presetStale" @click="updatePreset">{{ ui('updatePreset') }}</button>
+            <button type="button" class="secondary-action" :disabled="presetBusy || (!presetDirty && !presetStale)" @click="resetPreset">{{ ui('resetPreset') }}</button>
+            <button type="button" class="secondary-action" :disabled="presetBusy || !presetBase || presetDirty || presetStale" @click="duplicatePreset">{{ ui('duplicatePreset') }}</button>
+            <button type="button" class="danger-action" :disabled="presetBusy || !presetBase || presetDirty || presetStale" @click="deletePreset">{{ ui('deletePreset') }}</button>
+          </div>
+          <div v-if="presetError" class="inline-error" role="alert">{{ presetError }}</div>
+        </details>
       </div>
 
       <div v-else-if="activeWorkspace === 'templates'" class="workspace-stack">

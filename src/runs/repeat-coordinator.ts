@@ -4,6 +4,7 @@ import type { DurableRunManager } from './manager.ts';
 import type { ChatGptRunClient } from './chatgpt-client.ts';
 import type { EventDrivenChatGptWaiter } from './response-waiter.ts';
 import type { DurableRunScheduler } from './scheduler.ts';
+import type { AutoDiscardGuardManager } from '../tabs/discard-guard.ts';
 import { isRunTerminal, type DurableRunSnapshot } from './types.ts';
 
 function dueAt(now: string, delaySeconds: number): string {
@@ -15,24 +16,33 @@ export class RepeatRunCoordinator {
   readonly #client: ChatGptRunClient;
   readonly #waiter: EventDrivenChatGptWaiter;
   readonly #scheduler: DurableRunScheduler;
+  readonly #discardGuards: AutoDiscardGuardManager | undefined;
   readonly #tokens = new Map<string, number>();
 
-  constructor(manager: DurableRunManager, client: ChatGptRunClient, waiter: EventDrivenChatGptWaiter, scheduler: DurableRunScheduler) {
+  constructor(manager: DurableRunManager, client: ChatGptRunClient, waiter: EventDrivenChatGptWaiter, scheduler: DurableRunScheduler, discardGuards?: AutoDiscardGuardManager) {
     this.#manager = manager;
     this.#client = client;
     this.#waiter = waiter;
     this.#scheduler = scheduler;
+    this.#discardGuards = discardGuards;
   }
 
   activate(snapshot: DurableRunSnapshot): void {
     const token = (this.#tokens.get(snapshot.id) ?? 0) + 1;
     this.#tokens.set(snapshot.id, token);
-    void this.#drive(snapshot.id, token).catch((error) => this.#failIfCurrent(snapshot.id, token, error));
+    void this.#activateGuardAndDrive(snapshot, token).catch((error) => this.#failIfCurrent(snapshot.id, token, error));
+  }
+
+  async #activateGuardAndDrive(snapshot: DurableRunSnapshot, token: number): Promise<void> {
+    if (snapshot.execution.preventDiscard) await this.#discardGuards?.acquire(this.#guardOwner(snapshot.id), snapshot.targetTabId);
+    await this.#drive(snapshot.id, token);
   }
 
   async cancel(runId: string): Promise<void> {
     this.#tokens.set(runId, (this.#tokens.get(runId) ?? 0) + 1);
     await this.#scheduler.cancel(runId);
+    const current = await this.#manager.get(runId);
+    if (current !== undefined && isRunTerminal(current.lifecycleState)) await this.#discardGuards?.release(this.#guardOwner(runId));
   }
 
   recover(snapshots: readonly DurableRunSnapshot[]): void {
@@ -45,7 +55,8 @@ export class RepeatRunCoordinator {
 
   async #drive(runId: string, token: number): Promise<void> {
     const run = await this.#manager.get(runId);
-    if (run === undefined || this.#cancelled(runId, token) || isRunTerminal(run.lifecycleState)) return;
+    if (run === undefined || this.#cancelled(runId, token)) return;
+    if (isRunTerminal(run.lifecycleState)) { await this.#discardGuards?.release(this.#guardOwner(runId)); return; }
     if (run.lifecycleState === 'paused' || run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded' || run.lifecycleState === 'ready') return;
     if (run.lifecycleState === 'running') return await this.#dispatchNext(run, token);
     if (run.lifecycleState === 'waiting_response') return await this.#awaitResponse(run, token);
@@ -124,6 +135,7 @@ export class RepeatRunCoordinator {
   }
 
   #cancelled(runId: string, token: number): boolean { return this.#tokens.get(runId) !== token; }
+  #guardOwner(runId: string): string { return `run:${runId}`; }
 
   async #failIfCurrent(runId: string, token: number, error: unknown): Promise<void> {
     if (this.#cancelled(runId, token)) return;
@@ -133,6 +145,7 @@ export class RepeatRunCoordinator {
     const message = error instanceof Error ? error.message : 'Repeat execution failed';
     try {
       await this.#manager.fail(runId, current.generation, this.#manager.createCommandId(), { code: String(code).slice(0, 64), message: message.slice(0, 512) });
+      await this.#discardGuards?.release(this.#guardOwner(runId));
     } catch (failureError) {
       if (!(failureError instanceof ContractError && failureError.code === ERROR_CODES.staleRequest)) throw failureError;
     }

@@ -54,6 +54,7 @@ export class DurableRunManager {
     delaySeconds?: unknown;
     autoContinue?: unknown;
     autoScroll?: unknown;
+    preventDiscard?: unknown;
   }): Promise<RunMutationResult> {
     const now = this.#repository.now();
     const snapshot = createReadyRun({
@@ -67,6 +68,7 @@ export class DurableRunManager {
         delaySeconds: input.delaySeconds,
         autoContinue: input.autoContinue,
         autoScroll: input.autoScroll,
+        preventDiscard: input.preventDiscard,
       }),
     });
     const result = await this.#repository.create(snapshot, input.commandId);

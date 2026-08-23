@@ -48,6 +48,7 @@ export class RunRuntimeServer {
             delaySeconds: payload.delaySeconds,
             autoContinue: payload.autoContinue,
             autoScroll: payload.autoScroll,
+            preventDiscard: payload.preventDiscard,
           });
           return createSuccessResponse(request, { run: result.snapshot, idempotent: result.idempotent });
         }
