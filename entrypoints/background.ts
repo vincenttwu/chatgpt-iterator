@@ -1,8 +1,8 @@
 import { browser } from 'wxt/browser';
 import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '../src/control-plane/index.ts';
-import { BackgroundMessageRouter, RunRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer } from '../src/runtime/index.ts';
+import { BackgroundMessageRouter, RunRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
-import { bootstrapApplicationPersistence, restrictChromeStorageToTrustedContexts, type ChromeStorageLike } from '../src/persistence/index.ts';
+import { bootstrapApplicationPersistence, restrictChromeStorageToTrustedContexts, type ChromeStorageLike, type PersistenceRuntime } from '../src/persistence/index.ts';
 import {
   ChatGptObservationHub,
   ChatGptRunClient,
@@ -13,6 +13,7 @@ import {
   RepeatRunCoordinator,
   type AlarmBrowserLike,
 } from '../src/runs/index.ts';
+import { TemplateService } from '../src/templates/index.ts';
 import { ContractError, ERROR_CODES } from '../src/core/index.ts';
 
 const tabBrowser = browser.tabs as unknown as TabBrowserLike;
@@ -23,7 +24,9 @@ const tabs = new ChatGptTabRegistry(tabBrowser);
 const observations = new ChatGptObservationHub();
 const discardGuards = new AutoDiscardGuardManager(tabBrowser);
 const tabServer = new TabRuntimeServer(tabs, (tabId, _windowId, snapshot) => observations.note(tabId, snapshot));
+let persistencePromise: Promise<PersistenceRuntime> | undefined;
 let runRuntimePromise: Promise<{ manager: DurableRunManager; coordinator: RepeatRunCoordinator }> | undefined;
+let templateServicePromise: Promise<TemplateService> | undefined;
 const runServer = new RunRuntimeServer(
   async () => {
     if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized');
@@ -34,7 +37,14 @@ const runServer = new RunRuntimeServer(
     return (await runRuntimePromise).coordinator;
   },
 );
-const router = new BackgroundMessageRouter(controlServer, tabServer, runServer);
+const templateServer = new TemplateRuntimeServer(
+  async () => {
+    if (templateServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'template persistence is not initialized');
+    return await templateServicePromise;
+  },
+  () => ports.broadcast('template_changed'),
+);
+const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer);
 const lifecycle = new TabLifecycleCoordinator(tabBrowser, tabs, discardGuards, (error) => {
   console.error('chatgpt-iterator: tab lifecycle error', error);
 });
@@ -59,7 +69,9 @@ export default defineBackground(() => {
     console.error('chatgpt-iterator: failed to restrict extension storage access', error);
   });
 
-  runRuntimePromise = bootstrapApplicationPersistence().then(async (runtime) => {
+  persistencePromise = bootstrapApplicationPersistence();
+  templateServicePromise = persistencePromise.then((runtime) => new TemplateService(runtime.repositories));
+  runRuntimePromise = persistencePromise.then(async (runtime) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
     manager.subscribe(() => ports.broadcast('run_changed'));
     const recovered = await manager.recoverWorker();
@@ -72,6 +84,9 @@ export default defineBackground(() => {
   });
   void runRuntimePromise.catch((error: unknown) => {
     console.error('chatgpt-iterator: failed to initialize durable run runtime', error);
+  });
+  void templateServicePromise.catch((error: unknown) => {
+    console.error('chatgpt-iterator: failed to initialize template runtime', error);
   });
 
   if (browser.sidePanel?.setPanelBehavior) {

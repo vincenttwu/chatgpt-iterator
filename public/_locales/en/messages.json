@@ -63,7 +63,7 @@
     "message": "Preset lifecycle behavior arrives in its owning roadmap step. Direct runs do not require a preset."
   },
   "templatesFoundationDescription": {
-    "message": "Reusable template editing arrives in its owning roadmap step. Repeat text can already use the bounded built-in variables."
+    "message": "Create and manage reusable message templates with bounded variables and revision-safe working copies."
   },
   "settingsFoundationDescription": {
     "message": "Settings, diagnostics, history, and data controls arrive in their owning roadmap step."
@@ -283,5 +283,95 @@
   },
   "directConfiguration": {
     "message": "Direct configuration"
+  },
+  "templateLibrary": {
+    "message": "Template library"
+  },
+  "templateLibraryDescription": {
+    "message": "Load a saved template into a working copy. Names are labels; stable IDs remain the reference authority."
+  },
+  "savedTemplate": {
+    "message": "Saved template"
+  },
+  "chooseTemplate": {
+    "message": "Choose a template"
+  },
+  "loadTemplate": {
+    "message": "Load"
+  },
+  "noTemplates": {
+    "message": "No templates have been saved yet."
+  },
+  "templateWorkingCopy": {
+    "message": "Working copy"
+  },
+  "newTemplate": {
+    "message": "New"
+  },
+  "templateNewState": {
+    "message": "New"
+  },
+  "templateSavedState": {
+    "message": "Saved"
+  },
+  "templateModifiedState": {
+    "message": "Modified"
+  },
+  "templateStaleState": {
+    "message": "Stale"
+  },
+  "templateName": {
+    "message": "Name"
+  },
+  "templateBody": {
+    "message": "Message template"
+  },
+  "templateEnabled": {
+    "message": "Enabled"
+  },
+  "templateEnabledHelp": {
+    "message": "Disabled templates remain saved but are not intended for execution references."
+  },
+  "templateVariables": {
+    "message": "Template variables"
+  },
+  "templateVariablesHelp": {
+    "message": "Supported variables are bounded to {iteration}, {total}, {remaining}, and {timestamp}. No scripts or expressions are evaluated."
+  },
+  "templatePreview": {
+    "message": "Preview"
+  },
+  "templatePreviewContext": {
+    "message": "sample iteration 2 / 5"
+  },
+  "templatePreviewUnavailable": {
+    "message": "Preview unavailable"
+  },
+  "templateRevision": {
+    "message": "Revision"
+  },
+  "saveAs": {
+    "message": "Save As"
+  },
+  "updateTemplate": {
+    "message": "Update"
+  },
+  "resetTemplate": {
+    "message": "Reset"
+  },
+  "duplicateTemplate": {
+    "message": "Duplicate"
+  },
+  "deleteTemplate": {
+    "message": "Delete"
+  },
+  "templateDirtyGuard": {
+    "message": "This working copy has unsaved changes. Save As, Update, or Reset before replacing it."
+  },
+  "templateStaleGuard": {
+    "message": "A newer saved revision exists. Your working copy was preserved; Reset reloads the latest saved revision."
+  },
+  "templateOperationFailed": {
+    "message": "Template operation failed"
   }
 }

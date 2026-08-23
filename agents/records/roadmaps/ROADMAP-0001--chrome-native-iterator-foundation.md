@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 9
+revision: 10
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T03:29:00+08:00
+updated_at: 2026-08-24T03:43:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -371,15 +371,17 @@ Expose the durable runtime through the five agreed workspaces without turning UI
 
 #### Work items
 
-- [ ] New/load working copy/Save As/Update/Reset/Duplicate/Delete lifecycle.
-- [ ] Stable IDs independent of names.
-- [ ] Bounded variables and preview/validation; no scripting/eval.
-- [ ] Stale revision/dirty working-copy protection.
+- [x] New/load working copy/Save As/Update/Reset/Duplicate/Delete lifecycle.
+- [x] Stable IDs independent of names.
+- [x] Bounded variables and preview/validation; no scripting/eval.
+- [x] Stale revision/dirty working-copy protection.
 
 #### Step acceptance evidence
 
-- [ ] Domain/repository/UI lifecycle tests pass.
-- [ ] Team-standard reusable-definition grammar is reused.
+- [x] Domain/repository/UI lifecycle tests pass.
+- [x] Team-standard reusable-definition grammar is reused.
+
+**STEP-10 fast-path result:** added a persistence-backed Template service/runtime over the existing physical-v1 `templates` store with stable UUID identity, monotonic revisions, request-ID identity for create/duplicate replay, and stale-revision rejection for Update/Delete/Duplicate. The bounded variable contract remains exactly the STEP-08 Repeat renderer (`{iteration}`, `{total}`, `{remaining}`, `{timestamp}`); preview and validation reuse that same renderer and introduce no scripting/eval/DSL. The Templates Side Panel destination now reuses the enforced CRSniffer reusable-definition grammar—New, Load, Save As, Update, Reset, Duplicate and Delete—with dirty-copy discard protection and stale-revision preservation. A dedicated `template_changed` invalidation keeps template refresh isolated from tab/run hydration. Focused STEP-10 validation passed 9/9, strict template domain/runtime/router/UI TypeScript passed with TypeScript 5.8.3, and the narrow STEP-09 team-standard shell/accessibility predecessor smoke passed 2/2. The inherited WXT dependency-hydration/full Vue build lane remains `deferred_environment`.
 
 ### STEP-11 — Presets Workspace and Run Configuration Hydration
 
@@ -541,7 +543,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`) — durable lifecycle, generation fencing, idempotent commands, worker/tab reconciliation and bounded events complete.
 - [x] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
 - [x] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`) — direct-first Run workspace, explicit target picker, live durable controls/progress and enforced team-standard shell complete.
-- [ ] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`).
+- [x] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`) — stable IDs/revisions, bounded preview grammar and team-standard dirty/stale working-copy lifecycle complete.
 - [ ] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`).
 - [ ] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`).
 - [ ] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`).
@@ -577,4 +579,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 6 | Complete STEP-06 IndexedDB physical v1, repositories, storage tiers, transaction boundaries and logical migration authority; v0.0.7 STEP-07 next. | historical |
 | 2026-08-24 | 7 | Complete STEP-07 durable run lifecycle, generation/idempotency fences, worker/tab recovery semantics and bounded run-event history; v0.0.8 STEP-08 next. | historical |
 | 2026-08-24 | 8 | Complete STEP-08 Repeat execution, message-source/template rendering, event-driven response orchestration, conservative recovery, short-delay timers and coarse alarm scheduling; close Phase P2 and make v0.0.9 STEP-09 next. | historical |
-| 2026-08-24 | 9 | Complete STEP-09 direct-first Run workspace and five-tab product shell with explicit target selection, optional preset path, durable lifecycle controls/progress, truthful frozen/discarded/reconnect states and separated tab/run invalidations; v0.0.10 STEP-10 next. | active |
+| 2026-08-24 | 9 | Complete STEP-09 direct-first Run workspace and five-tab product shell with explicit target selection, optional preset path, durable lifecycle controls/progress, truthful frozen/discarded/reconnect states and separated tab/run invalidations; v0.0.10 STEP-10 next. | historical |
+| 2026-08-24 | 10 | Complete STEP-10 persistence-backed Templates workspace with stable IDs/revisions, exact bounded Repeat variables, preview/validation, team-standard lifecycle, and dirty/stale working-copy protection; v0.0.11 STEP-11 next. | active |

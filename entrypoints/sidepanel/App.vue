@@ -4,6 +4,7 @@ import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { SidePanelControlClient, type ControlPlaneInvalidationReason, type ControlPlaneSnapshot } from '../../src/control-plane/index.ts';
 import { DEFAULT_REPEAT_DELAY_SECONDS, DEFAULT_REPEAT_ITERATIONS, DEFAULT_REPEAT_MESSAGE, isRunTerminal, type DurableRunSnapshot, type RunLifecycleState } from '../../src/runs/index.ts';
 import type { ChatGptTabLifecycleState, ChatGptTabRegistrySnapshot, ChatGptTabTarget } from '../../src/tabs/index.ts';
+import type { TemplateSnapshot } from '../../src/templates/index.ts';
 import {
   SidePanelOperationalClient,
   canPauseRun,
@@ -13,6 +14,17 @@ import {
   choosePrimaryRun,
   runProgress,
 } from '../../src/ui/run-workspace.ts';
+import {
+  SidePanelTemplateClient,
+  blankTemplateDraft,
+  isTemplateDraftDirty,
+  isTemplateDraftStale,
+  previewTemplateDraft,
+  templateDraftFrom,
+  validateTemplateDraft,
+  TEMPLATE_VARIABLES,
+  type TemplateDraft,
+} from '../../src/ui/template-workspace.ts';
 import { ui, type UiMessageKey } from '../../src/ui/messages';
 import { WORKSPACES, type WorkspaceId } from '../../src/ui/workspaces';
 import Icon from './components/Icon.vue';
@@ -29,6 +41,14 @@ const operationBusy = ref(false);
 const version = browser.runtime.getManifest().version;
 const controlClient = new SidePanelControlClient(browser.runtime);
 const operationalClient = new SidePanelOperationalClient(browser.runtime);
+const templateClient = new SidePanelTemplateClient(browser.runtime);
+const templates = ref<TemplateSnapshot[]>([]);
+const selectedTemplateId = ref('');
+const templateBase = ref<TemplateSnapshot>();
+const templateDraft = reactive<TemplateDraft>(blankTemplateDraft());
+const templateBusy = ref(false);
+const templateError = ref<string>();
+const templateStale = ref(false);
 let connection: { stop(): void } | undefined;
 
 const draft = reactive({
@@ -51,6 +71,20 @@ const selectedTarget = computed(() => targets.value.find((target) => target.tabI
 const currentRun = computed(() => choosePrimaryRun(runs.value));
 const currentProgress = computed(() => currentRun.value === undefined ? undefined : runProgress(currentRun.value));
 const hasNonTerminalRun = computed(() => runs.value.some((run) => !isRunTerminal(run.lifecycleState)));
+const templateDirty = computed(() => isTemplateDraftDirty(templateDraft, templateBase.value));
+const templateLatest = computed(() => templateBase.value === undefined ? undefined : templates.value.find((item) => item.id === templateBase.value?.id));
+const templatePreview = computed(() => {
+  try { return { value: previewTemplateDraft(templateDraft), error: undefined as string | undefined }; }
+  catch (error) { return { value: '', error: error instanceof Error ? error.message : ui('templatePreviewUnavailable') }; }
+});
+const templateStateKey = computed<UiMessageKey>(() => templateStale.value
+  ? 'templateStaleState'
+  : templateBase.value === undefined
+    ? 'templateNewState'
+    : templateDirty.value
+      ? 'templateModifiedState'
+      : 'templateSavedState');
+
 const canStartNew = computed(() => {
   const target = selectedTarget.value;
   return !operationBusy.value
@@ -134,8 +168,47 @@ async function hydrateRuns(): Promise<void> {
   }
 }
 
+function replaceTemplateDraft(next: TemplateDraft): void {
+  Object.assign(templateDraft, next);
+}
+
+function loadTemplateRecord(record: TemplateSnapshot): void {
+  templateBase.value = record;
+  selectedTemplateId.value = record.id;
+  replaceTemplateDraft(templateDraftFrom(record));
+  templateStale.value = false;
+  templateError.value = undefined;
+}
+
+function clearTemplateWorkingCopy(): void {
+  templateBase.value = undefined;
+  selectedTemplateId.value = '';
+  replaceTemplateDraft(blankTemplateDraft());
+  templateStale.value = false;
+  templateError.value = undefined;
+}
+
+async function hydrateTemplates(): Promise<void> {
+  try {
+    const next = await templateClient.list();
+    templates.value = next;
+    const base = templateBase.value;
+    if (base !== undefined) {
+      const latest = next.find((item) => item.id === base.id);
+      if (latest === undefined || latest.revision !== base.revision) {
+        if (templateDirty.value) templateStale.value = true;
+        else if (latest !== undefined) loadTemplateRecord(latest);
+        else clearTemplateWorkingCopy();
+      }
+    }
+    templateError.value = undefined;
+  } catch (error) {
+    templateError.value = error instanceof Error ? error.message : ui('templateOperationFailed');
+  }
+}
+
 async function hydrateAll(): Promise<void> {
-  await Promise.all([hydrateControl(), hydrateRuns()]);
+  await Promise.all([hydrateControl(), hydrateRuns(), hydrateTemplates()]);
 }
 
 function onInvalidation(reason: ControlPlaneInvalidationReason): void {
@@ -145,6 +218,10 @@ function onInvalidation(reason: ControlPlaneInvalidationReason): void {
   }
   if (reason === 'tab_changed' || reason === 'authority_changed') {
     void hydrateControl();
+    return;
+  }
+  if (reason === 'template_changed') {
+    void hydrateTemplates();
     return;
   }
   void hydrateAll();
@@ -222,6 +299,81 @@ async function mutateCurrent(kind: 'start' | 'pause' | 'resume' | 'stop'): Promi
       : kind === 'resume'
         ? operationalClient.resume(run)
         : operationalClient.stop(run));
+}
+
+function guardTemplateDiscard(): boolean {
+  if (!templateDirty.value) return true;
+  templateError.value = ui('templateDirtyGuard');
+  selectedTemplateId.value = templateBase.value?.id ?? '';
+  return false;
+}
+
+function beginNewTemplate(): void {
+  if (!guardTemplateDiscard()) return;
+  clearTemplateWorkingCopy();
+}
+
+function loadSelectedTemplate(): void {
+  if (!guardTemplateDiscard()) return;
+  const record = templates.value.find((item) => item.id === selectedTemplateId.value);
+  if (record === undefined) { clearTemplateWorkingCopy(); return; }
+  loadTemplateRecord(record);
+}
+
+async function executeTemplateMutation(action: () => Promise<TemplateSnapshot>, reload = true): Promise<void> {
+  templateBusy.value = true;
+  templateError.value = undefined;
+  try {
+    const record = await action();
+    if (reload) loadTemplateRecord(record);
+    await hydrateTemplates();
+  } catch (error) {
+    templateError.value = error instanceof Error ? error.message : ui('templateOperationFailed');
+    if (isTemplateDraftStale(templateDraft, templateLatest.value)) templateStale.value = true;
+  } finally {
+    templateBusy.value = false;
+  }
+}
+
+async function saveTemplateAs(): Promise<void> {
+  try { validateTemplateDraft(templateDraft); }
+  catch (error) { templateError.value = error instanceof Error ? error.message : ui('templateOperationFailed'); return; }
+  await executeTemplateMutation(() => templateClient.create(templateDraft));
+}
+
+async function updateTemplate(): Promise<void> {
+  if (templateStale.value) { templateError.value = ui('templateStaleGuard'); return; }
+  await executeTemplateMutation(() => templateClient.update(templateDraft));
+}
+
+function resetTemplate(): void {
+  const latest = templateLatest.value;
+  if (latest !== undefined) loadTemplateRecord(latest);
+  else if (templateBase.value !== undefined) loadTemplateRecord(templateBase.value);
+  else clearTemplateWorkingCopy();
+}
+
+async function duplicateTemplate(): Promise<void> {
+  const base = templateBase.value;
+  if (base === undefined || templateDirty.value || templateStale.value) return;
+  await executeTemplateMutation(() => templateClient.duplicate(base));
+}
+
+async function deleteTemplate(): Promise<void> {
+  const base = templateBase.value;
+  if (base === undefined || templateDirty.value || templateStale.value) return;
+  templateBusy.value = true;
+  templateError.value = undefined;
+  try {
+    await templateClient.delete(base);
+    clearTemplateWorkingCopy();
+    await hydrateTemplates();
+  } catch (error) {
+    templateError.value = error instanceof Error ? error.message : ui('templateOperationFailed');
+    if (isTemplateDraftStale(templateDraft, templateLatest.value)) templateStale.value = true;
+  } finally {
+    templateBusy.value = false;
+  }
 }
 
 async function selectWorkspace(workspace: WorkspaceId, focus = false): Promise<void> {
@@ -422,6 +574,75 @@ onUnmounted(() => connection?.stop());
         <div v-if="controlError || runError" class="inline-error" role="alert">
           {{ runError || `${ui('controlPlaneUnavailable')}: ${controlError}` }}
         </div>
+      </div>
+
+      <div v-else-if="activeWorkspace === 'templates'" class="workspace-stack">
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading">
+            <div>
+              <p class="eyebrow">{{ ui('templateLibrary') }}</p>
+              <h2>{{ ui('templatesWorkspace') }}</h2>
+            </div>
+            <span class="state-badge">{{ templates.length }}</span>
+          </summary>
+          <p>{{ ui('templateLibraryDescription') }}</p>
+          <div class="field-with-action">
+            <div class="field-stack">
+              <label for="template-select">{{ ui('savedTemplate') }}</label>
+              <select id="template-select" v-model="selectedTemplateId" :disabled="templateBusy">
+                <option value="">{{ ui('chooseTemplate') }}</option>
+                <option v-for="item in templates" :key="item.id" :value="item.id">{{ item.name }} · r{{ item.revision }}</option>
+              </select>
+            </div>
+            <button type="button" class="secondary-action" :disabled="templateBusy || !selectedTemplateId" @click="loadSelectedTemplate">{{ ui('loadTemplate') }}</button>
+          </div>
+          <p v-if="templates.length === 0" class="compact-empty">{{ ui('noTemplates') }}</p>
+        </details>
+
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading">
+            <div>
+              <p class="eyebrow">{{ ui('templateWorkingCopy') }}</p>
+              <h2>{{ templateDraft.name.trim() || ui('newTemplate') }}</h2>
+            </div>
+            <span class="state-badge" :data-state="templateStale ? 'failed' : undefined">{{ ui(templateStateKey) }}</span>
+          </summary>
+          <div v-if="templateStale" class="inline-warning" role="status">{{ ui('templateStaleGuard') }}</div>
+          <div class="field-stack">
+            <label for="template-name">{{ ui('templateName') }}</label>
+            <input id="template-name" v-model="templateDraft.name" type="text" maxlength="120" :disabled="templateBusy">
+          </div>
+          <div class="field-stack">
+            <label for="template-body">{{ ui('templateBody') }}</label>
+            <textarea id="template-body" v-model="templateDraft.body" rows="7" maxlength="65536" :disabled="templateBusy" spellcheck="true" />
+            <small>{{ ui('templateVariablesHelp') }}</small>
+          </div>
+          <div class="token-list" :aria-label="ui('templateVariables')">
+            <code v-for="token in TEMPLATE_VARIABLES" :key="token">{{ `{${token}}` }}</code>
+          </div>
+          <label class="check-row">
+            <input v-model="templateDraft.enabled" type="checkbox" :disabled="templateBusy">
+            <span><strong>{{ ui('templateEnabled') }}</strong><small>{{ ui('templateEnabledHelp') }}</small></span>
+          </label>
+          <div class="preview-card">
+            <div class="progress-heading"><strong>{{ ui('templatePreview') }}</strong><span>{{ ui('templatePreviewContext') }}</span></div>
+            <pre v-if="!templatePreview.error">{{ templatePreview.value }}</pre>
+            <span v-else class="compact-empty">{{ templatePreview.error }}</span>
+          </div>
+          <dl v-if="templateBase" class="status-grid">
+            <div><dt>{{ ui('templateRevision') }}</dt><dd>{{ templateBase.revision }}</dd></div>
+            <div><dt>{{ ui('updated') }}</dt><dd>{{ new Date(templateBase.updatedAt).toLocaleTimeString() }}</dd></div>
+          </dl>
+          <div class="actions">
+            <button type="button" class="secondary-action" :disabled="templateBusy || templateDirty" @click="beginNewTemplate">{{ ui('newTemplate') }}</button>
+            <button type="button" class="primary-action" :disabled="templateBusy || Boolean(templatePreview.error)" @click="saveTemplateAs">{{ ui('saveAs') }}</button>
+            <button type="button" class="primary-action" :disabled="templateBusy || !templateBase || !templateDirty || templateStale || Boolean(templatePreview.error)" @click="updateTemplate">{{ ui('updateTemplate') }}</button>
+            <button type="button" class="secondary-action" :disabled="templateBusy || (!templateDirty && !templateStale)" @click="resetTemplate">{{ ui('resetTemplate') }}</button>
+            <button type="button" class="secondary-action" :disabled="templateBusy || !templateBase || templateDirty || templateStale" @click="duplicateTemplate">{{ ui('duplicateTemplate') }}</button>
+            <button type="button" class="danger-action" :disabled="templateBusy || !templateBase || templateDirty || templateStale" @click="deleteTemplate">{{ ui('deleteTemplate') }}</button>
+          </div>
+          <div v-if="templateError" class="inline-error" role="alert">{{ templateError }}</div>
+        </details>
       </div>
 
       <details v-else class="workspace-card" open>
