@@ -1,9 +1,9 @@
 import { ContractError, ERROR_CODES } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
 import type { ChatGptTabRegistrySnapshot, ChatGptTabLifecycleState } from '../tabs/types.ts';
-import { createReadyRun, nextRunState } from './model.ts';
+import { createReadyRun, createRepeatRunState, nextRunState, requireRepeatRunState } from './model.ts';
 import { DurableRunRepository, type RunMutationResult } from './repository.ts';
-import { isRunActive, isRunTerminal, type DurableRunSnapshot, type RunActiveState, type RunLifecycleState } from './types.ts';
+import { isRunActive, isRunTerminal, type DurableRunSnapshot, type RepeatRunState, type RunActiveState } from './types.ts';
 
 function requireGeneration(value: unknown): number {
   if (!Number.isSafeInteger(value) || (value as number) < 1) throw new ContractError(ERROR_CODES.invalidMessage, 'expected generation must be a positive safe integer');
@@ -21,11 +21,18 @@ function resumeBase(current: DurableRunSnapshot): RunActiveState {
   return 'running';
 }
 
+function executionWith(current: DurableRunSnapshot, patch: Partial<RepeatRunState>): RepeatRunState {
+  return requireRepeatRunState({ ...current.execution, ...patch });
+}
+
 export class DurableRunManager {
   readonly #repository: DurableRunRepository;
   readonly #listeners = new Set<(snapshot: DurableRunSnapshot) => void>();
 
   constructor(repository: DurableRunRepository) { this.#repository = repository; }
+
+  createCommandId(): string { return this.#repository.createId(); }
+  now(): string { return this.#repository.now(); }
 
   subscribe(listener: (snapshot: DurableRunSnapshot) => void): () => void {
     this.#listeners.add(listener);
@@ -37,13 +44,30 @@ export class DurableRunManager {
     return snapshot;
   }
 
-  async create(input: { targetTabId: unknown; targetWindowId: unknown; commandId: string; runId?: string }): Promise<RunMutationResult> {
+  async create(input: {
+    targetTabId: unknown;
+    targetWindowId: unknown;
+    commandId: string;
+    runId?: string;
+    messageTemplate?: unknown;
+    totalIterations?: unknown;
+    delaySeconds?: unknown;
+    autoContinue?: unknown;
+    autoScroll?: unknown;
+  }): Promise<RunMutationResult> {
     const now = this.#repository.now();
     const snapshot = createReadyRun({
       id: input.runId ?? this.#repository.createId(),
       targetTabId: requireTabId(input.targetTabId, 'targetTabId'),
       targetWindowId: requireTabId(input.targetWindowId, 'targetWindowId'),
       now,
+      execution: createRepeatRunState({
+        messageTemplate: input.messageTemplate,
+        totalIterations: input.totalIterations,
+        delaySeconds: input.delaySeconds,
+        autoContinue: input.autoContinue,
+        autoScroll: input.autoScroll,
+      }),
     });
     const result = await this.#repository.create(snapshot, input.commandId);
     this.#publish(result.snapshot);
@@ -57,6 +81,53 @@ export class DurableRunManager {
     return await this.#transition(runId, expectedGeneration, commandId, 'started', (current, now) => {
       if (current.lifecycleState !== 'ready') throw new ContractError(ERROR_CODES.staleRequest, `cannot start run from ${current.lifecycleState}`);
       return nextRunState(current, { lifecycleState: 'running', now });
+    });
+  }
+
+  async prepareIteration(runId: string, expectedGeneration: unknown, commandId: string, input: {
+    iteration: number;
+    message: string;
+    assistantBaselineSignature: string;
+  }): Promise<RunMutationResult> {
+    return await this.#transition(runId, expectedGeneration, commandId, 'iteration_prepared', (current, now) => {
+      if (current.lifecycleState !== 'running') throw new ContractError(ERROR_CODES.staleRequest, `cannot prepare iteration from ${current.lifecycleState}`);
+      if (input.iteration !== current.execution.completedIterations + 1 || input.iteration > current.execution.totalIterations) {
+        throw new ContractError(ERROR_CODES.staleRequest, 'iteration number is not the next repeat iteration');
+      }
+      const execution = executionWith(current, {
+        activeIteration: input.iteration,
+        activeMessage: input.message,
+        assistantBaselineSignature: input.assistantBaselineSignature,
+        nextDueAt: null,
+      });
+      return nextRunState(current, { lifecycleState: 'waiting_response', execution, now });
+    }, { iteration: input.iteration });
+  }
+
+  async completeIteration(runId: string, expectedGeneration: unknown, commandId: string, nextDueAt: string | null): Promise<RunMutationResult> {
+    return await this.#transition(runId, expectedGeneration, commandId, 'iteration_completed', (current, now) => {
+      if (current.lifecycleState !== 'waiting_response' || current.execution.activeIteration === null) {
+        throw new ContractError(ERROR_CODES.staleRequest, `cannot complete iteration from ${current.lifecycleState}`);
+      }
+      const completedIterations = current.execution.activeIteration;
+      const done = completedIterations >= current.execution.totalIterations;
+      const execution = executionWith(current, {
+        completedIterations,
+        activeIteration: null,
+        activeMessage: null,
+        assistantBaselineSignature: null,
+        nextDueAt: done ? null : nextDueAt,
+      });
+      if (!done && nextDueAt === null) throw new ContractError(ERROR_CODES.invalidMessage, 'non-final iteration requires nextDueAt');
+      return nextRunState(current, { lifecycleState: done ? 'completed' : 'waiting_delay', execution, now });
+    }, { nextDueAt });
+  }
+
+  async delayElapsed(runId: string, expectedGeneration: unknown, commandId: string): Promise<RunMutationResult> {
+    return await this.#transition(runId, expectedGeneration, commandId, 'delay_elapsed', (current, now) => {
+      if (current.lifecycleState !== 'waiting_delay') throw new ContractError(ERROR_CODES.staleRequest, `cannot elapse delay from ${current.lifecycleState}`);
+      const execution = executionWith(current, { nextDueAt: null });
+      return nextRunState(current, { lifecycleState: 'running', execution, now });
     });
   }
 

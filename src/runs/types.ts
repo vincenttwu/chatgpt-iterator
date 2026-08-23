@@ -3,6 +3,9 @@ import type { JsonObject } from '../core/types.ts';
 export const RUN_STATE_SCHEMA_VERSION = 1 as const;
 export const RUN_EVENT_SCHEMA_VERSION = 1 as const;
 export const RUN_EVENT_HISTORY_LIMIT = 256 as const;
+export const RUN_RESPONSE_START_TIMEOUT_MS = 120_000 as const;
+export const RUN_RESPONSE_STABLE_MS = 3_500 as const;
+export const RUN_SHORT_DELAY_THRESHOLD_MS = 30_000 as const;
 
 export const RUN_RUNTIME_OPERATIONS = Object.freeze({
   create: 'run.create',
@@ -35,6 +38,20 @@ export interface RunFailure extends JsonObject {
   readonly message: string;
 }
 
+export interface RepeatRunState extends JsonObject {
+  readonly mode: 'repeat';
+  readonly messageTemplate: string;
+  readonly totalIterations: number;
+  readonly completedIterations: number;
+  readonly activeIteration: number | null;
+  readonly activeMessage: string | null;
+  readonly delaySeconds: number;
+  readonly autoContinue: boolean;
+  readonly autoScroll: boolean;
+  readonly assistantBaselineSignature: string | null;
+  readonly nextDueAt: string | null;
+}
+
 export interface DurableRunSnapshot extends JsonObject {
   readonly schemaVersion: number;
   readonly id: string;
@@ -44,6 +61,7 @@ export interface DurableRunSnapshot extends JsonObject {
   readonly targetWindowId: number;
   readonly resumeState: RunActiveState | null;
   readonly failure: RunFailure | null;
+  readonly execution: RepeatRunState;
   readonly createdAt: string;
   readonly updatedAt: string;
 }
@@ -52,6 +70,9 @@ export type RunEventType =
   | 'created'
   | 'started'
   | 'state_changed'
+  | 'iteration_prepared'
+  | 'iteration_completed'
+  | 'delay_elapsed'
   | 'paused'
   | 'resumed'
   | 'stopped'

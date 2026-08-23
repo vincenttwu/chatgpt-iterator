@@ -9,20 +9,25 @@ function requireEmptyPayload(payload: JsonObject): void {
   if (Object.keys(payload).length !== 0) throw new ContractError(ERROR_CODES.invalidMessage, 'operation payload must be empty');
 }
 
-function requireSendPayload(payload: JsonObject): string {
+function requireSendPayload(payload: JsonObject): { message: string; expectedAssistantBaselineSignature?: string } {
   const keys = Object.keys(payload);
-  if (keys.length !== 1 || keys[0] !== 'message' || typeof payload.message !== 'string') {
-    throw new ContractError(ERROR_CODES.invalidMessage, 'chatgpt.send payload must contain only message');
+  if (!keys.every((key) => key === 'message' || key === 'expectedAssistantBaselineSignature') || typeof payload.message !== 'string') {
+    throw new ContractError(ERROR_CODES.invalidMessage, 'chatgpt.send payload must contain message and optional expectedAssistantBaselineSignature');
   }
   const message = payload.message;
   if (message.trim().length === 0 || message.length > 65_536) throw new ContractError(ERROR_CODES.invalidMessage, 'message must be 1..65536 characters');
-  return message;
+  const baseline = payload.expectedAssistantBaselineSignature;
+  if (!(baseline === undefined || (typeof baseline === 'string' && baseline.length <= 4_096))) {
+    throw new ContractError(ERROR_CODES.invalidMessage, 'expectedAssistantBaselineSignature must be a bounded string when supplied');
+  }
+  return baseline === undefined ? { message } : { message, expectedAssistantBaselineSignature: baseline };
 }
 
 function normalizeAdapterError(error: unknown): ContractError {
   if (error instanceof ContractError) return error;
   if (error instanceof ChatGptAdapterError) {
-    const code = error.code === CHATGPT_ADAPTER_ERROR_CODES.draftNotEmpty ? ERROR_CODES.staleRequest : ERROR_CODES.unavailable;
+    const stale = error.code === CHATGPT_ADAPTER_ERROR_CODES.draftNotEmpty || error.code === CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged;
+    const code = stale ? ERROR_CODES.staleRequest : ERROR_CODES.unavailable;
     return new ContractError(code, error.message, { adapterCode: error.code });
   }
   return new ContractError(ERROR_CODES.internal, error instanceof Error ? error.message : 'ChatGPT adapter failure');
@@ -52,8 +57,10 @@ export class ChatGptAdapterServer {
         case CHATGPT_ADAPTER_OPERATIONS.diagnostics:
           requireEmptyPayload(request.payload);
           return createSuccessResponse(request, this.#adapter.diagnostics());
-        case CHATGPT_ADAPTER_OPERATIONS.send:
-          return createSuccessResponse(request, await this.#adapter.send(requireSendPayload(request.payload)));
+        case CHATGPT_ADAPTER_OPERATIONS.send: {
+          const input = requireSendPayload(request.payload);
+          return createSuccessResponse(request, await this.#adapter.send(input.message, 5_000, input.expectedAssistantBaselineSignature));
+        }
         case CHATGPT_ADAPTER_OPERATIONS.continueResponse:
           requireEmptyPayload(request.payload);
           return createSuccessResponse(request, this.#adapter.continueResponse());

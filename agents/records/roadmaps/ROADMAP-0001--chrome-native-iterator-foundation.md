@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 7
+revision: 8
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T03:11:00+08:00
+updated_at: 2026-08-24T03:19:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -311,23 +311,25 @@ Make authoritative user definitions and runs survive panel/worker churn before f
 
 #### Work items
 
-- [ ] `MessageSource` abstraction with Repeat as first implementation.
-- [ ] Template placeholders at least `{iteration}`, `{total}`, `{remaining}`, `{timestamp}`.
-- [ ] wait-idle → send → wait-response-start → wait-completion → delay → next sequence.
-- [ ] Preserve no-send-into-existing-draft and response-baseline safety.
-- [ ] Persist `nextDueAt`; use short worker timer for 5–29s and coarse alarm/reconcile strategy for longer/recovery paths.
-- [ ] Automatic Continue support using adapter capability.
+- [x] `MessageSource` abstraction with Repeat as first implementation.
+- [x] Template placeholders at least `{iteration}`, `{total}`, `{remaining}`, `{timestamp}`.
+- [x] wait-idle → send → wait-response-start → wait-completion → delay → next sequence.
+- [x] Preserve no-send-into-existing-draft and response-baseline safety.
+- [x] Persist `nextDueAt`; use short worker timer for 5–29s and coarse alarm/reconcile strategy for longer/recovery paths.
+- [x] Automatic Continue support using adapter capability.
 
 #### Step acceptance evidence
 
-- [ ] Focused end-to-end engine tests cover nominal repeat, pause/resume/stop, timeout and stale-run cancellation.
-- [ ] No 400ms service-worker/page polling loop is introduced as scheduler authority.
+- [x] Focused end-to-end engine tests cover nominal repeat, pause/resume/stop, timeout and stale-run cancellation.
+- [x] No 400ms service-worker/page polling loop is introduced as scheduler authority.
+
+**STEP-08 fast-path result:** implemented a repository-owned `MessageSource` contract with Repeat as the first source and bounded `{iteration}`, `{total}`, `{remaining}` and `{timestamp}` rendering; extended durable run execution state with repeat configuration/progress, active iteration/message/baseline and persisted `nextDueAt`; added conservative iteration preparation before dispatch so worker loss cannot blindly duplicate-send; added expected-assistant-baseline checks before composer write/send click; composed wait-idle → prepared send → event-driven response start/stability → optional Continue → persisted delay → next iteration without 400ms polling. Short persisted delays below 30 seconds use worker timers while >=30 second and recovered delays use `chrome.alarms`; recovery of a prepared `waiting_response` resumes observation rather than re-sending. Focused STEP-08 validation passed 9/9, strict core+persistence+tabs+ChatGPT+messages+runs+runtime TypeScript passed with TypeScript 5.8.3, and STEP-07 remained the single predecessor smoke at 8/8. Phase P2 is complete. The inherited WXT dependency-hydration/full-build lane remains `deferred_environment`.
 
 ## Phase P2 success criteria
 
-- [ ] Durable state survives service-worker restart in repository-controlled tests.
-- [ ] Repeat mode preserves the known userscript safety semantics.
-- [ ] Run correctness is independent from Side Panel liveness.
+- [x] Durable state survives service-worker restart in repository-controlled tests.
+- [x] Repeat mode preserves the known userscript safety semantics.
+- [x] Run correctness is independent from Side Panel liveness.
 
 # Phase P3 — Team-Standard Side Panel Product Surfaces
 
@@ -535,7 +537,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle (`v0.0.5`) — explicit targets, lifecycle normalization, reload/replacement handling and reversible discard guard complete; Phase P1 closed.
 - [x] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`) — IndexedDB physical v1, repository/transaction boundaries, logical migrations and trusted Chrome storage tiers complete.
 - [x] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`) — durable lifecycle, generation fencing, idempotent commands, worker/tab reconciliation and bounded events complete.
-- [ ] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
+- [x] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
 - [ ] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`).
 - [ ] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`).
 - [ ] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`).
@@ -571,4 +573,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 4 | Complete STEP-04 product-owned ChatGPT selector/adapter/observation/diagnostics boundary with userscript semantics and no remote runtime code; v0.0.5 STEP-05 next. | historical |
 | 2026-08-24 | 5 | Complete STEP-05 explicit ChatGPT tab registry, target binding, lifecycle normalization, reload/replacement/close handling and reversible autoDiscardable guard; close Phase P1 and authorize v0.0.6 STEP-06 next. | historical |
 | 2026-08-24 | 6 | Complete STEP-06 IndexedDB physical v1, repositories, storage tiers, transaction boundaries and logical migration authority; v0.0.7 STEP-07 next. | historical |
-| 2026-08-24 | 7 | Complete STEP-07 durable run lifecycle, generation/idempotency fences, worker/tab recovery semantics and bounded run-event history; v0.0.8 STEP-08 next. | active |
+| 2026-08-24 | 7 | Complete STEP-07 durable run lifecycle, generation/idempotency fences, worker/tab recovery semantics and bounded run-event history; v0.0.8 STEP-08 next. | historical |
+| 2026-08-24 | 8 | Complete STEP-08 Repeat execution, message-source/template rendering, event-driven response orchestration, conservative recovery, short-delay timers and coarse alarm scheduling; close Phase P2 and make v0.0.9 STEP-09 next. | active |

@@ -9,7 +9,7 @@ export default defineConfig({
     default_locale: 'en',
     minimum_chrome_version: '132',
     incognito: 'not_allowed',
-    permissions: ['sidePanel', 'storage'],
+    permissions: ['sidePanel', 'storage', 'alarms'],
     action: {
       default_title: '__MSG_appName__',
     },

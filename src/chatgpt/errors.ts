@@ -3,6 +3,7 @@ export const CHATGPT_ADAPTER_ERROR_CODES = Object.freeze({
   draftNotEmpty: 'draft_not_empty',
   sendUnavailable: 'send_unavailable',
   invalidCommand: 'invalid_command',
+  responseBaselineChanged: 'response_baseline_changed',
 } as const);
 
 export type ChatGptAdapterErrorCode = (typeof CHATGPT_ADAPTER_ERROR_CODES)[keyof typeof CHATGPT_ADAPTER_ERROR_CODES];

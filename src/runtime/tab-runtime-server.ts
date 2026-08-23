@@ -1,11 +1,14 @@
 import { ContractError, ERROR_CODES, createFailureResponse, createSuccessResponse, requireMessageEnvelope, type RequestEnvelope, type ResponseEnvelope } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
+import type { ChatGptAdapterSnapshot } from '../chatgpt/types.ts';
 import type { ChatGptTabRegistry } from '../tabs/registry.ts';
 import { TAB_RUNTIME_OPERATIONS } from '../tabs/types.ts';
 
 export interface RuntimeMessageSenderLike {
   readonly tab?: { readonly id?: number; readonly windowId: number };
 }
+
+export type AdapterStateListener = (tabId: number, windowId: number, snapshot: ChatGptAdapterSnapshot) => void;
 
 function requireEmpty(payload: JsonObject): void {
   if (Object.keys(payload).length !== 0) throw new ContractError(ERROR_CODES.invalidMessage, 'operation payload must be empty');
@@ -27,7 +30,11 @@ function requireAdapterState(payload: JsonObject): unknown {
 
 export class TabRuntimeServer {
   readonly #registry: ChatGptTabRegistry;
-  constructor(registry: ChatGptTabRegistry) { this.#registry = registry; }
+  readonly #adapterStateListener: AdapterStateListener | undefined;
+  constructor(registry: ChatGptTabRegistry, adapterStateListener?: AdapterStateListener) {
+    this.#registry = registry;
+    this.#adapterStateListener = adapterStateListener;
+  }
 
   async handle(raw: unknown, sender: RuntimeMessageSenderLike = {}): Promise<ResponseEnvelope> {
     let request: RequestEnvelope | undefined;
@@ -54,7 +61,10 @@ export class TabRuntimeServer {
           const tabId = sender.tab?.id;
           const windowId = sender.tab?.windowId;
           if (tabId === undefined || windowId === undefined) throw new ContractError(ERROR_CODES.invalidMessage, 'content adapter state requires sender tab identity');
-          return createSuccessResponse(request, await this.#registry.noteAdapterState(tabId, windowId, requireAdapterState(request.payload)));
+          const rawSnapshot = requireAdapterState(request.payload);
+          const result = await this.#registry.noteAdapterState(tabId, windowId, rawSnapshot);
+          this.#adapterStateListener?.(tabId, windowId, rawSnapshot as ChatGptAdapterSnapshot);
+          return createSuccessResponse(request, result);
         }
         default:
           throw new ContractError(ERROR_CODES.unsupportedOperation, `Unsupported tab operation: ${request.operation}`);

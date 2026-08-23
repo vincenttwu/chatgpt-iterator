@@ -12,7 +12,7 @@ export default defineContentScript({
     let adapterStateSequence = 0;
     let adapterStateFingerprint = '';
     const publishAdapterState = (snapshot: ChatGptAdapterSnapshot) => {
-      const fingerprint = JSON.stringify({ ready: snapshot.ready, busy: snapshot.busy, pageAlert: snapshot.pageAlert });
+      const fingerprint = JSON.stringify({ ready: snapshot.ready, busy: snapshot.busy, composerDraft: snapshot.composerDraft, sendAvailable: snapshot.sendAvailable, continueAvailable: snapshot.continueAvailable, stopAvailable: snapshot.stopAvailable, assistantSignature: snapshot.assistantSignature, assistantMessageCount: snapshot.assistantMessageCount, pageAlert: snapshot.pageAlert });
       if (fingerprint === adapterStateFingerprint) return;
       adapterStateFingerprint = fingerprint;
       adapterStateSequence += 1;

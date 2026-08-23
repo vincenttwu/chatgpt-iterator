@@ -69,7 +69,7 @@ export class ChatGptAdapter {
     });
   }
 
-  async send(message: string, timeoutMs = 5_000): Promise<ChatGptSendResult> {
+  async send(message: string, timeoutMs = 5_000, expectedAssistantBaselineSignature?: string): Promise<ChatGptSendResult> {
     if (typeof message !== 'string' || message.trim().length === 0) {
       throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.invalidCommand, 'Message must be non-empty');
     }
@@ -80,9 +80,16 @@ export class ChatGptAdapter {
     }
 
     const assistantBaselineSignature = this.snapshot().assistantSignature;
+    if (expectedAssistantBaselineSignature !== undefined && assistantBaselineSignature !== expectedAssistantBaselineSignature) {
+      throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged, 'Assistant response baseline changed before send');
+    }
     this.#dom.writeComposer(composer.handle, message);
     const send = await this.#waitForEnabled(() => this.#findSend(), timeoutMs);
     if (send === null) throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.sendUnavailable, 'Enabled ChatGPT send button was not found');
+    const beforeClick = this.snapshot();
+    if (beforeClick.assistantSignature !== assistantBaselineSignature || beforeClick.busy) {
+      throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged, 'Conversation changed before send click');
+    }
     this.#dom.click(send.handle);
     return freezeJsonValue({ schemaVersion: CHATGPT_ADAPTER_SCHEMA_VERSION, status: 'sent' as const, assistantBaselineSignature });
   }

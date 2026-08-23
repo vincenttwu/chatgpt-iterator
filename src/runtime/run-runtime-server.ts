@@ -2,8 +2,14 @@ import { ContractError, ERROR_CODES, createFailureResponse, createSuccessRespons
 import type { RequestEnvelope } from '../core/envelope.ts';
 import type { DurableRunManager } from '../runs/manager.ts';
 import { RUN_RUNTIME_OPERATIONS } from '../runs/types.ts';
+import type { DurableRunSnapshot } from '../runs/types.ts';
 
 export type RunManagerProvider = () => Promise<DurableRunManager>;
+export interface RunExecutionController {
+  activate(snapshot: DurableRunSnapshot): void;
+  cancel(runId: string): Promise<void>;
+}
+export type RunExecutionProvider = () => Promise<RunExecutionController>;
 
 function requireRequest(raw: unknown): RequestEnvelope {
   const message = requireMessageEnvelope(raw);
@@ -19,7 +25,8 @@ function requireRunId(payload: Record<string, unknown>): string {
 
 export class RunRuntimeServer {
   readonly #manager: RunManagerProvider;
-  constructor(manager: RunManagerProvider) { this.#manager = manager; }
+  readonly #execution: RunExecutionProvider | undefined;
+  constructor(manager: RunManagerProvider, execution?: RunExecutionProvider) { this.#manager = manager; this.#execution = execution; }
 
   async handle(raw: unknown): Promise<unknown> {
     let request: RequestEnvelope | undefined;
@@ -36,6 +43,11 @@ export class RunRuntimeServer {
             targetTabId: payload.targetTabId,
             targetWindowId: payload.targetWindowId,
             commandId: request.requestId,
+            messageTemplate: payload.messageTemplate,
+            totalIterations: payload.totalIterations,
+            delaySeconds: payload.delaySeconds,
+            autoContinue: payload.autoContinue,
+            autoScroll: payload.autoScroll,
           });
           return createSuccessResponse(request, { run: result.snapshot, idempotent: result.idempotent });
         }
@@ -63,6 +75,11 @@ export class RunRuntimeServer {
               : request.operation === RUN_RUNTIME_OPERATIONS.resume
                 ? await manager.resume(runId, expectedGeneration, request.requestId)
                 : await manager.stop(runId, expectedGeneration, request.requestId);
+          if (this.#execution !== undefined) {
+            const execution = await this.#execution();
+            if (request.operation === RUN_RUNTIME_OPERATIONS.pause || request.operation === RUN_RUNTIME_OPERATIONS.stop) await execution.cancel(runId);
+            else if (!result.idempotent) execution.activate(result.snapshot);
+          }
           return createSuccessResponse(request, { run: result.snapshot, idempotent: result.idempotent });
         }
         default:

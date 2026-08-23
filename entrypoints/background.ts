@@ -3,7 +3,16 @@ import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '
 import { BackgroundMessageRouter, RunRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
 import { bootstrapApplicationPersistence, restrictChromeStorageToTrustedContexts, type ChromeStorageLike } from '../src/persistence/index.ts';
-import { DurableRunManager, DurableRunRepository } from '../src/runs/index.ts';
+import {
+  ChatGptObservationHub,
+  ChatGptRunClient,
+  DurableRunManager,
+  DurableRunRepository,
+  DurableRunScheduler,
+  EventDrivenChatGptWaiter,
+  RepeatRunCoordinator,
+  type AlarmBrowserLike,
+} from '../src/runs/index.ts';
 import { ContractError, ERROR_CODES } from '../src/core/index.ts';
 
 const tabBrowser = browser.tabs as unknown as TabBrowserLike;
@@ -11,13 +20,20 @@ const authority = new ControlPlaneAuthority();
 const controlServer = new ControlPlaneServer(authority);
 const ports = new ControlPlanePortHub();
 const tabs = new ChatGptTabRegistry(tabBrowser);
+const observations = new ChatGptObservationHub();
 const discardGuards = new AutoDiscardGuardManager(tabBrowser);
-const tabServer = new TabRuntimeServer(tabs);
-let runManagerPromise: Promise<DurableRunManager> | undefined;
-const runServer = new RunRuntimeServer(async () => {
-  if (runManagerPromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized');
-  return await runManagerPromise;
-});
+const tabServer = new TabRuntimeServer(tabs, (tabId, _windowId, snapshot) => observations.note(tabId, snapshot));
+let runRuntimePromise: Promise<{ manager: DurableRunManager; coordinator: RepeatRunCoordinator }> | undefined;
+const runServer = new RunRuntimeServer(
+  async () => {
+    if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized');
+    return (await runRuntimePromise).manager;
+  },
+  async () => {
+    if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run execution is not initialized');
+    return (await runRuntimePromise).coordinator;
+  },
+);
 const router = new BackgroundMessageRouter(controlServer, tabServer, runServer);
 const lifecycle = new TabLifecycleCoordinator(tabBrowser, tabs, discardGuards, (error) => {
   console.error('chatgpt-iterator: tab lifecycle error', error);
@@ -30,7 +46,12 @@ function reportRunError(error: unknown): void {
 tabs.subscribe((snapshot) => {
   authority.setTabs(snapshot);
   ports.broadcast('authority_changed');
-  if (runManagerPromise !== undefined) void runManagerPromise.then((manager) => manager.reconcileTabs(snapshot)).catch(reportRunError);
+  if (runRuntimePromise !== undefined) {
+    void runRuntimePromise.then(async ({ manager, coordinator }) => {
+      await manager.reconcileTabs(snapshot);
+      coordinator.recover(await manager.list());
+    }).catch(reportRunError);
+  }
 });
 
 export default defineBackground(() => {
@@ -38,12 +59,17 @@ export default defineBackground(() => {
     console.error('chatgpt-iterator: failed to restrict extension storage access', error);
   });
 
-  runManagerPromise = bootstrapApplicationPersistence().then(async (runtime) => {
+  runRuntimePromise = bootstrapApplicationPersistence().then(async (runtime) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
-    await manager.recoverWorker();
-    return manager;
+    const recovered = await manager.recoverWorker();
+    const client = new ChatGptRunClient(tabBrowser);
+    const waiter = new EventDrivenChatGptWaiter(client, observations);
+    const scheduler = new DurableRunScheduler(browser.alarms as unknown as AlarmBrowserLike);
+    const coordinator = new RepeatRunCoordinator(manager, client, waiter, scheduler);
+    coordinator.recover(recovered);
+    return { manager, coordinator };
   });
-  void runManagerPromise.catch((error: unknown) => {
+  void runRuntimePromise.catch((error: unknown) => {
     console.error('chatgpt-iterator: failed to initialize durable run runtime', error);
   });
 

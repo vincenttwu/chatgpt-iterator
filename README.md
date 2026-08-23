@@ -1,38 +1,39 @@
-# ChatGPT Iterator — v0.0.7
+# ChatGPT Iterator — v0.0.8
 
 Chrome-native Side Panel controller for durable ChatGPT iteration workflows.
 
 ## Current status
 
-ROADMAP-0001 STEP-07 is complete. Phase P2 remains active with durable execution authority now established independently from Repeat/Queue message sourcing.
+ROADMAP-0001 STEP-08 is complete and **Phase P2 is closed**. The project now has durable persistence, recoverable run authority and a working Repeat execution engine independent from Side Panel liveness.
 
 The exact originally requested `chatgpt-iterator-v0.0.0` archive remains unavailable. The accepted v0.0.1 overlay and executable successors remain the authorized forward lineage; no byte-for-byte ancestry claim is fabricated.
 
-## Implemented in v0.0.7
+## Implemented in v0.0.8
 
-- Durable run state model: `ready`, `running`, `waiting_response`, `waiting_delay`, `paused`, `frozen`, `discarded`, `completed`, `failed`, `stopped`.
-- UUID run identity plus monotonically advancing generation fences; stale asynchronous completions cannot mutate a newer generation.
-- Atomic run snapshot + structured run-event persistence before runtime publication.
-- Exact request replay/idempotency using request UUIDs as command fences.
-- Pause/resume/stop semantics with preserved resumable active state.
-- Worker recovery advances nonterminal generations so pre-restart work is fenced.
-- Tab reconciliation maps frozen/discarded/recovered/closed target facts into durable run state without page polling.
-- Bounded structured run-event payloads (4096 bytes) and 256 retained events per run with monotonic sequence numbers.
-- Background runtime commands for create/start/pause/resume/stop/get/list.
-- Side Panel connectivity is not run ownership; closing/reopening the panel cannot terminate a durable run.
-- Repeat message sourcing, response orchestration, short-delay scheduling and automatic Continue remain STEP-08.
+- Repository-owned `MessageSource` abstraction with Repeat as the first source.
+- Bounded message placeholders: `{iteration}`, `{total}`, `{remaining}`, `{timestamp}`.
+- Durable Repeat configuration/progress embedded in run state: total/completed/active iteration, active message, baseline signature, delay and `nextDueAt`.
+- Event-driven execution sequence: wait idle → persist prepared iteration → send → wait response activity/stability → optional Continue → persist delay → next iteration.
+- Empty-draft safety remains enforced before send.
+- Expected assistant-baseline checks prevent dispatch against a conversation that changed between readiness inspection and click.
+- Conservative worker recovery: a prepared `waiting_response` resumes observation and never blindly re-sends the active message.
+- 5–29 second persisted delays use service-worker `setTimeout`; >=30 second and recovered coarse delays use `chrome.alarms`.
+- Automatic Continue uses the semantic ChatGPT adapter capability.
+- Response timing remains event/deadline driven; no 400ms page/service-worker polling loop was introduced.
+- Background runtime start/resume activates execution; pause/stop cancel scheduled/observed work without making Side Panel lifetime authoritative.
+- Added only the `alarms` Chrome permission required by coarse scheduling.
 
 ## Validation
 
-- `npm run test:step07`: **8/8 PASS** using Node's TypeScript stripping lane.
-- Dependency-free strict TypeScript check across core/persistence/tabs/ChatGPT types/runs/run runtime: **PASS** with TypeScript 5.8.3.
-- STEP-06 persistence suite is the one narrow predecessor smoke for this iteration.
+- `npm run test:step08`: **9/9 PASS** using Node's TypeScript stripping lane.
+- Dependency-free strict TypeScript check across core/persistence/tabs/ChatGPT/messages/runs/runtime: **PASS** with TypeScript 5.8.3.
+- STEP-07 durable-run suite is the one narrow predecessor smoke: **8/8 PASS**.
 - WXT dependency hydration/prepare/full extension typecheck/build remain inherited **DEFERRED_ENVIRONMENT**; no dependency changed and that unavailable package lane was not retried.
 
 ## Next authorized step
 
-ROADMAP-0001 **STEP-08 / v0.0.8 — Repeat Mode, Message Sources and Short-Delay Scheduler**.
+ROADMAP-0001 **STEP-09 / v0.0.9 — Run Workspace and Five-Tab Product Shell**.
 
 ## Reference inputs
 
-`dumps/donors/` remains immutable read-only reference material. Runtime semantics in v0.0.7 are repository-owned and build directly on STEP-06 persistence plus STEP-05 tab lifecycle authority.
+`dumps/donors/` remains immutable read-only reference material. Runtime semantics in v0.0.8 are repository-owned and preserve the verified userscript safety semantics behind the STEP-04 ChatGPT adapter boundary.
