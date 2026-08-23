@@ -20,6 +20,10 @@
 html, body, main { margin: 0; min-width: 0; max-width: 100%; min-height: 100%; }
 body { overflow-x: hidden; background: var(--bg); color: var(--text); font-size: 13.5px; line-height: 1.5; }
 button, input, select, textarea, summary { font: inherit; color-scheme: inherit; max-width: 100%; }
+button,
+select,
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+summary { min-height: 2.75rem; }
 button, summary { cursor: pointer; }
 
 button:focus-visible,
@@ -257,8 +261,9 @@ button:disabled {
 }
 
 .check-row input {
-  width: 1.1rem;
-  min-height: 1.1rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  min-height: 1.5rem;
   margin: 0.15rem 0 0;
   accent-color: auto;
 }

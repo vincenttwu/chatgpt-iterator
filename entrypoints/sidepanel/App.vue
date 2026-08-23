@@ -184,6 +184,26 @@ const settingsDirty = computed(() => isSettingsDraftDirty(settingsDraft, setting
 const defaultPresetMissing = computed(() => settingsDraft.defaultPresetId !== null && !presets.value.some((preset) => preset.id === settingsDraft.defaultPresetId));
 const diagnosticsStatusKey = computed<UiMessageKey>(() => diagnostics.value?.adapter.status === 'ready' ? 'diagnosticsReady' : diagnostics.value?.adapter.status === 'degraded' ? 'diagnosticsDegraded' : 'diagnosticsUnavailable');
 
+const liveStatusMessage = computed(() => {
+  const parts = [ui(activeDefinition.value.titleKey), connectionLabel.value];
+  const run = currentRun.value;
+  if (run !== undefined) {
+    parts.push(ui(runStateKey(run.lifecycleState)));
+    if (run.lifecycleState === 'frozen') parts.push(ui('frozenExplanation'));
+    else if (run.lifecycleState === 'discarded') parts.push(ui('discardedExplanation'));
+    else if (run.lifecycleState === 'reconnecting') parts.push(ui('targetReconnectExplanation'));
+    else if (run.lifecycleState === 'paused' && run.suspensionReason === 'browser_session_reset') parts.push(ui('browserSessionResetExplanation'));
+  }
+  if (activeWorkspace.value === 'queue' && queueStale.value) parts.push(ui('queueStaleGuard'));
+  if (activeWorkspace.value === 'presets' && presetStale.value) parts.push(ui('presetStaleGuard'));
+  if (activeWorkspace.value === 'templates' && templateStale.value) parts.push(ui('templateStaleGuard'));
+  if (activeWorkspace.value === 'settings') {
+    if (settingsStale.value) parts.push(ui('settingsStaleGuard'));
+    if (portabilityNotice.value) parts.push(portabilityNotice.value);
+  }
+  return parts.join(' — ');
+});
+
 const canStartNew = computed(() => {
   const target = selectedTarget.value;
   return !operationBusy.value
@@ -801,7 +821,7 @@ onUnmounted(() => connection?.stop());
 <template>
   <main class="shell" :data-workspace="activeWorkspace" :data-state="connectionState" aria-labelledby="app-title">
     <p class="sr-only" role="status" aria-live="polite" aria-atomic="true">
-      {{ ui(activeDefinition.titleKey) }} — {{ connectionLabel }}<template v-if="currentRun"> — {{ ui(runStateKey(currentRun.lifecycleState)) }}</template>
+      {{ liveStatusMessage }}
     </p>
 
     <header class="shell__header">
@@ -968,11 +988,11 @@ onUnmounted(() => connection?.stop());
               <progress :value="currentProgress?.completed ?? 0" :max="currentProgress?.total ?? 1" />
               <small v-if="currentProgress?.currentIteration">{{ ui('currentIteration') }} {{ currentProgress.currentIteration }} / {{ currentProgress.total }}</small>
             </div>
-            <div v-if="currentRun.lifecycleState === 'frozen'" class="inline-warning" role="status">{{ ui('frozenExplanation') }}</div>
-            <div v-else-if="currentRun.lifecycleState === 'discarded'" class="inline-warning" role="status">{{ ui('discardedExplanation') }}</div>
-            <div v-else-if="currentRun.lifecycleState === 'reconnecting'" class="inline-warning" role="status">{{ ui('targetReconnectExplanation') }}</div>
-            <div v-else-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'browser_session_reset'" class="inline-warning" role="status">{{ ui('browserSessionResetExplanation') }}</div>
-            <div v-else-if="connectionState === 'reconnecting'" class="inline-warning" role="status">{{ ui('reconnectExplanation') }}</div>
+            <div v-if="currentRun.lifecycleState === 'frozen'" class="inline-warning">{{ ui('frozenExplanation') }}</div>
+            <div v-else-if="currentRun.lifecycleState === 'discarded'" class="inline-warning">{{ ui('discardedExplanation') }}</div>
+            <div v-else-if="currentRun.lifecycleState === 'reconnecting'" class="inline-warning">{{ ui('targetReconnectExplanation') }}</div>
+            <div v-else-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'browser_session_reset'" class="inline-warning">{{ ui('browserSessionResetExplanation') }}</div>
+            <div v-else-if="connectionState === 'reconnecting'" class="inline-warning">{{ ui('reconnectExplanation') }}</div>
             <div v-else-if="currentRun.lifecycleState === 'failed'" class="inline-error" role="alert">
               {{ ui('failedExplanation') }}<template v-if="currentRun.failure"> {{ currentRun.failure.message }}</template>
             </div>
@@ -1000,7 +1020,7 @@ onUnmounted(() => connection?.stop());
         </details>
         <details class="workspace-card" open>
           <summary class="workspace-card__heading"><div><p class="eyebrow">{{ ui('queueWorkingCopy') }}</p><h2>{{ queueDraft.name.trim() || ui('newQueue') }}</h2></div><span class="state-badge" :data-state="queueStale ? 'failed' : undefined">{{ ui(queueStateKey) }}</span></summary>
-          <div v-if="queueStale" class="inline-warning" role="status">{{ ui('queueStaleGuard') }}</div>
+          <div v-if="queueStale" class="inline-warning">{{ ui('queueStaleGuard') }}</div>
           <div class="field-stack"><label for="queue-name">{{ ui('queueName') }}</label><input id="queue-name" v-model="queueDraft.name" type="text" maxlength="120" :disabled="queueBusy"></div>
           <div class="structured-list" :aria-label="ui('queueItems')">
             <div v-for="(item,index) in queueDraft.items" :key="item.localKey" class="structured-row queue-item-row">
@@ -1053,7 +1073,7 @@ onUnmounted(() => connection?.stop());
             </div>
             <span class="state-badge" :data-state="presetStale ? 'failed' : undefined">{{ ui(presetStateKey) }}</span>
           </summary>
-          <div v-if="presetStale" class="inline-warning" role="status">{{ ui('presetStaleGuard') }}</div>
+          <div v-if="presetStale" class="inline-warning">{{ ui('presetStaleGuard') }}</div>
           <div class="field-stack">
             <label for="preset-name">{{ ui('presetName') }}</label>
             <input id="preset-name" v-model="presetDraft.name" type="text" maxlength="120" :disabled="presetBusy">
@@ -1149,7 +1169,7 @@ onUnmounted(() => connection?.stop());
             </div>
             <span class="state-badge" :data-state="templateStale ? 'failed' : undefined">{{ ui(templateStateKey) }}</span>
           </summary>
-          <div v-if="templateStale" class="inline-warning" role="status">{{ ui('templateStaleGuard') }}</div>
+          <div v-if="templateStale" class="inline-warning">{{ ui('templateStaleGuard') }}</div>
           <div class="field-stack">
             <label for="template-name">{{ ui('templateName') }}</label>
             <input id="template-name" v-model="templateDraft.name" type="text" maxlength="120" :disabled="templateBusy">
@@ -1194,7 +1214,7 @@ onUnmounted(() => connection?.stop());
             <span class="state-badge" :data-state="settingsStale ? 'failed' : undefined">{{ settingsStale ? ui('settingsStale') : settingsDirty ? ui('settingsModified') : ui('settingsSaved') }}</span>
           </summary>
           <p>{{ ui('settingsDescription') }}</p>
-          <div v-if="settingsStale" class="inline-warning" role="status">{{ ui('settingsStaleGuard') }}</div>
+          <div v-if="settingsStale" class="inline-warning">{{ ui('settingsStaleGuard') }}</div>
           <div class="field-stack">
             <label for="settings-default-preset">{{ ui('defaultPreset') }}</label>
             <select id="settings-default-preset" v-model="settingsDraft.defaultPresetId" :disabled="settingsBusy">
@@ -1272,7 +1292,7 @@ onUnmounted(() => connection?.stop());
             <div v-if="importPreview.kind === 'full_backup'" class="structured-row"><strong>{{ ui('historyRuns') }}</strong><span>{{ importPreview.counts.historyRuns }} / {{ importPreview.counts.historyEvents }} {{ ui('historyEvents').toLowerCase() }} · {{ ui('importConflicts') }} {{ importPreview.conflicts.historyRuns }}</span></div>
             <div v-for="warning in importPreview.warnings" :key="warning" class="scope-card"><Icon name="info" size="16" /><div><strong>{{ ui('importWarnings') }}</strong><span>{{ warning }}</span></div></div>
           </div>
-          <div v-if="portabilityNotice" class="inline-warning" role="status">{{ portabilityNotice }}</div><div v-if="portabilityError" class="inline-error" role="alert">{{ portabilityError }}</div>
+          <div v-if="portabilityNotice" class="inline-warning">{{ portabilityNotice }}</div><div v-if="portabilityError" class="inline-error" role="alert">{{ portabilityError }}</div>
         </details>
       </div>
 

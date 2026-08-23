@@ -5,9 +5,9 @@ record_type: reference
 slug: step-02-current-toolchain
 title: "STEP-02 Current WXT Vue TypeScript Toolchain"
 status: active
-revision: 1
+revision: 2
 created_at: 2026-08-23T18:42:00Z
-updated_at: 2026-08-23T18:42:00Z
+updated_at: 2026-08-24T04:48:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -43,3 +43,7 @@ Sources: npm package pages for `wxt`, `vue`, `@wxt-dev/module-vue`, `typescript`
 STEP-02 pins the above exact package versions rather than copying CRSniffer's older WXT/vue-tsc pins. The current execution container provides Node `v22.16.0` and npm `10.9.2`; the project therefore requires Node `>=22` but does not claim this container's npm version as project authority.
 
 A single `npm install --ignore-scripts --no-audit --no-fund` hydration attempt timed out after 120 seconds and produced neither `node_modules` nor a lockfile. WXT prepare/typecheck/build are therefore `deferred_environment` for this iteration, not reported as passes.
+
+## STEP-16 closure recheck
+
+The pinned package authority remains unchanged at v0.0.16. A single fresh closure attempt using `npm install --ignore-scripts --no-audit --no-fund` again timed out after 120 seconds and produced neither `node_modules` nor `package-lock.json`. Chromium is present, but without a hydrated WXT build there is no truthful generated extension bundle to launch. WXT prepare/typecheck/build/package/install smoke therefore remains `deferred_environment`; repository-controlled source/type/integrated verification proceeds independently.

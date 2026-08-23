@@ -4,10 +4,10 @@ record_id: ROADMAP-0001
 record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
-status: active
-revision: 15
+status: closed
+revision: 16
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T04:34:00+08:00
+updated_at: 2026-08-24T04:48:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -517,30 +517,31 @@ Make durable user state portable and prove the product behaves truthfully across
 
 #### Work items
 
-- [ ] First-use story: open Side Panel → select ChatGPT tab → configure Repeat → run → pause/resume/stop.
-- [ ] Preset/template story including working-copy save/update/reset/duplicate/delete.
-- [ ] Queue create/reorder/run story.
-- [ ] Export/import recovery story.
-- [ ] Inactive-tab/service-worker/panel-reconnect/frozen/discarded stories.
-- [ ] Keyboard/focus/target-size/narrow-reflow/reduced-motion/forced-colors/localization checks.
-- [ ] Team-standard CRSniffer pattern matrix with every applicable primitive adopted or justified deviation recorded.
-- [ ] Minimal-permission/CSP and no-remote-code package inspection.
-- [ ] Package/build/install/upgrade smoke where environment permits.
-- [ ] Reconcile user docs and roadmap/ADR/constraint state.
+- [x] First-use story: open Side Panel → select ChatGPT tab → configure Repeat → run → pause/resume/stop.
+- [x] Preset/template story including working-copy save/update/reset/duplicate/delete.
+- [x] Queue create/reorder/run story.
+- [x] Export/import recovery story.
+- [x] Inactive-tab/service-worker/panel-reconnect/frozen/discarded stories.
+- [x] Keyboard/focus/target-size/narrow-reflow/reduced-motion/forced-colors/localization checks.
+- [x] Team-standard CRSniffer pattern matrix with every applicable primitive adopted or justified deviation recorded.
+- [x] Minimal-permission/CSP and no-remote-code package inspection.
+- [x] Package/build/install/upgrade smoke where environment permits.
+- [x] Reconcile user docs and roadmap/ADR/constraint state.
 
 #### Step acceptance evidence
 
-- [ ] Integrated tests appropriate to accumulated scope pass.
-- [ ] No known blocking normal-user correctness defect remains.
-- [ ] Environment-only unavailable packaged-browser/store lanes are explicitly `deferred_environment`.
-- [ ] ROADMAP-0001 closes without automatically authorizing `v0.1.0` or a successor roadmap.
+- [x] Integrated tests appropriate to accumulated scope pass.
+- [x] No known blocking normal-user correctness defect remains.
+- [x] Environment-only unavailable packaged-browser/store lanes are explicitly `deferred_environment`.
+- [x] ROADMAP-0001 closes without automatically authorizing `v0.1.0` or a successor roadmap.
+**STEP-16 result (`v0.0.16`):** closed the integrated product program after repository-controlled normal-user, portability, lifecycle, UI-standard and accessibility verification. Closure fixed three accumulated UI defects: the STEP-15 reconnect/session-reset messages and later Queue/Portability copy are now exactly projected into the Chrome locale catalog; visible warnings no longer create competing polite live regions and instead feed one canonical atomic status lane; and control/check target sizing is aligned to the CRSniffer minimum-target contract. `MATRIX-0001` records every applicable team-standard primitive as adopted or semantically mapped with no unexplained competing pattern. The accumulated repository suite passes 133/133 and the strict dependency-free TypeScript lane passes across 96 source files with TypeScript 5.8.3. Minimal permissions remain `sidePanel`, `storage`, `alarms`; CSP remains self-only and no remotely hosted executable runtime is present. A fresh STEP-16 `npm install --ignore-scripts --no-audit --no-fund` attempt timed out after 120 seconds and produced neither `node_modules` nor a lockfile, so WXT build/package/Chrome install smoke remains `deferred_environment` rather than a pass or blocker. ROADMAP-0001 is closed; no `v0.1.0` or successor roadmap is automatically authorized.
 
 ## Phase P4 success criteria
 
 - [x] Durable user definitions are portable and recoverable.
 - [x] Runtime survives/reconciles browser context churn without duplicate-send authority errors.
-- [ ] Product UI conforms to team standard and accessibility/responsive contracts.
-- [ ] Package/install authority matches the actual extension.
+- [x] Product UI conforms to team standard and accessibility/responsive contracts.
+- [x] Package/install authority matches the actual extension source contract; generated build/install smoke is explicitly `deferred_environment`.
 
 # Master step checklist
 
@@ -559,7 +560,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`) — sync-backed defaults, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surface complete; Phase P3 closed.
 - [x] STEP-14 — Versioned Export, Import, Merge/Replace and Backup Semantics (`v0.0.14`) — versioned configuration/full-backup portability, previewed conflict modes, rollback-safe application and explicit adapter registry complete.
 - [x] STEP-15 — Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening (`v0.0.15`) — browser-session-aware recovery, explicit target rebind, reconnecting suspension and persistent discard-guard restoration complete.
-- [ ] STEP-16 — Integrated Product/UI Standard/Accessibility/Package Closure (`v0.0.16`).
+- [x] STEP-16 — Integrated Product/UI Standard/Accessibility/Package Closure (`v0.0.16`) — integrated user stories, CRSniffer matrix, accessibility/localization, package authority and closure records complete; ROADMAP-0001 closed.
 
 ## Roadmap change control
 
@@ -567,14 +568,14 @@ Material changes to scope, ordering, identity, information architecture, team-st
 
 ## Closure criteria
 
-- [ ] All 16 required steps complete.
-- [ ] All four phase success criteria complete.
-- [ ] Applicable CRSniffer team-standard UI patterns are reused; every deviation is justified.
-- [ ] Required IndexedDB/import-export migrations are tested against representative state.
-- [ ] Run/Queue execution authority survives tested panel/worker/tab lifecycle changes without duplicate sends.
-- [ ] Packaging contains no remotely hosted executable code and declares only required Chrome permissions.
-- [ ] Required records/docs are reconciled.
-- [ ] Any environment-only unavailable verification is explicit and does not masquerade as pass.
+- [x] All 16 required steps complete.
+- [x] All four phase success criteria complete.
+- [x] Applicable CRSniffer team-standard UI patterns are reused; every deviation is justified.
+- [x] Required IndexedDB/import-export migrations are tested against representative state.
+- [x] Run/Queue execution authority survives tested panel/worker/tab lifecycle changes without duplicate sends.
+- [x] Packaging contains no remotely hosted executable code and declares only required Chrome permissions.
+- [x] Required records/docs are reconciled.
+- [x] Any environment-only unavailable verification is explicit and does not masquerade as pass.
 
 
 ## Revision history
@@ -595,4 +596,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 12 | Complete STEP-12 transactional Queue workspace/execution mode with stable ordered items, frozen Template/literal resolution, per-item delay overrides, Queue Preset hydration and same-coordinator Repeat/Queue lifecycle; v0.0.13 STEP-13 next. | historical |
 | 2026-08-24 | 13 | Complete STEP-13 sync-backed Settings, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surfaces; close Phase P3 and make v0.0.14 STEP-14 portability next. | historical |
 | 2026-08-24 | 14 | Complete STEP-14 versioned configuration/full-backup portability, previewed merge/replace semantics, stable-ID/reference preservation and rollback-safe application; v0.0.15 STEP-15 lifecycle hardening next. | historical |
-| 2026-08-24 | 15 | Complete STEP-15 browser-session-aware lifecycle hardening, explicit rebind after session reset, reconnecting suspension, same-session no-resend recovery and persistent discard-guard restoration; v0.0.16 STEP-16 integrated closure next. | active |
+| 2026-08-24 | 15 | Complete STEP-15 browser-session-aware lifecycle hardening, explicit rebind after session reset, reconnecting suspension, same-session no-resend recovery and persistent discard-guard restoration; v0.0.16 STEP-16 integrated closure next. | historical |
+| 2026-08-24 | 16 | Complete STEP-16 integrated normal-user/UI/accessibility/package closure, reconcile localization/live-region/target-size defects, record MATRIX-0001 team-standard adoption, and close ROADMAP-0001 without authorizing a successor. | closed |

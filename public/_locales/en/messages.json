@@ -57,7 +57,7 @@
     "message": "Run directly against an explicitly selected ChatGPT tab using durable Repeat execution."
   },
   "queueFoundationDescription": {
-    "message": "Ordered message queue behavior arrives in its owning roadmap step. The workspace destination is reserved now."
+    "message": "Create ordered queues of literal messages and reusable Templates, then run enabled items through the same durable lifecycle as Repeat."
   },
   "presetsFoundationDescription": {
     "message": "Save complete reusable run configurations while keeping direct runs first-class and preset-free."
@@ -596,9 +596,6 @@
   "queueItemCount": {
     "message": "Items"
   },
-  "queuePresetApplied": {
-    "message": "Queue preset applied to the disposable Run configuration."
-  },
   "settingsDefaults": {
     "message": "Settings"
   },
@@ -789,10 +786,10 @@
     "message": "Run events"
   },
   "portabilityNext": {
-    "message": "Configuration portability is the next roadmap step"
+    "message": "Configuration portability"
   },
   "portabilityNextHelp": {
-    "message": "STEP-14 owns versioned export/import, merge/replace, preview, and full-backup semantics. This version does not fake those actions."
+    "message": "Versioned configuration export/import and sensitive full backup are available in this Data section."
   },
   "portability": {
     "message": "Portability"
@@ -883,5 +880,17 @@
   },
   "historyEvents": {
     "message": "History events"
+  },
+  "runStateReconnecting": {
+    "message": "Reconnecting target"
+  },
+  "targetReconnectExplanation": {
+    "message": "The target page is loading or its content adapter has not reconnected yet. Progress is suspended until the same tab is ready again."
+  },
+  "browserSessionResetExplanation": {
+    "message": "The browser or extension session restarted. The run is paused to avoid duplicate sends because tab IDs are session-scoped. Select the intended ready ChatGPT tab, rebind it, then resume."
+  },
+  "rebindTarget": {
+    "message": "Rebind selected target"
   }
 }

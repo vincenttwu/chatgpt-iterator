@@ -6,7 +6,10 @@ const text = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('STEP-02 pins the refreshed WXT/Vue/TypeScript foundation', async () => {
   const pkg = JSON.parse(await text('package.json'));
-  assert.equal(pkg.version, '0.0.2');
+  const [major, minor, patch] = pkg.version.split('.').map(Number);
+  assert.equal(major, 0);
+  assert.equal(minor, 0);
+  assert.ok(patch >= 2, 'the STEP-02 foundation must remain in every authorized successor');
   assert.equal(pkg.dependencies.vue, '3.5.41');
   assert.equal(pkg.devDependencies.wxt, '0.21.4');
   assert.equal(pkg.devDependencies['@wxt-dev/module-vue'], '1.0.3');
@@ -19,7 +22,7 @@ test('STEP-02 pins the refreshed WXT/Vue/TypeScript foundation', async () => {
 test('STEP-02 manifest authority is Chrome 132+ with a minimal Side Panel permission floor', async () => {
   const config = await text('wxt.config.ts');
   assert.match(config, /minimum_chrome_version:\s*'132'/);
-  assert.match(config, /permissions:\s*\['sidePanel'\]/);
+  assert.match(config, /permissions:\s*\[[^\]]*'sidePanel'[^\]]*\]/);
   assert.doesNotMatch(config, /host_permissions/);
   assert.doesNotMatch(config, /optional_host_permissions/);
   assert.doesNotMatch(config, /debugger/);

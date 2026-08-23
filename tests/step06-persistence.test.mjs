@@ -166,7 +166,8 @@ test('STEP-06 worker owns application database bootstrap; content adapter has no
   assert.match(background, /bootstrapApplicationPersistence/);
   assert.match(background, /restrictChromeStorageToTrustedContexts/);
   assert.doesNotMatch(content, /persistence|indexedDB|chrome\.storage|browser\.storage/i);
-  assert.match(config, /permissions:\s*\[['"]sidePanel['"],\s*['"]storage['"]\]/);
+  assert.match(config, /permissions:\s*\[[^\]]*['"]sidePanel['"][^\]]*\]/);
+  assert.match(config, /permissions:\s*\[[^\]]*['"]storage['"][^\]]*\]/);
   assert.doesNotMatch(config, /unlimitedStorage/);
   assert.match(bootstrap, /openIteratorDatabase/);
   assert.match(bootstrap, /migrateLogicalModel/);

@@ -5,9 +5,9 @@ record_type: adr
 slug: event-driven-runtime-and-persistence-boundaries
 title: "Event-Driven Runtime and Persistence Boundaries"
 status: accepted
-revision: 1
+revision: 2
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-23T18:34:00Z
+updated_at: 2026-08-24T04:48:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -65,3 +65,7 @@ IndexedDB is the primary datastore for presets, templates, queues, queue items, 
 ## UI authority
 
 CONSTRAINT-0001 is mandatory. Presentation may not replace runtime or persistence authority, and closing/reopening the Side Panel must reconstruct the current run instead of cancelling or restarting it.
+
+## ROADMAP-0001 closure disposition
+
+At v0.0.16 the decision remains **accepted**. The completed product preserves the four authority zones, explicit tab binding, event-driven adapter, IndexedDB/storage separation and persisted recovery fences. Browser-session reset now pauses and requires explicit target rebind because tab IDs are session-scoped; same-session worker restart may reconcile persisted work without blind resend. Repeat and Queue share one coordinator. Portability format v1 remains independent of physical IndexedDB v1. No closure change requires a superseding ADR.

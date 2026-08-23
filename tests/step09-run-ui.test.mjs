@@ -78,6 +78,7 @@ test('STEP-09 operational client refreshes/binds an explicit target and creates 
     delaySeconds: 7,
     autoContinue: true,
     autoScroll: true,
+    preventDiscard: true,
   });
   assert.equal(started.lifecycleState, 'running');
   assert.deepEqual(runtime.requests.map((request) => request.operation), ['tabs.refresh', 'tabs.bind', 'run.create', 'run.start']);
@@ -168,17 +169,19 @@ test('STEP-09 run and tab invalidations are separated so streaming tab updates d
   assert.match(panel, /'tab_changed'/);
   assert.match(panel, /'run_changed'/);
   assert.match(background, /ports\.broadcast\('tab_changed'\)/);
-  assert.match(background, /manager\.subscribe\(\(\) => ports\.broadcast\('run_changed'\)\)/);
+  assert.match(background, /manager\.subscribe\([\s\S]*?ports\.broadcast\('run_changed'\)/);
   assert.match(app, /reason === 'run_changed'/);
   assert.match(app, /reason === 'tab_changed'/);
 });
 
-test('STEP-09 does not pull Templates, Presets, Queue execution, or Settings domain ownership forward', async () => {
+test('STEP-09 direct-first Run ownership remains intact after later workspace domains land', async () => {
   const app = await text('entrypoints/sidepanel/App.vue');
-  assert.doesNotMatch(app, /saveTemplate|updateTemplate|duplicateTemplate|deleteTemplate/);
-  assert.doesNotMatch(app, /savePreset|updatePreset|duplicatePreset|deletePreset/);
-  assert.doesNotMatch(app, /queue\.create|queue\.execute/);
-  assert.match(app, /futureCapability/);
+  assert.match(app, /activeWorkspace = ref<WorkspaceId>\('run'\)/);
+  assert.match(app, /noPresetDirect/);
+  assert.match(app, /startNewRun/);
+  assert.match(app, /saveTemplate|updateTemplate|duplicateTemplate|deleteTemplate/);
+  assert.match(app, /savePresetAs|updatePreset|duplicatePreset|deletePreset/);
+  assert.doesNotMatch(app, /activeWorkspace = ref<WorkspaceId>\('settings'\)/);
 });
 
 test('STEP-09 Run copy is localized rather than embedded as a second UI vocabulary', async () => {

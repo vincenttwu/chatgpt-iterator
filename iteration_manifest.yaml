@@ -1,27 +1,31 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.15
-status: accepted_implementation_overlay
+version: v0.0.16
+status: accepted_roadmap_closure
 iteration:
-  kind: implementation
+  kind: closure
   roadmap: ROADMAP-0001
-  step: STEP-15
+  roadmap_status: closed
+  step: STEP-16
   step_status: complete
   phase: P4
-  phase_status: active
+  phase_status: complete
 baseline:
-  working_parent: v0.0.14
+  working_parent: v0.0.15
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step15: "10/10 pass"
-  lifecycle_contract_typescript: "pass with TypeScript 5.8.3"
-  predecessor_step14_smoke: "10/10 pass"
-  packaged_chrome_lane: "deferred_environment: Chromium present, but accepted snapshot has no hydrated node_modules/WXT package build to launch"
-  package_hydration: inherited_deferred_environment
-  wxt_prepare_typecheck_build: inherited_deferred_environment
+  focused_step16: "9/9 pass"
+  accumulated_repository_suite: "133/133 pass"
+  strict_dependency_free_typescript: "pass across 96 source files with TypeScript 5.8.3"
+  crsniffer_ui_matrix: pass
+  localization_projection: "298/298 keys and values aligned"
+  permissions_csp_remote_code: pass
+  package_hydration: "deferred_environment: one fresh npm install attempt timed out after 120 seconds and produced neither node_modules nor package-lock.json"
+  wxt_prepare_typecheck_build_package: deferred_environment
+  packaged_chrome_install_upgrade: "deferred_environment: Chromium present but no hydrated WXT build exists to launch"
 next:
-  version: v0.0.16
-  step: STEP-16
-  title: Integrated Product/UI Standard/Accessibility/Package Closure
+  status: not_authorized
+  version: null
+  roadmap: null

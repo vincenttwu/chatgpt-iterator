@@ -5,9 +5,9 @@ record_type: constraint
 slug: team-side-panel-ui-standard
 title: "Team Side Panel UI Standard"
 status: active
-revision: 1
+revision: 2
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-23T18:34:00Z
+updated_at: 2026-08-24T04:48:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -53,3 +53,7 @@ A new competing interaction/layout pattern is allowed only when a concrete Itera
 ## Bootstrap disposition
 
 Bootstrap 5 is **not** a UI authority for the baseline roadmap. Do not add it merely to recreate components already covered by the team standard. A later bounded dependency may be introduced only for a demonstrated capability that preserves this constraint.
+
+## ROADMAP-0001 closure disposition
+
+At v0.0.16 this constraint remains **active** beyond ROADMAP-0001. `MATRIX-0001` verifies the accumulated Side Panel against every applicable required reuse surface. Closure specifically reconciled the single-polite-status-lane requirement, minimum target sizing, complete locale projection, narrow reflow, focus, reduced motion and forced colors. No competing Bootstrap/design-system layer or unexplained interaction deviation is accepted.
