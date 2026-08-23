@@ -1,24 +1,25 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.3
+version: v0.0.4
 status: accepted_implementation_overlay
 iteration:
   kind: implementation
   roadmap: ROADMAP-0001
-  step: STEP-03
+  step: STEP-04
   step_status: complete
 baseline:
-  working_parent: v0.0.2
+  working_parent: v0.0.3
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step03: "8/8 pass"
-  core_control_plane_typescript: "pass with TypeScript 5.8.3"
-  predecessor_shell_smoke: pass
+  focused_step04: "9/9 pass"
+  core_chatgpt_typescript: "pass with TypeScript 5.8.3"
+  selector_boundary: pass
+  predecessor_control_plane_smoke: pass
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build: inherited_deferred_environment
 next:
-  version: v0.0.4
-  step: STEP-04
-  title: ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract
+  version: v0.0.5
+  step: STEP-05
+  title: ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle

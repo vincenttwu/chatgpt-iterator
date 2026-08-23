@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 3
+revision: 4
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-23T18:45:00Z
+updated_at: 2026-08-23T18:51:00Z
 created_by: agent
 updated_by: agent
 owners: []
@@ -202,17 +202,19 @@ Establish the browser/platform contract and the smallest correct cross-context a
 
 #### Work items
 
-- [ ] Centralize composer, send, stop, continue and assistant-message selectors/fallbacks.
-- [ ] Expose semantic adapter operations/events rather than raw DOM nodes/selectors.
-- [ ] Replace short-interval observation loops with `MutationObserver`/event-driven state observation where possible.
-- [ ] Preserve draft-safety, response-start, response-stability and continue semantics from the userscript.
-- [ ] Add required/conditional selector health and adapter diagnostics.
-- [ ] Remove any need for remotely hosted `chatgpt.js` runtime code.
+- [x] Centralize composer, send, stop, continue and assistant-message selectors/fallbacks.
+- [x] Expose semantic adapter operations/events rather than raw DOM nodes/selectors.
+- [x] Replace short-interval observation loops with `MutationObserver`/event-driven state observation where possible.
+- [x] Preserve draft-safety, response-start, response-stability and continue semantics from the userscript.
+- [x] Add required/conditional selector health and adapter diagnostics.
+- [x] Remove any need for remotely hosted `chatgpt.js` runtime code.
 
 #### Step acceptance evidence
 
-- [ ] Fixture/DOM-adapter tests cover ready/busy/send/response/continue/error states.
-- [ ] No selector lookup exists outside `src/chatgpt/` adapter boundary.
+- [x] Fixture/DOM-adapter tests cover ready/busy/send/response/continue/error states.
+- [x] No selector lookup exists outside `src/chatgpt/` adapter boundary.
+
+**STEP-04 result (`v0.0.4`):** Added a host-scoped WXT content entrypoint and a product-owned `src/chatgpt/` boundary containing the verified userscript selector registry, semantic readiness/busy/draft/assistant/alert snapshots, safe send/Continue/stop/scroll commands, selector-health diagnostics, and a versioned content-side envelope server. Send preserves the empty-draft guard and captures the assistant baseline before mutation. DOM observation and send-button readiness are MutationObserver/event-driven rather than short-interval polling. A pure `ResponseCompletionTracker` preserves the userscript response-start timeout, Continue, response-activity and 3.5s stable-completion semantics while leaving actual scheduling to later runtime steps. Focused adapter/fixture validation passes 9/9, strict dependency-free core+chatgpt TypeScript passes, and source inspection confirms no ChatGPT selector lookup outside `src/chatgpt/`. No tab registry/lifecycle, persistence, durable execution engine or later UI scope is introduced. WXT package hydration/build remains inherited `deferred_environment`.
 
 ### STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle
 
@@ -519,7 +521,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-01 — Platform Contract, Team UI Authority, and Roadmap Freeze (`v0.0.1`) — research/records complete; exact starter merge deferred because baseline bytes unavailable.
 - [x] STEP-02 — MV3 WXT Vue Foundation and Team-Standard Side Panel Shell (`v0.0.2`) — executable shell/static contracts complete; package hydration/build lane deferred_environment.
 - [x] STEP-03 — Versioned Cross-Context Contracts and Control Plane (`v0.0.3`) — strict envelopes, background authority, bounded hydration/invalidation, reconnect and stale-response protection complete.
-- [ ] STEP-04 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract (`v0.0.4`).
+- [x] STEP-04 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract (`v0.0.4`) — centralized selectors, semantic content adapter/server, MutationObserver state stream, response tracker and diagnostics complete.
 - [ ] STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle (`v0.0.5`).
 - [ ] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`).
 - [ ] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`).
@@ -555,4 +557,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | --- | ---: | --- | --- |
 | 2026-08-24 | 1 | Open ROADMAP-0001 and complete STEP-01 platform contract. | historical |
 | 2026-08-24 | 2 | Accept explicit continuation from the v0.0.1 overlay, complete STEP-02 executable WXT/Vue Side Panel shell, and carry exact v0.0.0 byte reconciliation plus package hydration as explicit provenance/environment deferrals. | historical |
-| 2026-08-24 | 3 | Complete STEP-03 versioned JSON-safe cross-context contracts, background-owned control-plane hydration/invalidation and Side Panel freshness/reconnect semantics; v0.0.4 STEP-04 next. | active |
+| 2026-08-24 | 3 | Complete STEP-03 versioned JSON-safe cross-context contracts, background-owned control-plane hydration/invalidation and Side Panel freshness/reconnect semantics; v0.0.4 STEP-04 next. | historical |
+| 2026-08-24 | 4 | Complete STEP-04 product-owned ChatGPT selector/adapter/observation/diagnostics boundary with userscript semantics and no remote runtime code; v0.0.5 STEP-05 next. | active |
