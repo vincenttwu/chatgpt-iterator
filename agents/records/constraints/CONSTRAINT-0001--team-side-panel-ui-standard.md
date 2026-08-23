@@ -1,0 +1,55 @@
+---
+schema_version: 1
+record_id: CONSTRAINT-0001
+record_type: constraint
+slug: team-side-panel-ui-standard
+title: "Team Side Panel UI Standard"
+status: active
+revision: 1
+created_at: 2026-08-23T18:34:00Z
+updated_at: 2026-08-23T18:34:00Z
+created_by: agent
+updated_by: agent
+owners: []
+scope:
+  repository: workspace
+  packages: []
+  paths: [entrypoints/sidepanel/, src/ui/, tests/ui/]
+relations:
+  related: [ROADMAP-0001, REFERENCE-0002]
+  depends_on: [REFERENCE-0002]
+  blocks: []
+  supersedes: []
+  superseded_by: []
+provenance: {created_from: {type: iteration, id: "v0.0.1"}}
+tags: [constraint, ui, side-panel, team-standard, vue, accessibility]
+---
+# CONSTRAINT-0001 — Team Side Panel UI Standard
+
+## Constraint
+
+CRSniffer's established Side Panel interaction system is the team-standard denominator for ChatGPT Iterator. Where an existing pattern serves the same semantic purpose, Iterator **MUST reuse or adapt it rather than invent a parallel pattern**.
+
+## Required reuse/adaptation surfaces
+
+- Vue/WXT Side Panel application shell and component composition;
+- primary accessible tab navigation, including keyboard behavior, roving `tabindex`, `aria-selected`, and `tabpanel` ownership;
+- header/status lane and bounded state-badge grammar;
+- card/surface hierarchy, form stacks, supporting copy, actions, notices and progressive disclosure;
+- reusable-definition lifecycle: New, load/hydrate working copy, Save As, Update, Reset, Duplicate, Delete;
+- structured ordered-list interaction with explicit Move Up / Move Down / Remove controls;
+- narrow Side Panel reflow, icon-preserving navigation compression, minimum target sizing and overflow safety;
+- focus visibility, single polite live-status lane, reduced-motion behavior, high/forced-color compatibility and localization-ready copy;
+- Chrome-native-aware presentation using public platform/system theme mechanisms rather than private Chrome WebUI tokens.
+
+## Product-specific adaptation
+
+Iterator may rename concepts and compose standard primitives differently where Run, Queue, Preset, Template, Settings, tab-target, or execution semantics require it. Product semantics always win over superficial visual parity.
+
+## Deviation rule
+
+A new competing interaction/layout pattern is allowed only when a concrete Iterator semantic, accessibility, browser-platform, or capability requirement cannot be represented correctly by the team standard. The deviation must be explicit in the owning roadmap step or ADR and must not be justified solely by taste or framework convenience.
+
+## Bootstrap disposition
+
+Bootstrap 5 is **not** a UI authority for the baseline roadmap. Do not add it merely to recreate components already covered by the team standard. A later bounded dependency may be introduced only for a demonstrated capability that preserves this constraint.

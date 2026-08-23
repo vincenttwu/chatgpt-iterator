@@ -1,0 +1,17 @@
+schema_version: 1
+project: chatgpt-iterator
+version: v0.0.1
+status: planning_overlay
+iteration:
+  kind: research_and_roadmap
+  roadmap: ROADMAP-0001
+  step: STEP-01
+  step_status: complete
+baseline:
+  required: chatgpt-iterator-v0.0.0
+  available: false
+  disposition: deferred_environment
+next:
+  version: v0.0.2
+  step: STEP-02
+  title: MV3 WXT Vue Foundation and Team-Standard Side Panel Shell
