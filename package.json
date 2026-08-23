@@ -1,0 +1,27 @@
+{
+  "name": "chatgpt-iterator",
+  "version": "0.0.2",
+  "private": true,
+  "type": "module",
+  "description": "Chrome-native Side Panel controller for durable ChatGPT iteration workflows.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "wxt",
+    "prepare": "wxt prepare",
+    "typecheck": "vue-tsc --noEmit",
+    "build": "wxt build",
+    "package": "wxt zip",
+    "test:step02": "node --test tests/step02-shell.test.mjs"
+  },
+  "dependencies": {
+    "vue": "3.5.41"
+  },
+  "devDependencies": {
+    "@wxt-dev/module-vue": "1.0.3",
+    "typescript": "7.0.2",
+    "vue-tsc": "3.3.11",
+    "wxt": "0.21.4"
+  }
+}

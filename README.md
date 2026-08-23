@@ -1,33 +1,33 @@
-# ChatGPT Iterator — v0.0.1 planning overlay
+# ChatGPT Iterator — v0.0.2
 
-This artifact records ROADMAP-0001 and completes its bounded STEP-01 platform-contract / architecture-spike research for the planned Chrome extension conversion.
+Chrome-native Side Panel foundation for durable ChatGPT iteration workflows.
 
-## Baseline status
+## Current status
 
-The requested source baseline is `chatgpt-iterator-v0.0.0`. Its exact bytes were not available in the active conversation, Library index, or mounted workspace when this iteration was produced. To avoid fabricating lineage, this ZIP is a **planning overlay**, not a full source promotion. It contains only records and immutable reference inputs that can be applied to the exact v0.0.0 starter when that source is available.
+ROADMAP-0001 STEP-02 is complete. This version introduces the first executable WXT + Vue 3 + TypeScript Manifest V3 shell and enforces the CRSniffer Side Panel interaction system as the team UI standard.
 
-This missing-baseline condition does **not** invalidate the roadmap or STEP-01 architecture conclusions; it only prevents claiming a complete v0.0.1 source successor.
+The exact originally requested `chatgpt-iterator-v0.0.0` archive is still unavailable in this execution context. The user explicitly authorized continuation from the accepted v0.0.1 planning overlay, so v0.0.2 is the forward implementation root. It does **not** claim fabricated byte-for-byte ancestry from the missing archive; if that archive becomes available later it is provenance/reconciliation input, not permission to overwrite accepted successor work.
 
-## Current authority
+## Implemented in v0.0.2
 
-- ROADMAP-0001 defines v0.0.1 through v0.0.16.
-- STEP-01 is complete in this overlay.
-- The next implementation step is STEP-02 / v0.0.2 after the exact v0.0.0 source baseline is restored.
-- CRSniffer Side Panel UI/layout/interaction patterns are a mandatory team standard where applicable, not optional inspiration.
-- The working Tampermonkey userscript remains the behavioral/selector reference for ChatGPT DOM interaction.
+- WXT `0.21.4`, Vue `3.5.41`, `@wxt-dev/module-vue` `1.0.3`, TypeScript `7.0.2`, and `vue-tsc` `3.3.11` exact pins.
+- Chrome 132+ Manifest V3 configuration.
+- Minimal `sidePanel` permission floor; no host, scripting, debugger, activeTab, storage, or unrelated permissions yet.
+- Toolbar action opens the global Side Panel.
+- Five team-standard workspaces: **Run · Queue · Presets · Templates · Settings**.
+- CRSniffer-standard accessible tabs, header/status lane, surface/card grammar, icon component, narrow-panel icon compression, focus visibility, reduced-motion and forced-color behavior.
+- Native-aware system-color theme instead of fixed Google/Material palette.
+- UI copy externalized through Chrome localization messages.
 
-## Primary records
+## Validation
 
-- `agents/records/roadmaps/ROADMAP-0001--chrome-native-iterator-foundation.md`
-- `agents/records/adrs/ADR-0001--event-driven-runtime-and-persistence-boundaries.md`
-- `agents/records/constraints/CONSTRAINT-0001--team-side-panel-ui-standard.md`
-- `agents/records/references/REFERENCE-0001--current-chrome-extension-runtime-authority.md`
-- `agents/records/references/REFERENCE-0002--crsniffer-team-side-panel-standard.md`
-- `agents/records/audits/AUDIT-0001--v0-0-1-platform-contract-and-roadmap-opening.md`
+- `npm run test:step02`: **6/6 PASS**.
+- One package hydration attempt (`npm install --ignore-scripts --no-audit --no-fund`) timed out after 120 seconds and produced no lockfile/node_modules. WXT prepare/typecheck/build are **DEFERRED_ENVIRONMENT**, not passes and not blocking under fast-path policy.
 
-## Immutable reference inputs
+## Next authorized step
 
-- `dumps/donors/userscript/chatgpt-auto-iteration.user.js`
-- `dumps/donors/crxsniffer/crxsniffer-repomix-output.xml`
+ROADMAP-0001 **STEP-03 / v0.0.3 — Versioned Cross-Context Contracts and Control Plane**.
 
-Treat both as read-only reference material. Project implementation must own its own contracts and code.
+## Reference inputs
+
+`dumps/donors/` remains read-only reference material. Product source owns its own contracts and implementation.
