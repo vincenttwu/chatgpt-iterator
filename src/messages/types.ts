@@ -10,6 +10,7 @@ export interface MessageContext extends JsonObject {
 export interface MessageItem extends JsonObject {
   readonly content: string;
   readonly context: MessageContext;
+  readonly delayAfterSeconds: number | null;
 }
 
 export interface MessageSource {

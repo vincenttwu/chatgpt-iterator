@@ -89,16 +89,17 @@ export class TemplateService {
   async delete(id: string, expectedRevision: unknown): Promise<void> {
     requireEntityId(id, 'template id');
     const revision = requireRevision(expectedRevision, 'expected template revision');
-    await this.#repositories.write(['templates', 'presets'], async (tx) => {
+    await this.#repositories.write(['templates', 'presets', 'queueItems'], async (tx) => {
       const templates = tx.repository('templates');
       const current = await templates.get(id);
       if (current === undefined) return;
       if (current.revision !== revision) {
         throw new ContractError(ERROR_CODES.staleRequest, 'template revision changed; reload before deleting');
       }
-      const references = (await tx.repository('presets').list()).filter((preset) => preset.templateId === id);
-      if (references.length > 0) {
-        throw new ContractError(ERROR_CODES.staleRequest, 'template is referenced by a preset; update or delete the preset first');
+      const presetReferences = (await tx.repository('presets').list()).filter((preset) => preset.templateId === id);
+      const queueReferences = (await tx.repository('queueItems').list()).filter((item) => item.templateId === id);
+      if (presetReferences.length > 0 || queueReferences.length > 0) {
+        throw new ContractError(ERROR_CODES.staleRequest, 'template is referenced by a preset or queue; update or delete that reference first');
       }
       await templates.delete(id);
     });

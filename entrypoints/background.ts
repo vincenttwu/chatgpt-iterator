@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '../src/control-plane/index.ts';
-import { BackgroundMessageRouter, PresetRuntimeServer, RunRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
+import { BackgroundMessageRouter, PresetRuntimeServer, QueueRuntimeServer, RunRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
 import { bootstrapApplicationPersistence, restrictChromeStorageToTrustedContexts, type ChromeStorageLike, type PersistenceRuntime } from '../src/persistence/index.ts';
 import {
@@ -15,6 +15,7 @@ import {
 } from '../src/runs/index.ts';
 import { TemplateService } from '../src/templates/index.ts';
 import { PresetService } from '../src/presets/index.ts';
+import { QueueService } from '../src/queues/index.ts';
 import { ContractError, ERROR_CODES } from '../src/core/index.ts';
 
 const tabBrowser = browser.tabs as unknown as TabBrowserLike;
@@ -29,6 +30,7 @@ let persistencePromise: Promise<PersistenceRuntime> | undefined;
 let runRuntimePromise: Promise<{ manager: DurableRunManager; coordinator: RepeatRunCoordinator }> | undefined;
 let templateServicePromise: Promise<TemplateService> | undefined;
 let presetServicePromise: Promise<PresetService> | undefined;
+let queueServicePromise: Promise<QueueService> | undefined;
 const runServer = new RunRuntimeServer(
   async () => {
     if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized');
@@ -37,6 +39,10 @@ const runServer = new RunRuntimeServer(
   async () => {
     if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run execution is not initialized');
     return (await runRuntimePromise).coordinator;
+  },
+  async () => {
+    if (queueServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'queue persistence is not initialized');
+    return await queueServicePromise;
   },
 );
 const templateServer = new TemplateRuntimeServer(
@@ -53,7 +59,14 @@ const presetServer = new PresetRuntimeServer(
   },
   () => ports.broadcast('preset_changed'),
 );
-const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer);
+const queueServer = new QueueRuntimeServer(
+  async () => {
+    if (queueServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'queue persistence is not initialized');
+    return await queueServicePromise;
+  },
+  () => ports.broadcast('queue_changed'),
+);
+const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer, queueServer);
 const lifecycle = new TabLifecycleCoordinator(tabBrowser, tabs, discardGuards, (error) => {
   console.error('chatgpt-iterator: tab lifecycle error', error);
 });
@@ -81,6 +94,7 @@ export default defineBackground(() => {
   persistencePromise = bootstrapApplicationPersistence();
   templateServicePromise = persistencePromise.then((runtime) => new TemplateService(runtime.repositories));
   presetServicePromise = persistencePromise.then((runtime) => new PresetService(runtime.repositories));
+  queueServicePromise = persistencePromise.then((runtime) => new QueueService(runtime.repositories));
   runRuntimePromise = persistencePromise.then(async (runtime) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
     manager.subscribe(() => ports.broadcast('run_changed'));
@@ -100,6 +114,9 @@ export default defineBackground(() => {
   });
   void presetServicePromise.catch((error: unknown) => {
     console.error('chatgpt-iterator: failed to initialize preset runtime', error);
+  });
+  void queueServicePromise.catch((error: unknown) => {
+    console.error('chatgpt-iterator: failed to initialize queue runtime', error);
   });
 
   if (browser.sidePanel?.setPanelBehavior) {

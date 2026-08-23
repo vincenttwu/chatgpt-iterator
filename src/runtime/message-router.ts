@@ -4,15 +4,18 @@ import type { ControlPlaneServer } from '../control-plane/server.ts';
 import { TAB_RUNTIME_OPERATIONS } from '../tabs/types.ts';
 import { TEMPLATE_RUNTIME_OPERATIONS } from '../templates/types.ts';
 import { PRESET_RUNTIME_OPERATIONS } from '../presets/types.ts';
+import { QUEUE_RUNTIME_OPERATIONS } from '../queues/types.ts';
 import type { RunRuntimeServer } from './run-runtime-server.ts';
 import type { TemplateRuntimeServer } from './template-runtime-server.ts';
 import type { PresetRuntimeServer } from './preset-runtime-server.ts';
+import type { QueueRuntimeServer } from './queue-runtime-server.ts';
 import type { RuntimeMessageSenderLike, TabRuntimeServer } from './tab-runtime-server.ts';
 
 const TAB_OPERATIONS = new Set<string>(Object.values(TAB_RUNTIME_OPERATIONS));
 const RUN_OPERATIONS = new Set<string>(Object.values(RUN_RUNTIME_OPERATIONS));
 const TEMPLATE_OPERATIONS = new Set<string>(Object.values(TEMPLATE_RUNTIME_OPERATIONS));
 const PRESET_OPERATIONS = new Set<string>(Object.values(PRESET_RUNTIME_OPERATIONS));
+const QUEUE_OPERATIONS = new Set<string>(Object.values(QUEUE_RUNTIME_OPERATIONS));
 
 export class BackgroundMessageRouter {
   readonly #control: ControlPlaneServer;
@@ -20,13 +23,15 @@ export class BackgroundMessageRouter {
   readonly #runs: RunRuntimeServer | undefined;
   readonly #templates: TemplateRuntimeServer | undefined;
   readonly #presets: PresetRuntimeServer | undefined;
+  readonly #queues: QueueRuntimeServer | undefined;
 
-  constructor(control: ControlPlaneServer, tabs: TabRuntimeServer, runs?: RunRuntimeServer, templates?: TemplateRuntimeServer, presets?: PresetRuntimeServer) {
+  constructor(control: ControlPlaneServer, tabs: TabRuntimeServer, runs?: RunRuntimeServer, templates?: TemplateRuntimeServer, presets?: PresetRuntimeServer, queues?: QueueRuntimeServer) {
     this.#control = control;
     this.#tabs = tabs;
     this.#runs = runs;
     this.#templates = templates;
     this.#presets = presets;
+    this.#queues = queues;
   }
 
   async handle(raw: unknown, sender: RuntimeMessageSenderLike = {}): Promise<unknown> {
@@ -43,6 +48,10 @@ export class BackgroundMessageRouter {
     if (PRESET_OPERATIONS.has(message.operation)) {
       if (this.#presets === undefined) return await this.#control.handle(message);
       return await this.#presets.handle(message);
+    }
+    if (QUEUE_OPERATIONS.has(message.operation)) {
+      if (this.#queues === undefined) return await this.#control.handle(message);
+      return await this.#queues.handle(message);
     }
     return await this.#control.handle(message);
   }

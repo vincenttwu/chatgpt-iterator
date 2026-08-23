@@ -4,3 +4,5 @@ export * from './preset-workspace.ts';
 export * from './run-workspace.ts';
 export * from './template-workspace.ts';
 export * from './workspaces.ts';
+
+export * from './queue-workspace.ts';

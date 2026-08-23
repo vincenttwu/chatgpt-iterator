@@ -27,6 +27,7 @@ export interface PresetDraft {
 }
 
 export interface RepeatRunWorkingCopy {
+  readonly mode: 'repeat';
   readonly presetId: string;
   readonly presetRevision: number;
   readonly messageTemplate: string;
@@ -36,6 +37,19 @@ export interface RepeatRunWorkingCopy {
   readonly autoScroll: boolean;
   readonly preventDiscard: boolean;
 }
+
+export interface QueueRunWorkingCopy {
+  readonly mode: 'queue';
+  readonly presetId: string;
+  readonly presetRevision: number;
+  readonly queueId: string;
+  readonly delaySeconds: number;
+  readonly autoContinue: boolean;
+  readonly autoScroll: boolean;
+  readonly preventDiscard: boolean;
+}
+
+export type PresetRunWorkingCopy = RepeatRunWorkingCopy | QueueRunWorkingCopy;
 
 export function blankPresetDraft(): PresetDraft {
   return {
@@ -117,9 +131,19 @@ export function validatePresetDraft(draft: PresetDraft): void {
   });
 }
 
-export function repeatRunWorkingCopyFromPreset(hydration: PresetHydration): RepeatRunWorkingCopy {
-  if (hydration.mode !== 'repeat') throw new ContractError(ERROR_CODES.unsupportedOperation, 'queue preset execution arrives in STEP-12');
+export function runWorkingCopyFromPreset(hydration: PresetHydration): PresetRunWorkingCopy {
+  if (hydration.mode === 'queue') return Object.freeze({
+    mode: 'queue' as const,
+    presetId: hydration.preset.id,
+    presetRevision: hydration.preset.revision,
+    queueId: hydration.queue.id,
+    delaySeconds: hydration.delaySeconds,
+    autoContinue: hydration.autoContinue,
+    autoScroll: hydration.autoScroll,
+    preventDiscard: hydration.preventDiscard,
+  });
   return Object.freeze({
+    mode: 'repeat' as const,
     presetId: hydration.preset.id,
     presetRevision: hydration.preset.revision,
     messageTemplate: hydration.messageTemplate,
@@ -129,6 +153,14 @@ export function repeatRunWorkingCopyFromPreset(hydration: PresetHydration): Repe
     autoScroll: hydration.autoScroll,
     preventDiscard: hydration.preventDiscard,
   });
+}
+
+/** Backward-compatible helper retained for STEP-11 callers. */
+export function repeatRunWorkingCopyFromPreset(hydration: PresetHydration): Omit<RepeatRunWorkingCopy, 'mode'> {
+  const copy = runWorkingCopyFromPreset(hydration);
+  if (copy.mode !== 'repeat') throw new ContractError(ERROR_CODES.unsupportedOperation, 'queue preset execution is owned by STEP-12; use runWorkingCopyFromPreset');
+  const { mode: _mode, ...legacy } = copy;
+  return Object.freeze(legacy);
 }
 
 function requirePreset(value: unknown): PresetSnapshot {

@@ -35,5 +35,5 @@ export function renderMessageTemplate(template: string, context: MessageContext)
 }
 
 export function messageItem(template: string, context: MessageContext): MessageItem {
-  return freezeJsonValue({ content: renderMessageTemplate(template, context), context });
+  return freezeJsonValue({ content: renderMessageTemplate(template, context), context, delayAfterSeconds: null });
 }

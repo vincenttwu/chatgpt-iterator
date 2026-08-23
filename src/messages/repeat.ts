@@ -7,6 +7,6 @@ export class RepeatMessageSource implements MessageSource {
   constructor(template: string) { this.#template = template; }
   next(context: MessageContext): MessageItem | null {
     if (context.iteration > context.total) return null;
-    return messageItem(this.#template, freezeJsonValue(context));
+    return { ...messageItem(this.#template, freezeJsonValue(context)), delayAfterSeconds: null };
   }
 }

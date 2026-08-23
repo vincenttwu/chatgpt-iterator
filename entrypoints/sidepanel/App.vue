@@ -6,6 +6,7 @@ import { DEFAULT_REPEAT_DELAY_SECONDS, DEFAULT_REPEAT_ITERATIONS, DEFAULT_REPEAT
 import type { ChatGptTabLifecycleState, ChatGptTabRegistrySnapshot, ChatGptTabTarget } from '../../src/tabs/index.ts';
 import type { TemplateSnapshot } from '../../src/templates/index.ts';
 import type { PresetReferenceCatalog, PresetSnapshot } from '../../src/presets/index.ts';
+import type { QueueHydration, QueueReferenceCatalog, QueueSnapshot } from '../../src/queues/index.ts';
 import {
   SidePanelOperationalClient,
   canPauseRun,
@@ -33,10 +34,23 @@ import {
   isPresetDraftStale,
   normalizePresetDraftMode,
   presetDraftFrom,
-  repeatRunWorkingCopyFromPreset,
+  runWorkingCopyFromPreset,
   validatePresetDraft,
   type PresetDraft,
 } from '../../src/ui/preset-workspace.ts';
+import {
+  SidePanelQueueClient,
+  blankQueueDraft,
+  blankQueueItem,
+  isQueueDraftDirty,
+  isQueueDraftStale,
+  moveQueueItem,
+  normalizeQueueItem,
+  queueDraftFrom,
+  removeQueueItem,
+  validateQueueDraft,
+  type QueueDraft,
+} from '../../src/ui/queue-workspace.ts';
 import { ui, type UiMessageKey } from '../../src/ui/messages';
 import { WORKSPACES, type WorkspaceId } from '../../src/ui/workspaces';
 import Icon from './components/Icon.vue';
@@ -55,6 +69,7 @@ const controlClient = new SidePanelControlClient(browser.runtime);
 const operationalClient = new SidePanelOperationalClient(browser.runtime);
 const templateClient = new SidePanelTemplateClient(browser.runtime);
 const presetClient = new SidePanelPresetClient(browser.runtime);
+const queueClient = new SidePanelQueueClient(browser.runtime);
 const templates = ref<TemplateSnapshot[]>([]);
 const selectedTemplateId = ref('');
 const templateBase = ref<TemplateSnapshot>();
@@ -70,10 +85,22 @@ const presetDraft = reactive<PresetDraft>(blankPresetDraft());
 const presetBusy = ref(false);
 const presetError = ref<string>();
 const presetStale = ref(false);
+const queueHydrations = ref<QueueHydration[]>([]);
+const queues = ref<QueueSnapshot[]>([]);
+const queueReferences = ref<QueueReferenceCatalog>({ templates: [] });
+const selectedQueueId = ref('');
+const queueBase = ref<QueueHydration>();
+const queueDraft = reactive<QueueDraft>(blankQueueDraft());
+const queueBusy = ref(false);
+const queueError = ref<string>();
+const queueStale = ref(false);
+
 let connection: { stop(): void } | undefined;
 
 const draft = reactive({
   presetId: '',
+  mode: 'repeat' as 'repeat' | 'queue',
+  queueId: '',
   messageTemplate: DEFAULT_REPEAT_MESSAGE,
   totalIterations: DEFAULT_REPEAT_ITERATIONS,
   delaySeconds: DEFAULT_REPEAT_DELAY_SECONDS,
@@ -99,6 +126,9 @@ const templatePreview = computed(() => {
   try { return { value: previewTemplateDraft(templateDraft), error: undefined as string | undefined }; }
   catch (error) { return { value: '', error: error instanceof Error ? error.message : ui('templatePreviewUnavailable') }; }
 });
+const queueDirty = computed(() => isQueueDraftDirty(queueDraft, queueBase.value));
+const queueLatest = computed(() => queueBase.value === undefined ? undefined : queues.value.find((item) => item.id === queueBase.value?.queue.id));
+const queueStateKey = computed<UiMessageKey>(() => queueStale.value ? 'queueStaleState' : queueBase.value === undefined ? 'queueNewState' : queueDirty.value ? 'queueModifiedState' : 'queueSavedState');
 const presetDirty = computed(() => isPresetDraftDirty(presetDraft, presetBase.value));
 const presetLatest = computed(() => presetBase.value === undefined ? undefined : presets.value.find((item) => item.id === presetBase.value?.id));
 const presetStateKey = computed<UiMessageKey>(() => presetStale.value
@@ -122,10 +152,7 @@ const canStartNew = computed(() => {
     && connectionState.value === 'connected'
     && !hasNonTerminalRun.value
     && target?.lifecycleState === 'ready'
-    && draft.messageTemplate.trim().length > 0
-    && Number.isSafeInteger(draft.totalIterations)
-    && draft.totalIterations >= 1
-    && draft.totalIterations <= 10_000
+    && (draft.mode === 'queue' ? Boolean(draft.queueId) : (draft.messageTemplate.trim().length > 0 && Number.isSafeInteger(draft.totalIterations) && draft.totalIterations >= 1 && draft.totalIterations <= 10_000))
     && Number.isSafeInteger(draft.delaySeconds)
     && draft.delaySeconds >= 5
     && draft.delaySeconds <= 3_600;
@@ -237,6 +264,26 @@ function clearPresetWorkingCopy(): void {
   presetError.value = undefined;
 }
 
+function replaceQueueDraft(next: QueueDraft): void { Object.assign(queueDraft, next); }
+function loadQueueRecord(record: QueueHydration): void { queueBase.value = record; selectedQueueId.value = record.queue.id; replaceQueueDraft(queueDraftFrom(record)); queueStale.value = false; queueError.value = undefined; }
+function clearQueueWorkingCopy(): void { queueBase.value = undefined; selectedQueueId.value = ''; replaceQueueDraft(blankQueueDraft()); queueStale.value = false; queueError.value = undefined; }
+async function hydrateQueues(): Promise<void> {
+  try {
+    const next = await queueClient.list(); queues.value = next;
+    const base = queueBase.value;
+    if (base !== undefined) {
+      const latest = next.find((item) => item.id === base.queue.id);
+      if (latest === undefined || latest.revision !== base.queue.revision) {
+        if (queueDirty.value) queueStale.value = true;
+        else if (latest !== undefined) loadQueueRecord(await queueClient.hydrate(latest.id));
+        else clearQueueWorkingCopy();
+      }
+    }
+    queueError.value = undefined;
+  } catch (error) { queueError.value = error instanceof Error ? error.message : ui('queueOperationFailed'); }
+}
+async function hydrateQueueReferences(): Promise<void> { try { queueReferences.value = await queueClient.references(); } catch (error) { queueError.value = error instanceof Error ? error.message : ui('queueOperationFailed'); } }
+
 async function hydratePresets(): Promise<void> {
   try {
     const next = await presetClient.list();
@@ -281,7 +328,7 @@ async function hydrateTemplates(): Promise<void> {
 }
 
 async function hydrateAll(): Promise<void> {
-  await Promise.all([hydrateControl(), hydrateRuns(), hydrateTemplates(), hydratePresets(), hydratePresetReferences()]);
+  await Promise.all([hydrateControl(), hydrateRuns(), hydrateTemplates(), hydratePresets(), hydratePresetReferences(), hydrateQueues(), hydrateQueueReferences()]);
 }
 
 function onInvalidation(reason: ControlPlaneInvalidationReason): void {
@@ -299,6 +346,10 @@ function onInvalidation(reason: ControlPlaneInvalidationReason): void {
   }
   if (reason === 'preset_changed') {
     void hydratePresets();
+    return;
+  }
+  if (reason === 'queue_changed') {
+    void Promise.all([hydrateQueues(), hydratePresetReferences()]);
     return;
   }
   void hydrateAll();
@@ -355,16 +406,9 @@ async function startNewRun(): Promise<void> {
     runError.value = ui('invalidRunConfiguration');
     return;
   }
-  await executeRunMutation(() => operationalClient.startRepeat({
-    targetTabId: target.tabId,
-    targetWindowId: target.windowId,
-    messageTemplate: draft.messageTemplate,
-    totalIterations: draft.totalIterations,
-    delaySeconds: draft.delaySeconds,
-    autoContinue: draft.autoContinue,
-    autoScroll: draft.autoScroll,
-    preventDiscard: draft.preventDiscard,
-  }));
+  await executeRunMutation(() => draft.mode === 'queue'
+    ? operationalClient.startQueue({ targetTabId: target.tabId, targetWindowId: target.windowId, queueId: draft.queueId, delaySeconds: draft.delaySeconds, autoContinue: draft.autoContinue, autoScroll: draft.autoScroll, preventDiscard: draft.preventDiscard })
+    : operationalClient.startRepeat({ targetTabId: target.tabId, targetWindowId: target.windowId, messageTemplate: draft.messageTemplate, totalIterations: draft.totalIterations, delaySeconds: draft.delaySeconds, autoContinue: draft.autoContinue, autoScroll: draft.autoScroll, preventDiscard: draft.preventDiscard }));
 }
 
 async function mutateCurrent(kind: 'start' | 'pause' | 'resume' | 'stop'): Promise<void> {
@@ -384,10 +428,11 @@ async function applyRunPreset(): Promise<void> {
   operationBusy.value = true;
   runError.value = undefined;
   try {
-    const copy = repeatRunWorkingCopyFromPreset(await presetClient.hydrate(draft.presetId));
+    const copy = runWorkingCopyFromPreset(await presetClient.hydrate(draft.presetId));
     draft.presetId = copy.presetId;
-    draft.messageTemplate = copy.messageTemplate;
-    draft.totalIterations = copy.totalIterations;
+    draft.mode = copy.mode;
+    if (copy.mode === 'queue') draft.queueId = copy.queueId;
+    else { draft.queueId = ''; draft.messageTemplate = copy.messageTemplate; draft.totalIterations = copy.totalIterations; }
     draft.delaySeconds = copy.delaySeconds;
     draft.autoContinue = copy.autoContinue;
     draft.autoScroll = copy.autoScroll;
@@ -398,6 +443,21 @@ async function applyRunPreset(): Promise<void> {
     operationBusy.value = false;
   }
 }
+
+function guardQueueDiscard(): boolean { if (!queueDirty.value) return true; queueError.value = ui('queueDirtyGuard'); selectedQueueId.value = queueBase.value?.queue.id ?? ''; return false; }
+function beginNewQueue(): void { if (guardQueueDiscard()) clearQueueWorkingCopy(); }
+async function loadSelectedQueue(): Promise<void> { if (!guardQueueDiscard()) return; if (!selectedQueueId.value) { clearQueueWorkingCopy(); return; } try { loadQueueRecord(await queueClient.hydrate(selectedQueueId.value)); } catch (error) { queueError.value = error instanceof Error ? error.message : ui('queueOperationFailed'); } }
+function addQueueItem(): void { queueDraft.items.push(blankQueueItem()); }
+function setQueueItemKind(index: number): void { const item = queueDraft.items[index]; if (item) normalizeQueueItem(item); }
+function setQueueItemDelay(index: number, event: Event): void { const item = queueDraft.items[index]; const input = event.target as HTMLInputElement | null; if (!item || !input) return; item.delayAfterSeconds = input.value === '' ? null : Number(input.value); }
+function moveQueueDraftItem(index:number,direction:-1|1):void { moveQueueItem(queueDraft,index,direction); }
+function removeQueueDraftItem(index:number):void { removeQueueItem(queueDraft,index); }
+async function executeQueueMutation(action:()=>Promise<QueueHydration>):Promise<void>{queueBusy.value=true;queueError.value=undefined;try{const record=await action();loadQueueRecord(record);await Promise.all([hydrateQueues(),hydratePresetReferences()]);}catch(error){queueError.value=error instanceof Error?error.message:ui('queueOperationFailed');if(isQueueDraftStale(queueDraft,queueLatest.value))queueStale.value=true;}finally{queueBusy.value=false;}}
+async function saveQueueAs():Promise<void>{try{validateQueueDraft(queueDraft);}catch(error){queueError.value=error instanceof Error?error.message:ui('queueOperationFailed');return;}await executeQueueMutation(()=>queueClient.create(queueDraft));}
+async function updateQueue():Promise<void>{if(queueStale.value){queueError.value=ui('queueStaleGuard');return;}await executeQueueMutation(()=>queueClient.update(queueDraft));}
+function resetQueue():void{const latest=queueLatest.value;if(latest!==undefined){void queueClient.hydrate(latest.id).then(loadQueueRecord);return;}if(queueBase.value!==undefined)loadQueueRecord(queueBase.value);else clearQueueWorkingCopy();}
+async function duplicateQueue():Promise<void>{const base=queueBase.value;if(base===undefined||queueDirty.value||queueStale.value)return;await executeQueueMutation(()=>queueClient.duplicate(base));}
+async function deleteQueue():Promise<void>{const base=queueBase.value;if(base===undefined||queueDirty.value||queueStale.value)return;queueBusy.value=true;queueError.value=undefined;try{await queueClient.delete(base);if(draft.queueId===base.queue.id)draft.queueId='';clearQueueWorkingCopy();await Promise.all([hydrateQueues(),hydratePresetReferences()]);}catch(error){queueError.value=error instanceof Error?error.message:ui('queueOperationFailed');if(isQueueDraftStale(queueDraft,queueLatest.value))queueStale.value=true;}finally{queueBusy.value=false;}}
 
 function guardPresetDiscard(): boolean {
   if (!presetDirty.value) return true;
@@ -669,7 +729,7 @@ onUnmounted(() => connection?.stop());
           <summary class="workspace-card__heading">
             <div>
               <p class="eyebrow">{{ ui('runConfiguration') }}</p>
-              <h2>{{ ui('repeatMode') }}</h2>
+              <h2>{{ draft.mode === 'repeat' ? ui('repeatMode') : ui('queueMode') }}</h2>
             </div>
             <span class="state-badge">{{ ui('directRun') }}</span>
           </summary>
@@ -685,12 +745,27 @@ onUnmounted(() => connection?.stop());
             <button type="button" class="secondary-action" :disabled="operationBusy || hasNonTerminalRun || !draft.presetId" @click="applyRunPreset">{{ ui('applyPreset') }}</button>
           </div>
           <div class="field-stack">
+            <label for="run-mode">{{ ui('runMode') }}</label>
+            <select id="run-mode" v-model="draft.mode" :disabled="operationBusy || hasNonTerminalRun">
+              <option value="repeat">{{ ui('repeatMode') }}</option>
+              <option value="queue">{{ ui('queueMode') }}</option>
+            </select>
+          </div>
+          <div v-if="draft.mode === 'repeat'" class="field-stack">
             <label for="run-message">{{ ui('message') }}</label>
             <textarea id="run-message" v-model="draft.messageTemplate" rows="4" :disabled="operationBusy || hasNonTerminalRun" spellcheck="true" />
             <small>{{ ui('messageHelp') }}</small>
           </div>
+          <div v-else class="field-stack">
+            <label for="run-queue">{{ ui('runQueue') }}</label>
+            <select id="run-queue" v-model="draft.queueId" :disabled="operationBusy || hasNonTerminalRun">
+              <option value="">{{ ui('chooseRunQueue') }}</option>
+              <option v-for="item in queues" :key="item.id" :value="item.id">{{ item.name }} · r{{ item.revision }}</option>
+            </select>
+            <small>{{ ui('queueModeDescription') }}</small>
+          </div>
           <div class="editor-grid">
-            <div class="field-stack">
+            <div v-if="draft.mode === 'repeat'" class="field-stack">
               <label for="run-iterations">{{ ui('iterations') }}</label>
               <input id="run-iterations" v-model.number="draft.totalIterations" type="number" min="1" max="10000" step="1" :disabled="operationBusy || hasNonTerminalRun">
             </div>
@@ -728,6 +803,7 @@ onUnmounted(() => connection?.stop());
           <template v-else>
             <dl class="status-grid">
               <div><dt>{{ ui('runState') }}</dt><dd>{{ ui(runStateKey(currentRun.lifecycleState)) }}</dd></div>
+              <div><dt>{{ ui('runMode') }}</dt><dd>{{ currentRun.execution.mode === 'repeat' ? ui('repeatMode') : ui('queueMode') }}</dd></div>
               <div><dt>{{ ui('target') }}</dt><dd>#{{ currentRun.targetTabId }}</dd></div>
               <div><dt>{{ ui('completedIterations') }}</dt><dd>{{ currentProgress?.completed }} / {{ currentProgress?.total }}</dd></div>
               <div><dt>{{ ui('updated') }}</dt><dd>{{ new Date(currentRun.updatedAt).toLocaleTimeString() }}</dd></div>
@@ -758,6 +834,37 @@ onUnmounted(() => connection?.stop());
         <div v-if="controlError || runError" class="inline-error" role="alert">
           {{ runError || `${ui('controlPlaneUnavailable')}: ${controlError}` }}
         </div>
+      </div>
+
+      <div v-else-if="activeWorkspace === 'queue'" class="workspace-stack">
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading"><div><p class="eyebrow">{{ ui('queueLibrary') }}</p><h2>{{ ui('queueWorkspace') }}</h2></div><span class="state-badge">{{ queues.length }}</span></summary>
+          <p>{{ ui('queueLibraryDescription') }}</p>
+          <div class="field-with-action"><div class="field-stack"><label for="queue-select">{{ ui('savedQueue') }}</label><select id="queue-select" v-model="selectedQueueId" :disabled="queueBusy"><option value="">{{ ui('chooseQueue') }}</option><option v-for="item in queues" :key="item.id" :value="item.id">{{ item.name }} · r{{ item.revision }}</option></select></div><button type="button" class="secondary-action" :disabled="queueBusy || !selectedQueueId" @click="loadSelectedQueue">{{ ui('loadQueue') }}</button></div>
+          <p v-if="queues.length === 0" class="compact-empty">{{ ui('noQueues') }}</p>
+        </details>
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading"><div><p class="eyebrow">{{ ui('queueWorkingCopy') }}</p><h2>{{ queueDraft.name.trim() || ui('newQueue') }}</h2></div><span class="state-badge" :data-state="queueStale ? 'failed' : undefined">{{ ui(queueStateKey) }}</span></summary>
+          <div v-if="queueStale" class="inline-warning" role="status">{{ ui('queueStaleGuard') }}</div>
+          <div class="field-stack"><label for="queue-name">{{ ui('queueName') }}</label><input id="queue-name" v-model="queueDraft.name" type="text" maxlength="120" :disabled="queueBusy"></div>
+          <div class="structured-list" :aria-label="ui('queueItems')">
+            <div v-for="(item,index) in queueDraft.items" :key="item.localKey" class="structured-row queue-item-row">
+              <div class="progress-heading"><strong>{{ ui('queueItem') }} {{ index + 1 }}</strong><span>{{ item.enabled ? ui('yes') : ui('no') }}</span></div>
+              <div class="editor-grid">
+                <div class="field-stack"><label :for="`queue-kind-${index}`">{{ ui('queueItemSource') }}</label><select :id="`queue-kind-${index}`" v-model="item.kind" :disabled="queueBusy" @change="setQueueItemKind(index)"><option value="literal">{{ ui('literalMessage') }}</option><option value="template">{{ ui('templateReference') }}</option></select></div>
+                <div class="field-stack"><label :for="`queue-delay-${index}`">{{ ui('delayAfterOverride') }}</label><input :id="`queue-delay-${index}`" :value="item.delayAfterSeconds ?? ''" type="number" min="5" max="3600" step="1" :placeholder="ui('useRunDelay')" :disabled="queueBusy" @input="setQueueItemDelay(index, $event)"></div>
+              </div>
+              <div v-if="item.kind === 'literal'" class="field-stack"><label :for="`queue-message-${index}`">{{ ui('queueMessage') }}</label><textarea :id="`queue-message-${index}`" v-model="item.message" rows="3" maxlength="65536" :disabled="queueBusy" /></div>
+              <div v-else class="field-stack"><label :for="`queue-template-${index}`">{{ ui('queueTemplate') }}</label><select :id="`queue-template-${index}`" v-model="item.templateId" :disabled="queueBusy"><option :value="null">{{ ui('chooseQueueTemplate') }}</option><option v-for="template in queueReferences.templates" :key="template.id" :value="template.id">{{ template.name }} · r{{ template.revision }}{{ !template.enabled ? ` · ${ui('templateDisabledState')}` : '' }}</option></select></div>
+              <label class="check-row"><input v-model="item.enabled" type="checkbox" :disabled="queueBusy"><span><strong>{{ ui('queueEnabled') }}</strong></span></label>
+              <div class="actions"><button type="button" class="secondary-action" :disabled="queueBusy || index === 0" @click="moveQueueDraftItem(index,-1)">{{ ui('moveUp') }}</button><button type="button" class="secondary-action" :disabled="queueBusy || index === queueDraft.items.length - 1" @click="moveQueueDraftItem(index,1)">{{ ui('moveDown') }}</button><button type="button" class="danger-action" :disabled="queueBusy || queueDraft.items.length <= 1" @click="removeQueueDraftItem(index)">{{ ui('remove') }}</button></div>
+            </div>
+          </div>
+          <div class="actions"><button type="button" class="secondary-action" :disabled="queueBusy" @click="addQueueItem">{{ ui('addQueueItem') }}</button></div>
+          <dl v-if="queueBase" class="status-grid"><div><dt>{{ ui('queueRevision') }}</dt><dd>{{ queueBase.queue.revision }}</dd></div><div><dt>{{ ui('queueItemCount') }}</dt><dd>{{ queueBase.items.length }}</dd></div></dl>
+          <div class="actions"><button type="button" class="secondary-action" :disabled="queueBusy || queueDirty" @click="beginNewQueue">{{ ui('newQueue') }}</button><button type="button" class="primary-action" :disabled="queueBusy" @click="saveQueueAs">{{ ui('saveAs') }}</button><button type="button" class="primary-action" :disabled="queueBusy || !queueBase || !queueDirty || queueStale" @click="updateQueue">{{ ui('updateQueue') }}</button><button type="button" class="secondary-action" :disabled="queueBusy || (!queueDirty && !queueStale)" @click="resetQueue">{{ ui('resetQueue') }}</button><button type="button" class="secondary-action" :disabled="queueBusy || !queueBase || queueDirty || queueStale" @click="duplicateQueue">{{ ui('duplicateQueue') }}</button><button type="button" class="danger-action" :disabled="queueBusy || !queueBase || queueDirty || queueStale" @click="deleteQueue">{{ ui('deleteQueue') }}</button></div>
+          <div v-if="queueError" class="inline-error" role="alert">{{ queueError }}</div>
+        </details>
       </div>
 
       <div v-else-if="activeWorkspace === 'presets'" class="workspace-stack">

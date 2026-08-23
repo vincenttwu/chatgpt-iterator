@@ -472,5 +472,131 @@
   },
   "presetOperationFailed": {
     "message": "Preset operation failed"
+  },
+  "queueLibrary": {
+    "message": "Queue library"
+  },
+  "queueWorkingCopy": {
+    "message": "Queue working copy"
+  },
+  "queueLibraryDescription": {
+    "message": "Create ordered message queues for Queue-mode runs."
+  },
+  "savedQueue": {
+    "message": "Saved queue"
+  },
+  "chooseQueue": {
+    "message": "Choose a queue"
+  },
+  "loadQueue": {
+    "message": "Load queue"
+  },
+  "noQueues": {
+    "message": "No queues yet."
+  },
+  "queueName": {
+    "message": "Queue name"
+  },
+  "newQueue": {
+    "message": "New queue"
+  },
+  "queueNewState": {
+    "message": "New"
+  },
+  "queueSavedState": {
+    "message": "Saved"
+  },
+  "queueModifiedState": {
+    "message": "Modified"
+  },
+  "queueStaleState": {
+    "message": "Stale"
+  },
+  "queueStaleGuard": {
+    "message": "This queue changed in the background. Reset before updating so local edits are not overwritten."
+  },
+  "queueDirtyGuard": {
+    "message": "Reset or save the current queue edits before loading another queue."
+  },
+  "queueOperationFailed": {
+    "message": "Queue operation failed."
+  },
+  "queueItems": {
+    "message": "Queue items"
+  },
+  "queueItem": {
+    "message": "Queue item"
+  },
+  "queueItemSource": {
+    "message": "Source"
+  },
+  "literalMessage": {
+    "message": "Literal message"
+  },
+  "templateReference": {
+    "message": "Template"
+  },
+  "queueMessage": {
+    "message": "Message"
+  },
+  "queueTemplate": {
+    "message": "Template"
+  },
+  "chooseQueueTemplate": {
+    "message": "Choose a template"
+  },
+  "queueEnabled": {
+    "message": "Enabled"
+  },
+  "delayAfterOverride": {
+    "message": "Delay after"
+  },
+  "useRunDelay": {
+    "message": "Use run delay"
+  },
+  "moveUp": {
+    "message": "Move up"
+  },
+  "moveDown": {
+    "message": "Move down"
+  },
+  "remove": {
+    "message": "Remove"
+  },
+  "addQueueItem": {
+    "message": "Add item"
+  },
+  "updateQueue": {
+    "message": "Update queue"
+  },
+  "resetQueue": {
+    "message": "Reset queue"
+  },
+  "duplicateQueue": {
+    "message": "Duplicate queue"
+  },
+  "deleteQueue": {
+    "message": "Delete queue"
+  },
+  "queueRevision": {
+    "message": "Queue revision"
+  },
+  "queueModeDescription": {
+    "message": "Send each enabled queue item once, in order."
+  },
+  "runMode": {
+    "message": "Run mode"
+  },
+  "runQueue": {
+    "message": "Queue"
+  },
+  "chooseRunQueue": {
+    "message": "Choose a queue"
+  },
+  "queueItemCount": {
+    "message": "Items"
+  },
+  "queuePresetApplied": {
+    "message": "Queue preset applied to the disposable Run configuration."
   }
 }

@@ -1,9 +1,9 @@
 import { ContractError, ERROR_CODES } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
 import type { ChatGptTabRegistrySnapshot, ChatGptTabLifecycleState } from '../tabs/types.ts';
-import { createReadyRun, createRepeatRunState, nextRunState, requireRepeatRunState } from './model.ts';
+import { createQueueRunState, createReadyRun, createRepeatRunState, nextRunState, requireRunExecutionState } from './model.ts';
 import { DurableRunRepository, type RunMutationResult } from './repository.ts';
-import { isRunActive, isRunTerminal, type DurableRunSnapshot, type RepeatRunState, type RunActiveState } from './types.ts';
+import { isRunActive, isRunTerminal, type DurableRunSnapshot, type RunActiveState, type RunExecutionState } from './types.ts';
 
 function requireGeneration(value: unknown): number {
   if (!Number.isSafeInteger(value) || (value as number) < 1) throw new ContractError(ERROR_CODES.invalidMessage, 'expected generation must be a positive safe integer');
@@ -21,8 +21,8 @@ function resumeBase(current: DurableRunSnapshot): RunActiveState {
   return 'running';
 }
 
-function executionWith(current: DurableRunSnapshot, patch: Partial<RepeatRunState>): RepeatRunState {
-  return requireRepeatRunState({ ...current.execution, ...patch });
+function executionWith(current: DurableRunSnapshot, patch: Record<string, unknown>): RunExecutionState {
+  return requireRunExecutionState({ ...current.execution, ...patch });
 }
 
 export class DurableRunManager {
@@ -55,21 +55,21 @@ export class DurableRunManager {
     autoContinue?: unknown;
     autoScroll?: unknown;
     preventDiscard?: unknown;
+    mode?: unknown;
+    queueId?: unknown;
+    queueRevision?: unknown;
+    queueItems?: unknown;
   }): Promise<RunMutationResult> {
     const now = this.#repository.now();
+    const execution = input.mode === 'queue'
+      ? createQueueRunState({ queueId: input.queueId, queueRevision: input.queueRevision, items: input.queueItems, delaySeconds: input.delaySeconds, autoContinue: input.autoContinue, autoScroll: input.autoScroll, preventDiscard: input.preventDiscard })
+      : createRepeatRunState({ messageTemplate: input.messageTemplate, totalIterations: input.totalIterations, delaySeconds: input.delaySeconds, autoContinue: input.autoContinue, autoScroll: input.autoScroll, preventDiscard: input.preventDiscard });
     const snapshot = createReadyRun({
       id: input.runId ?? this.#repository.createId(),
       targetTabId: requireTabId(input.targetTabId, 'targetTabId'),
       targetWindowId: requireTabId(input.targetWindowId, 'targetWindowId'),
       now,
-      execution: createRepeatRunState({
-        messageTemplate: input.messageTemplate,
-        totalIterations: input.totalIterations,
-        delaySeconds: input.delaySeconds,
-        autoContinue: input.autoContinue,
-        autoScroll: input.autoScroll,
-        preventDiscard: input.preventDiscard,
-      }),
+      execution,
     });
     const result = await this.#repository.create(snapshot, input.commandId);
     this.#publish(result.snapshot);
@@ -90,15 +90,17 @@ export class DurableRunManager {
     iteration: number;
     message: string;
     assistantBaselineSignature: string;
+    delayAfterSeconds?: number | null;
   }): Promise<RunMutationResult> {
     return await this.#transition(runId, expectedGeneration, commandId, 'iteration_prepared', (current, now) => {
       if (current.lifecycleState !== 'running') throw new ContractError(ERROR_CODES.staleRequest, `cannot prepare iteration from ${current.lifecycleState}`);
       if (input.iteration !== current.execution.completedIterations + 1 || input.iteration > current.execution.totalIterations) {
-        throw new ContractError(ERROR_CODES.staleRequest, 'iteration number is not the next repeat iteration');
+        throw new ContractError(ERROR_CODES.staleRequest, 'iteration number is not the next run item');
       }
       const execution = executionWith(current, {
         activeIteration: input.iteration,
         activeMessage: input.message,
+        activeDelayAfterSeconds: input.delayAfterSeconds ?? null,
         assistantBaselineSignature: input.assistantBaselineSignature,
         nextDueAt: null,
       });
@@ -117,6 +119,7 @@ export class DurableRunManager {
         completedIterations,
         activeIteration: null,
         activeMessage: null,
+        activeDelayAfterSeconds: null,
         assistantBaselineSignature: null,
         nextDueAt: done ? null : nextDueAt,
       });

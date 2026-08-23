@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 11
+revision: 12
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T03:52:00+08:00
+updated_at: 2026-08-24T04:07:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -412,16 +412,18 @@ Expose the durable runtime through the five agreed workspaces without turning UI
 
 #### Work items
 
-- [ ] Ordered queue + queue items with stable IDs and transactional saves.
-- [ ] Item can use literal message or reusable Template reference.
-- [ ] Enable/disable item and optional per-item `delayAfter` override.
-- [ ] Team-standard explicit Move Up/Move Down/Remove controls; drag may be added later only as enhancement, never sole ordering method.
-- [ ] `QueueMessageSource` plugs into the same run engine as Repeat.
+- [x] Ordered queue + queue items with stable IDs and transactional saves.
+- [x] Item can use literal message or reusable Template reference.
+- [x] Enable/disable item and optional per-item `delayAfter` override.
+- [x] Team-standard explicit Move Up/Move Down/Remove controls; drag may be added later only as enhancement, never sole ordering method.
+- [x] `QueueMessageSource` plugs into the same run engine as Repeat.
 
 #### Step acceptance evidence
 
-- [ ] Queue transaction/order/reference tests pass.
-- [ ] Same run lifecycle handles Repeat and Queue without mode-specific duplicate orchestration.
+- [x] Queue transaction/order/reference tests pass.
+- [x] Same run lifecycle handles Repeat and Queue without mode-specific duplicate orchestration.
+
+**STEP-12 fast-path result:** added a persistence-backed Queue domain/runtime over the existing physical-v1 `queues` and `queueItems` stores with stable queue/item UUID identity, monotonic queue revisions, transactional whole-queue saves and fail-closed Template/Preset reference integrity. Queue items support exactly one literal message or Template reference, enabled/disabled state and an optional per-item post-response delay override; enabled items cannot reference disabled Templates. Queue hydration resolves current Template content and Queue run creation freezes the enabled resolved items into durable run state so later Queue/Template edits cannot silently rewrite an active run. `QueueMessageSource` now plugs into the same durable coordinator used by Repeat, preserving generation/idempotency fencing, pause/resume/stop, response observation, scheduling, worker recovery and tab/discard lifecycle without a second orchestration loop. The Queue Side Panel workspace reuses the enforced team-standard reusable-definition lifecycle plus explicit Move Up/Move Down/Remove ordering controls, and Run now exposes an explicit Repeat/Queue mode selector; Queue-shaped Presets hydrate the disposable Run draft rather than mutating durable execution. Focused STEP-12 validation passed 10/10, strict queue/domain/runtime/UI TypeScript passed with TypeScript 5.8.3, and the single STEP-11 Presets predecessor smoke passed 10/10. IndexedDB remains physical v1, Chrome permissions remain `sidePanel`, `storage`, `alarms`, and the inherited WXT dependency-hydration/full Vue build lane remains `deferred_environment`.
 
 ### STEP-13 — Settings, Diagnostics, History and Data Management Surface
 
@@ -547,7 +549,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`) — direct-first Run workspace, explicit target picker, live durable controls/progress and enforced team-standard shell complete.
 - [x] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`) — stable IDs/revisions, bounded preview grammar and team-standard dirty/stale working-copy lifecycle complete.
 - [x] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`) — stable referenced presets, explicit disposable Run hydration, team-standard lifecycle and reference integrity complete.
-- [ ] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`).
+- [x] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`) — transactional ordered queues, frozen resolved run items, same-coordinator Queue execution and team-standard Queue workspace complete.
 - [ ] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`).
 - [ ] STEP-14 — Versioned Export, Import, Merge/Replace and Backup Semantics (`v0.0.14`).
 - [ ] STEP-15 — Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening (`v0.0.15`).
@@ -583,4 +585,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 8 | Complete STEP-08 Repeat execution, message-source/template rendering, event-driven response orchestration, conservative recovery, short-delay timers and coarse alarm scheduling; close Phase P2 and make v0.0.9 STEP-09 next. | historical |
 | 2026-08-24 | 9 | Complete STEP-09 direct-first Run workspace and five-tab product shell with explicit target selection, optional preset path, durable lifecycle controls/progress, truthful frozen/discarded/reconnect states and separated tab/run invalidations; v0.0.10 STEP-10 next. | historical |
 | 2026-08-24 | 10 | Complete STEP-10 persistence-backed Templates workspace with stable IDs/revisions, exact bounded Repeat variables, preview/validation, team-standard lifecycle, and dirty/stale working-copy protection; v0.0.11 STEP-11 next. | historical |
-| 2026-08-24 | 11 | Complete STEP-11 persistence-backed Presets workspace with stable Template/Queue references, explicit disposable Run hydration, team-standard lifecycle, dirty/stale protection and effective prevent-discard defaults; v0.0.12 STEP-12 next. | active |
+| 2026-08-24 | 11 | Complete STEP-11 persistence-backed Presets workspace with stable Template/Queue references, explicit disposable Run hydration, team-standard lifecycle, dirty/stale protection and effective prevent-discard defaults; v0.0.12 STEP-12 next. | historical |
+| 2026-08-24 | 12 | Complete STEP-12 transactional Queue workspace/execution mode with stable ordered items, frozen Template/literal resolution, per-item delay overrides, Queue Preset hydration and same-coordinator Repeat/Queue lifecycle; v0.0.13 STEP-13 next. | active |

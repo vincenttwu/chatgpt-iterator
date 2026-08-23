@@ -19,6 +19,17 @@ export interface RepeatRunDraft {
   readonly preventDiscard: boolean;
 }
 
+
+export interface QueueRunDraft {
+  readonly targetTabId: number;
+  readonly targetWindowId: number;
+  readonly queueId: string;
+  readonly delaySeconds: number;
+  readonly autoContinue: boolean;
+  readonly autoScroll: boolean;
+  readonly preventDiscard: boolean;
+}
+
 export interface RunProgressView {
   readonly completed: number;
   readonly total: number;
@@ -83,6 +94,21 @@ export class SidePanelOperationalClient {
       runId: created.id,
       expectedGeneration: created.generation,
     }));
+  }
+
+  async startQueue(draft: QueueRunDraft): Promise<DurableRunSnapshot> {
+    await this.bindTarget(draft.targetTabId);
+    const created = requireRunMutation(await this.#request('command', RUN_RUNTIME_OPERATIONS.create, {
+      mode: 'queue',
+      targetTabId: draft.targetTabId,
+      targetWindowId: draft.targetWindowId,
+      queueId: draft.queueId,
+      delaySeconds: draft.delaySeconds,
+      autoContinue: draft.autoContinue,
+      autoScroll: draft.autoScroll,
+      preventDiscard: draft.preventDiscard,
+    }));
+    return requireRunMutation(await this.#request('command', RUN_RUNTIME_OPERATIONS.start, { runId: created.id, expectedGeneration: created.generation }));
   }
 
   async start(run: DurableRunSnapshot): Promise<DurableRunSnapshot> {
