@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 4
+revision: 6
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-23T18:51:00Z
+updated_at: 2026-08-24T03:05:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -16,7 +16,7 @@ scope:
   packages: []
   paths: [entrypoints/, src/, tests/, docs/, agents/records/, dumps/donors/]
 relations:
-  related: [ADR-0001, CONSTRAINT-0001, REFERENCE-0001, REFERENCE-0002, REFERENCE-0003, AUDIT-0001]
+  related: [ADR-0001, CONSTRAINT-0001, REFERENCE-0001, REFERENCE-0002, REFERENCE-0003, REFERENCE-0004, REFERENCE-0005, AUDIT-0001]
   depends_on: [ADR-0001, CONSTRAINT-0001]
   blocks: []
   supersedes: []
@@ -267,16 +267,18 @@ Make authoritative user definitions and runs survive panel/worker churn before f
 
 #### Work items
 
-- [ ] Physical IndexedDB schema for metadata, templates, presets, queues, queue items, runs and run events/history.
-- [ ] Stable repository/domain representations; storage internals do not leak upward.
-- [ ] `chrome.storage.local/session/sync` adapters with explicit purpose and namespace.
-- [ ] Separate physical DB version from logical model/export format versions.
-- [ ] Transactional queue/item and import mutation boundaries.
+- [x] Physical IndexedDB schema for metadata, templates, presets, queues, queue items, runs and run events/history.
+- [x] Stable repository/domain representations; storage internals do not leak upward.
+- [x] `chrome.storage.local/session/sync` adapters with explicit purpose and namespace.
+- [x] Separate physical DB version from logical model/export format versions.
+- [x] Transactional queue/item and import mutation boundaries.
 
 #### Step acceptance evidence
 
-- [ ] Focused repository/migration/transaction tests pass.
-- [ ] Worker and extension-page storage ownership is explicit; content script has no application DB access.
+- [x] Focused repository/migration/transaction tests pass (8/8 STEP-06 tests plus strict persistence TypeScript).
+- [x] Worker and extension-page storage ownership is explicit; content script has no application DB access.
+
+**STEP-06 fast-path result:** implemented extension-origin IndexedDB physical v1 with seven stores (`metadata`, `templates`, `presets`, `queues`, `queueItems`, `runs`, `runEvents`), bounded query indexes, JSON-safe stable repository records, atomic queue/configuration transaction boundaries, and separate physical/logical/export version authorities. Added post-open resumable logical migration metadata and purpose-specific namespaced Chrome local/session/sync adapters. Background initialization now owns persistence bootstrap and forces all Chrome storage areas to `TRUSTED_CONTEXTS`; the ChatGPT content script imports no persistence surface. Manifest authority adds only `storage` beside the existing `sidePanel` permission and explicitly does not add `unlimitedStorage`. Current first-party storage authority is recorded in REFERENCE-0005. Focused STEP-06 validation passed 8/8 and the dependency-free persistence TypeScript lane passed with TypeScript 5.8.3. The inherited WXT package-hydration/build lane remains `deferred_environment` and was not retried because no dependency changed.
 
 ### STEP-07 — Durable Run State Machine, Recovery and Command Semantics
 
@@ -529,7 +531,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-03 — Versioned Cross-Context Contracts and Control Plane (`v0.0.3`) — strict envelopes, background authority, bounded hydration/invalidation, reconnect and stale-response protection complete.
 - [x] STEP-04 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract (`v0.0.4`) — centralized selectors, semantic content adapter/server, MutationObserver state stream, response tracker and diagnostics complete.
 - [x] STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle (`v0.0.5`) — explicit targets, lifecycle normalization, reload/replacement handling and reversible discard guard complete; Phase P1 closed.
-- [ ] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`).
+- [x] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`) — IndexedDB physical v1, repository/transaction boundaries, logical migrations and trusted Chrome storage tiers complete.
 - [ ] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`).
 - [ ] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
 - [ ] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`).
@@ -565,4 +567,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 2 | Accept explicit continuation from the v0.0.1 overlay, complete STEP-02 executable WXT/Vue Side Panel shell, and carry exact v0.0.0 byte reconciliation plus package hydration as explicit provenance/environment deferrals. | historical |
 | 2026-08-24 | 3 | Complete STEP-03 versioned JSON-safe cross-context contracts, background-owned control-plane hydration/invalidation and Side Panel freshness/reconnect semantics; v0.0.4 STEP-04 next. | historical |
 | 2026-08-24 | 4 | Complete STEP-04 product-owned ChatGPT selector/adapter/observation/diagnostics boundary with userscript semantics and no remote runtime code; v0.0.5 STEP-05 next. | historical |
-| 2026-08-24 | 5 | Complete STEP-05 explicit ChatGPT tab registry, target binding, lifecycle normalization, reload/replacement/close handling and reversible autoDiscardable guard; close Phase P1 and authorize v0.0.6 STEP-06 next. | active |
+| 2026-08-24 | 5 | Complete STEP-05 explicit ChatGPT tab registry, target binding, lifecycle normalization, reload/replacement/close handling and reversible autoDiscardable guard; close Phase P1 and authorize v0.0.6 STEP-06 next. | historical |
+| 2026-08-24 | 6 | Complete STEP-06 IndexedDB physical v1, repositories, storage tiers, transaction boundaries and logical migration authority; v0.0.7 STEP-07 next. | active |

@@ -1,29 +1,29 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.5
+version: v0.0.6
 status: accepted_implementation_overlay
 iteration:
   kind: implementation
   roadmap: ROADMAP-0001
-  step: STEP-05
+  step: STEP-06
   step_status: complete
-  phase: P1
-  phase_status: complete
+  phase: P2
+  phase_status: active
 baseline:
-  working_parent: v0.0.4
+  working_parent: v0.0.5
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step05: "9/9 pass"
-  core_tabs_runtime_control_typescript: "pass with TypeScript 5.8.3"
-  predecessor_chatgpt_adapter_smoke: "9/9 pass"
+  focused_step06: "8/8 pass"
+  core_persistence_typescript: "pass with TypeScript 5.8.3"
+  predecessor_tab_lifecycle_smoke: "9/9 pass"
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build: inherited_deferred_environment
 research:
-  chrome_tabs_lifecycle: refreshed_first_party_2026_08_24
-  record: REFERENCE-0004
+  chrome_storage_indexeddb: refreshed_first_party_2026_08_24
+  record: REFERENCE-0005
 next:
-  version: v0.0.6
-  step: STEP-06
-  title: IndexedDB v1, Repositories, Storage Tiers and Migration Authority
+  version: v0.0.7
+  step: STEP-07
+  title: Durable Run State Machine, Recovery and Command Semantics

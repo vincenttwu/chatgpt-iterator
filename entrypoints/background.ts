@@ -2,6 +2,7 @@ import { browser } from 'wxt/browser';
 import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '../src/control-plane/index.ts';
 import { BackgroundMessageRouter, TabLifecycleCoordinator, TabRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
+import { bootstrapApplicationPersistence, restrictChromeStorageToTrustedContexts, type ChromeStorageLike } from '../src/persistence/index.ts';
 
 const tabBrowser = browser.tabs as unknown as TabBrowserLike;
 const authority = new ControlPlaneAuthority();
@@ -21,6 +22,13 @@ tabs.subscribe((snapshot) => {
 });
 
 export default defineBackground(() => {
+  void restrictChromeStorageToTrustedContexts(browser.storage as unknown as ChromeStorageLike).catch((error: unknown) => {
+    console.error('chatgpt-iterator: failed to restrict extension storage access', error);
+  });
+  void bootstrapApplicationPersistence().catch((error: unknown) => {
+    console.error('chatgpt-iterator: failed to initialize persistence', error);
+  });
+
   if (browser.sidePanel?.setPanelBehavior) {
     void browser.sidePanel
       .setPanelBehavior({ openPanelOnActionClick: true })
