@@ -1,21 +1,31 @@
 import { requireMessageEnvelope } from '../core/index.ts';
+import { RUN_RUNTIME_OPERATIONS } from '../runs/types.ts';
 import type { ControlPlaneServer } from '../control-plane/server.ts';
 import { TAB_RUNTIME_OPERATIONS } from '../tabs/types.ts';
+import type { RunRuntimeServer } from './run-runtime-server.ts';
 import type { RuntimeMessageSenderLike, TabRuntimeServer } from './tab-runtime-server.ts';
 
 const TAB_OPERATIONS = new Set<string>(Object.values(TAB_RUNTIME_OPERATIONS));
+const RUN_OPERATIONS = new Set<string>(Object.values(RUN_RUNTIME_OPERATIONS));
 
 export class BackgroundMessageRouter {
   readonly #control: ControlPlaneServer;
   readonly #tabs: TabRuntimeServer;
+  readonly #runs: RunRuntimeServer | undefined;
 
-  constructor(control: ControlPlaneServer, tabs: TabRuntimeServer) {
+  constructor(control: ControlPlaneServer, tabs: TabRuntimeServer, runs?: RunRuntimeServer) {
     this.#control = control;
     this.#tabs = tabs;
+    this.#runs = runs;
   }
 
   async handle(raw: unknown, sender: RuntimeMessageSenderLike = {}): Promise<unknown> {
     const message = requireMessageEnvelope(raw);
-    return TAB_OPERATIONS.has(message.operation) ? this.#tabs.handle(message, sender) : this.#control.handle(message);
+    if (TAB_OPERATIONS.has(message.operation)) return await this.#tabs.handle(message, sender);
+    if (RUN_OPERATIONS.has(message.operation)) {
+      if (this.#runs === undefined) return await this.#control.handle(message);
+      return await this.#runs.handle(message);
+    }
+    return await this.#control.handle(message);
   }
 }

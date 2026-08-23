@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 6
+revision: 7
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T03:05:00+08:00
+updated_at: 2026-08-24T03:11:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -289,16 +289,18 @@ Make authoritative user definitions and runs survive panel/worker churn before f
 
 #### Work items
 
-- [ ] Run states including ready/running/waiting-response/waiting-delay/paused/frozen/discarded/completed/failed/stopped.
-- [ ] Run IDs/generation fences so stale async completions cannot affect newer runs.
-- [ ] Persist authoritative transition before externally observable continuation where required.
-- [ ] Pause/resume/stop/reconcile semantics across worker wake/restart.
-- [ ] Structured bounded run events/history.
+- [x] Run states including ready/running/waiting-response/waiting-delay/paused/frozen/discarded/completed/failed/stopped.
+- [x] Run IDs/generation fences so stale async completions cannot affect newer runs.
+- [x] Persist authoritative transition before externally observable continuation where required.
+- [x] Pause/resume/stop/reconcile semantics across worker wake/restart.
+- [x] Structured bounded run events/history.
 
 #### Step acceptance evidence
 
-- [ ] Focused transition/idempotency/recovery tests pass.
-- [ ] Closing Side Panel does not own or terminate a run.
+- [x] Focused transition/idempotency/recovery tests pass (8/8 STEP-07 tests plus strict run/runtime TypeScript).
+- [x] Closing Side Panel does not own or terminate a run; durable run authority is background/persistence-owned and Port disconnect only affects panel connectivity.
+
+**STEP-07 fast-path result:** implemented a durable run lifecycle with explicit `ready`, `running`, `waiting_response`, `waiting_delay`, `paused`, `frozen`, `discarded`, `completed`, `failed` and `stopped` states over the existing IndexedDB `runs`/`runEvents` stores. Every accepted mutation atomically persists the next snapshot and structured event before manager publication; generations advance exactly once per mutation and worker recovery advances every nonterminal generation to fence pre-restart asynchronous work. Exact request replay is idempotent through request/command UUIDs, event payloads are bounded to 4096 bytes, per-run history is retained at a bounded 256 events, and stale tab-reconciliation races are ignored by generation rather than overwriting newer authority. Background runtime now exposes bounded create/start/pause/resume/stop/get/list commands and reconciles frozen/discarded/closed tab state without Side Panel ownership. Repeat message sourcing, response orchestration, delay scheduling and automatic Continue remain STEP-08. Focused STEP-07 validation passed 8/8; strict core+persistence+tabs+runs+runtime TypeScript passed with TypeScript 5.8.3; STEP-06 persistence is the single predecessor smoke. The inherited WXT package-hydration/build lane remains `deferred_environment`.
 
 ### STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler
 
@@ -532,7 +534,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-04 — ChatGPT Adapter, Selector Registry, Observation and Diagnostics Contract (`v0.0.4`) — centralized selectors, semantic content adapter/server, MutationObserver state stream, response tracker and diagnostics complete.
 - [x] STEP-05 — ChatGPT Tab Registry, Explicit Targeting and Browser Lifecycle (`v0.0.5`) — explicit targets, lifecycle normalization, reload/replacement handling and reversible discard guard complete; Phase P1 closed.
 - [x] STEP-06 — IndexedDB v1, Repositories, Storage Tiers and Migration Authority (`v0.0.6`) — IndexedDB physical v1, repository/transaction boundaries, logical migrations and trusted Chrome storage tiers complete.
-- [ ] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`).
+- [x] STEP-07 — Durable Run State Machine, Recovery and Command Semantics (`v0.0.7`) — durable lifecycle, generation fencing, idempotent commands, worker/tab reconciliation and bounded events complete.
 - [ ] STEP-08 — Repeat Mode, Message Sources and Short-Delay Scheduler (`v0.0.8`).
 - [ ] STEP-09 — Run Workspace and Five-Tab Product Shell (`v0.0.9`).
 - [ ] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`).
@@ -568,4 +570,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 3 | Complete STEP-03 versioned JSON-safe cross-context contracts, background-owned control-plane hydration/invalidation and Side Panel freshness/reconnect semantics; v0.0.4 STEP-04 next. | historical |
 | 2026-08-24 | 4 | Complete STEP-04 product-owned ChatGPT selector/adapter/observation/diagnostics boundary with userscript semantics and no remote runtime code; v0.0.5 STEP-05 next. | historical |
 | 2026-08-24 | 5 | Complete STEP-05 explicit ChatGPT tab registry, target binding, lifecycle normalization, reload/replacement/close handling and reversible autoDiscardable guard; close Phase P1 and authorize v0.0.6 STEP-06 next. | historical |
-| 2026-08-24 | 6 | Complete STEP-06 IndexedDB physical v1, repositories, storage tiers, transaction boundaries and logical migration authority; v0.0.7 STEP-07 next. | active |
+| 2026-08-24 | 6 | Complete STEP-06 IndexedDB physical v1, repositories, storage tiers, transaction boundaries and logical migration authority; v0.0.7 STEP-07 next. | historical |
+| 2026-08-24 | 7 | Complete STEP-07 durable run lifecycle, generation/idempotency fences, worker/tab recovery semantics and bounded run-event history; v0.0.8 STEP-08 next. | active |
