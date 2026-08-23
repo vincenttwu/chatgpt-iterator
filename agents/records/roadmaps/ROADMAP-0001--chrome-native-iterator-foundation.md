@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 12
+revision: 13
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T04:07:00+08:00
+updated_at: 2026-08-24T04:11:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -434,23 +434,25 @@ Expose the durable runtime through the five agreed workspaces without turning UI
 
 #### Work items
 
-- [ ] Defaults for preset/delay/auto-continue/recovery/tab guard behavior.
-- [ ] Selector/adapter diagnostics distinguishing required vs conditional capabilities.
-- [ ] Tab/runtime/database/schema/migration/storage diagnostics without exposing private payloads by default.
-- [ ] Run history browse/clear policy with bounded retention.
-- [ ] Appearance follows system/native-aware team standard; no private Chrome theme scraping.
+- [x] Defaults for preset/delay/auto-continue/recovery/tab guard behavior.
+- [x] Selector/adapter diagnostics distinguishing required vs conditional capabilities.
+- [x] Tab/runtime/database/schema/migration/storage diagnostics without exposing private payloads by default.
+- [x] Run history browse/clear policy with bounded retention.
+- [x] Appearance follows system/native-aware team standard; no private Chrome theme scraping.
 
 #### Step acceptance evidence
 
-- [ ] Settings validation/persistence and diagnostics projection tests pass.
-- [ ] Settings UI follows team-standard surface/action/state grammar.
+- [x] Settings validation/persistence and diagnostics projection tests pass.
+- [x] Settings UI follows team-standard surface/action/state grammar.
+
+**STEP-13 fast-path result:** added sync-backed revisioned Settings defaults for optional Preset hydration, delay, auto-continue/scroll, prevent-discard, worker recovery (`resume`/`pause`) and bounded terminal history retention; background recovery policy and terminal-history pruning now enforce those settings. Privacy-safe diagnostics compose the existing required/conditional ChatGPT adapter health with tab/runtime/database/migration/storage/data inventory without exposing message bodies, composer drafts or assistant text. The Settings workspace now provides team-standard Execution defaults, Runtime health, Run history and Local data inventory surfaces while keeping Run direct-first; settings only hydrate disposable Run drafts. History clear/retention never remove nonterminal runs, appearance remains system/native-aware without private Chrome theme scraping, and STEP-14 retains ownership of versioned export/import/merge/replace/full-backup semantics. Focused STEP-13 validation passed 10/10, strict Settings/Diagnostics/History/runtime/UI TypeScript passed with TypeScript 5.8.3, and the single STEP-12 Queue predecessor smoke passed 10/10. IndexedDB remains physical v1, Chrome permissions remain `sidePanel`, `storage`, `alarms`, and the inherited WXT dependency-hydration/full Vue build lane remains `deferred_environment`.
 
 ## Phase P3 success criteria
 
-- [ ] All five top-level workspaces are functional.
-- [ ] Templates, Presets and Queues share consistent reusable-object semantics.
-- [ ] Run remains the primary operational path and does not require setup ceremony.
-- [ ] Normal user paths do not require raw IDs/schema/JSON.
+- [x] All five top-level workspaces are functional.
+- [x] Templates, Presets and Queues share consistent reusable-object semantics.
+- [x] Run remains the primary operational path and does not require setup ceremony.
+- [x] Normal user paths do not require raw IDs/schema/JSON.
 
 # Phase P4 — Portability, Lifecycle Hardening and Closure
 
@@ -550,7 +552,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-10 — Templates Workspace and Variable Contract (`v0.0.10`) — stable IDs/revisions, bounded preview grammar and team-standard dirty/stale working-copy lifecycle complete.
 - [x] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`) — stable referenced presets, explicit disposable Run hydration, team-standard lifecycle and reference integrity complete.
 - [x] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`) — transactional ordered queues, frozen resolved run items, same-coordinator Queue execution and team-standard Queue workspace complete.
-- [ ] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`).
+- [x] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`) — sync-backed defaults, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surface complete; Phase P3 closed.
 - [ ] STEP-14 — Versioned Export, Import, Merge/Replace and Backup Semantics (`v0.0.14`).
 - [ ] STEP-15 — Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening (`v0.0.15`).
 - [ ] STEP-16 — Integrated Product/UI Standard/Accessibility/Package Closure (`v0.0.16`).
@@ -586,4 +588,5 @@ Material changes to scope, ordering, identity, information architecture, team-st
 | 2026-08-24 | 9 | Complete STEP-09 direct-first Run workspace and five-tab product shell with explicit target selection, optional preset path, durable lifecycle controls/progress, truthful frozen/discarded/reconnect states and separated tab/run invalidations; v0.0.10 STEP-10 next. | historical |
 | 2026-08-24 | 10 | Complete STEP-10 persistence-backed Templates workspace with stable IDs/revisions, exact bounded Repeat variables, preview/validation, team-standard lifecycle, and dirty/stale working-copy protection; v0.0.11 STEP-11 next. | historical |
 | 2026-08-24 | 11 | Complete STEP-11 persistence-backed Presets workspace with stable Template/Queue references, explicit disposable Run hydration, team-standard lifecycle, dirty/stale protection and effective prevent-discard defaults; v0.0.12 STEP-12 next. | historical |
-| 2026-08-24 | 12 | Complete STEP-12 transactional Queue workspace/execution mode with stable ordered items, frozen Template/literal resolution, per-item delay overrides, Queue Preset hydration and same-coordinator Repeat/Queue lifecycle; v0.0.13 STEP-13 next. | active |
+| 2026-08-24 | 12 | Complete STEP-12 transactional Queue workspace/execution mode with stable ordered items, frozen Template/literal resolution, per-item delay overrides, Queue Preset hydration and same-coordinator Repeat/Queue lifecycle; v0.0.13 STEP-13 next. | historical |
+| 2026-08-24 | 13 | Complete STEP-13 sync-backed Settings, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surfaces; close Phase P3 and make v0.0.14 STEP-14 portability next. | active |

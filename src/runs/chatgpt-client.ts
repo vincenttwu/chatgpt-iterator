@@ -1,7 +1,7 @@
 import { ContractError, ERROR_CODES, createRequest, requireMessageEnvelope } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
 import type { TabBrowserLike } from '../tabs/browser.ts';
-import { CHATGPT_ADAPTER_OPERATIONS, type ChatGptAdapterSnapshot, type ChatGptClickResult, type ChatGptSendResult } from '../chatgpt/types.ts';
+import { CHATGPT_ADAPTER_OPERATIONS, type ChatGptAdapterDiagnostics, type ChatGptAdapterSnapshot, type ChatGptClickResult, type ChatGptSendResult } from '../chatgpt/types.ts';
 
 function requireSuccessfulValue(raw: unknown): unknown {
   const response = requireMessageEnvelope(raw);
@@ -17,6 +17,10 @@ export class ChatGptRunClient {
 
   async snapshot(tabId: number): Promise<ChatGptAdapterSnapshot> {
     return await this.#request(tabId, 'query', CHATGPT_ADAPTER_OPERATIONS.snapshot, {}) as ChatGptAdapterSnapshot;
+  }
+
+  async diagnostics(tabId: number): Promise<ChatGptAdapterDiagnostics> {
+    return await this.#request(tabId, 'query', CHATGPT_ADAPTER_OPERATIONS.diagnostics, {}) as ChatGptAdapterDiagnostics;
   }
 
   async send(tabId: number, message: string, expectedAssistantBaselineSignature: string): Promise<ChatGptSendResult> {

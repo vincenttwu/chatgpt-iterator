@@ -66,7 +66,7 @@
     "message": "Create and manage reusable message templates with bounded variables and revision-safe working copies."
   },
   "settingsFoundationDescription": {
-    "message": "Settings, diagnostics, history, and data controls arrive in their owning roadmap step."
+    "message": "Manage execution defaults, adapter health, bounded run history, and local data inventory."
   },
   "futureCapability": {
     "message": "Domain behavior is intentionally deferred to its roadmap owner."
@@ -598,5 +598,200 @@
   },
   "queuePresetApplied": {
     "message": "Queue preset applied to the disposable Run configuration."
+  },
+  "settingsDefaults": {
+    "message": "Settings"
+  },
+  "executionDefaults": {
+    "message": "Execution defaults"
+  },
+  "settingsDescription": {
+    "message": "Defaults hydrate future disposable Run drafts; they never rewrite an active durable run."
+  },
+  "settingsSaved": {
+    "message": "Saved"
+  },
+  "settingsModified": {
+    "message": "Modified"
+  },
+  "settingsStale": {
+    "message": "Stale"
+  },
+  "settingsStaleGuard": {
+    "message": "Settings changed in another context. Reset before saving so local edits are not silently overwritten."
+  },
+  "defaultPreset": {
+    "message": "Default preset"
+  },
+  "noDefaultPreset": {
+    "message": "No default preset — direct configuration"
+  },
+  "defaultPresetUnavailable": {
+    "message": "Saved default preset is unavailable on this device"
+  },
+  "defaultPresetHelp": {
+    "message": "Optional. When available, this preset hydrates the initial Run draft; direct configuration remains first-class."
+  },
+  "defaultDelay": {
+    "message": "Default delay (seconds)"
+  },
+  "defaultAutoContinue": {
+    "message": "Default auto-continue"
+  },
+  "defaultAutoScroll": {
+    "message": "Default auto-scroll"
+  },
+  "defaultPreventDiscard": {
+    "message": "Default prevent discard"
+  },
+  "workerRecovery": {
+    "message": "Worker recovery"
+  },
+  "recoveryResume": {
+    "message": "Resume reconcilable work"
+  },
+  "recoveryPause": {
+    "message": "Pause interrupted work"
+  },
+  "workerRecoveryHelp": {
+    "message": "Applies on the next extension-worker restart. Recovery still advances the durable generation fence before any execution resumes."
+  },
+  "historyRetention": {
+    "message": "History retention"
+  },
+  "historyRetentionHelp": {
+    "message": "Keep at most this many terminal runs. Active and paused runs are never removed by history retention."
+  },
+  "appearanceSystem": {
+    "message": "Appearance: System"
+  },
+  "appearanceSystemHelp": {
+    "message": "Uses system fonts, native controls, CSS system colors, reduced-motion preferences, and forced-colors support. No private Chrome theme scraping."
+  },
+  "saveSettings": {
+    "message": "Save settings"
+  },
+  "resetSettings": {
+    "message": "Reset"
+  },
+  "applyDefaultsToRun": {
+    "message": "Apply defaults to Run"
+  },
+  "settingsOperationFailed": {
+    "message": "Settings operation failed"
+  },
+  "diagnostics": {
+    "message": "Diagnostics"
+  },
+  "runtimeHealth": {
+    "message": "Runtime health"
+  },
+  "diagnosticsDescription": {
+    "message": "Privacy-safe health projection for the bound ChatGPT adapter, runtime, tab lifecycle, database versions, migrations, and storage tiers."
+  },
+  "refreshDiagnostics": {
+    "message": "Refresh diagnostics"
+  },
+  "diagnosticsReady": {
+    "message": "Healthy"
+  },
+  "diagnosticsDegraded": {
+    "message": "Degraded"
+  },
+  "diagnosticsUnavailable": {
+    "message": "Unavailable"
+  },
+  "runtimeVersion": {
+    "message": "Extension version"
+  },
+  "connectedPanels": {
+    "message": "Connected panels"
+  },
+  "activeRuns": {
+    "message": "Active runs"
+  },
+  "eligibleTabs": {
+    "message": "Eligible tabs"
+  },
+  "boundTab": {
+    "message": "Bound tab"
+  },
+  "none": {
+    "message": "None"
+  },
+  "physicalDb": {
+    "message": "Physical DB"
+  },
+  "logicalModel": {
+    "message": "Logical model"
+  },
+  "migration": {
+    "message": "Migration"
+  },
+  "migrationComplete": {
+    "message": "Complete"
+  },
+  "migrationRunning": {
+    "message": "Running"
+  },
+  "notRecorded": {
+    "message": "Not recorded"
+  },
+  "adapterCapabilities": {
+    "message": "Adapter capabilities"
+  },
+  "requiredCapability": {
+    "message": "Required"
+  },
+  "conditionalCapability": {
+    "message": "Conditional"
+  },
+  "bindTabForDiagnostics": {
+    "message": "Bind a ChatGPT tab to inspect adapter selector health."
+  },
+  "history": {
+    "message": "History"
+  },
+  "runHistory": {
+    "message": "Run history"
+  },
+  "historyDescription": {
+    "message": "Browse bounded terminal-run summaries. Message bodies, composer drafts, and assistant text are not included."
+  },
+  "clearHistory": {
+    "message": "Clear terminal history"
+  },
+  "noHistory": {
+    "message": "No terminal runs are retained."
+  },
+  "failureCode": {
+    "message": "Failure code"
+  },
+  "historyOperationFailed": {
+    "message": "History operation failed"
+  },
+  "data": {
+    "message": "Data"
+  },
+  "dataInventory": {
+    "message": "Local data inventory"
+  },
+  "localData": {
+    "message": "Local"
+  },
+  "dataDescription": {
+    "message": "Record counts and storage responsibilities are visible without exposing private payload contents."
+  },
+  "runsLabel": {
+    "message": "Runs"
+  },
+  "runEvents": {
+    "message": "Run events"
+  },
+  "portabilityNext": {
+    "message": "Configuration portability is the next roadmap step"
+  },
+  "portabilityNextHelp": {
+    "message": "STEP-14 owns versioned export/import, merge/replace, preview, and full-backup semantics. This version does not fake those actions."
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "chatgpt-iterator",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "private": true,
   "type": "module",
   "description": "Chrome-native Side Panel controller for durable ChatGPT iteration workflows.",
@@ -23,7 +23,8 @@
     "test:step09": "node --experimental-strip-types --test tests/step09-run-ui.test.mjs",
     "test:step10": "node --experimental-strip-types --test tests/step10-templates.test.mjs",
     "test:step11": "node --experimental-strip-types --test tests/step11-presets.test.mjs",
-    "test:step12": "node --experimental-strip-types --test tests/step12-queues.test.mjs"
+    "test:step12": "node --experimental-strip-types --test tests/step12-queues.test.mjs",
+    "test:step13": "node --experimental-strip-types --test tests/step13-settings.test.mjs"
   },
   "dependencies": {
     "vue": "3.5.41"

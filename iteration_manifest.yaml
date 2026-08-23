@@ -1,26 +1,26 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.12
+version: v0.0.13
 status: accepted_implementation_overlay
 iteration:
   kind: implementation
   roadmap: ROADMAP-0001
-  step: STEP-12
+  step: STEP-13
   step_status: complete
   phase: P3
-  phase_status: active
+  phase_status: complete
 baseline:
-  working_parent: v0.0.11
+  working_parent: v0.0.12
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step12: "10/10 pass"
-  queue_domain_runtime_ui_typescript: "pass with TypeScript 5.8.3"
-  predecessor_preset_smoke: "10/10 pass"
+  focused_step13: "10/10 pass"
+  settings_diagnostics_history_typescript: "pass with TypeScript 5.8.3"
+  predecessor_queue_smoke: "10/10 pass"
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build: inherited_deferred_environment
 next:
-  version: v0.0.13
-  step: STEP-13
-  title: Settings, Diagnostics, History and Data Management Surface
+  version: v0.0.14
+  step: STEP-14
+  title: Versioned Export, Import, Merge/Replace and Backup Semantics

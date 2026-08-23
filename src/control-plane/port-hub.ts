@@ -19,6 +19,8 @@ export class ControlPlanePortHub {
     return true;
   }
 
+  size(): number { return this.#ports.size; }
+
   broadcast(reason: Exclude<ControlPlaneInvalidationReason, 'connected'>): void {
     for (const port of [...this.#ports]) {
       try { this.#send(port, reason); } catch { this.#ports.delete(port); }

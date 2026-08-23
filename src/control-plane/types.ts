@@ -5,7 +5,7 @@ export const CONTROL_PLANE_SCHEMA_VERSION = 1 as const;
 export const CONTROL_PLANE_PORT_NAME = 'chatgpt-iterator.panel.v1' as const;
 export const CONTROL_PLANE_OPERATIONS = Object.freeze({ hydrate: 'panel.hydrate' } as const);
 
-export type ControlPlaneInvalidationReason = 'connected' | 'authority_changed' | 'tab_changed' | 'run_changed' | 'template_changed' | 'preset_changed' | 'queue_changed' | 'runtime_recovered';
+export type ControlPlaneInvalidationReason = 'connected' | 'authority_changed' | 'tab_changed' | 'run_changed' | 'template_changed' | 'preset_changed' | 'queue_changed' | 'settings_changed' | 'history_changed' | 'runtime_recovered';
 
 export interface ControlPlaneSnapshot extends JsonObject {
   readonly schemaVersion: number;

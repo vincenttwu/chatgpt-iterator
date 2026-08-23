@@ -7,6 +7,9 @@ import type { ChatGptTabLifecycleState, ChatGptTabRegistrySnapshot, ChatGptTabTa
 import type { TemplateSnapshot } from '../../src/templates/index.ts';
 import type { PresetReferenceCatalog, PresetSnapshot } from '../../src/presets/index.ts';
 import type { QueueHydration, QueueReferenceCatalog, QueueSnapshot } from '../../src/queues/index.ts';
+import type { DiagnosticsSnapshot } from '../../src/diagnostics/index.ts';
+import type { RunHistorySnapshot } from '../../src/history/index.ts';
+import type { SettingsSnapshot } from '../../src/settings/index.ts';
 import {
   SidePanelOperationalClient,
   canPauseRun,
@@ -51,6 +54,16 @@ import {
   validateQueueDraft,
   type QueueDraft,
 } from '../../src/ui/queue-workspace.ts';
+import {
+  SidePanelDiagnosticsClient,
+  SidePanelHistoryClient,
+  SidePanelSettingsClient,
+  blankSettingsDraft,
+  isSettingsDraftDirty,
+  settingsDraftFrom,
+  validateSettingsDraft,
+  type SettingsDraft,
+} from '../../src/ui/settings-workspace.ts';
 import { ui, type UiMessageKey } from '../../src/ui/messages';
 import { WORKSPACES, type WorkspaceId } from '../../src/ui/workspaces';
 import Icon from './components/Icon.vue';
@@ -70,6 +83,9 @@ const operationalClient = new SidePanelOperationalClient(browser.runtime);
 const templateClient = new SidePanelTemplateClient(browser.runtime);
 const presetClient = new SidePanelPresetClient(browser.runtime);
 const queueClient = new SidePanelQueueClient(browser.runtime);
+const settingsClient = new SidePanelSettingsClient(browser.runtime);
+const diagnosticsClient = new SidePanelDiagnosticsClient(browser.runtime);
+const historyClient = new SidePanelHistoryClient(browser.runtime);
 const templates = ref<TemplateSnapshot[]>([]);
 const selectedTemplateId = ref('');
 const templateBase = ref<TemplateSnapshot>();
@@ -94,6 +110,14 @@ const queueDraft = reactive<QueueDraft>(blankQueueDraft());
 const queueBusy = ref(false);
 const queueError = ref<string>();
 const queueStale = ref(false);
+const settingsBase = ref<SettingsSnapshot>();
+const settingsDraft = reactive<SettingsDraft>(blankSettingsDraft());
+const settingsBusy = ref(false);
+const settingsError = ref<string>();
+const settingsStale = ref(false);
+const diagnostics = ref<DiagnosticsSnapshot>();
+const history = ref<RunHistorySnapshot>();
+let initialRunDefaultsApplied = false;
 
 let connection: { stop(): void } | undefined;
 
@@ -145,6 +169,10 @@ const templateStateKey = computed<UiMessageKey>(() => templateStale.value
     : templateDirty.value
       ? 'templateModifiedState'
       : 'templateSavedState');
+
+const settingsDirty = computed(() => isSettingsDraftDirty(settingsDraft, settingsBase.value));
+const defaultPresetMissing = computed(() => settingsDraft.defaultPresetId !== null && !presets.value.some((preset) => preset.id === settingsDraft.defaultPresetId));
+const diagnosticsStatusKey = computed<UiMessageKey>(() => diagnostics.value?.adapter.status === 'ready' ? 'diagnosticsReady' : diagnostics.value?.adapter.status === 'degraded' ? 'diagnosticsDegraded' : 'diagnosticsUnavailable');
 
 const canStartNew = computed(() => {
   const target = selectedTarget.value;
@@ -327,8 +355,84 @@ async function hydrateTemplates(): Promise<void> {
   }
 }
 
+function assignSettingsDraft(source: SettingsSnapshot): void {
+  Object.assign(settingsDraft, settingsDraftFrom(source));
+  settingsBase.value = source;
+  settingsStale.value = false;
+}
+
+function applyPresetCopyToRun(copy: ReturnType<typeof runWorkingCopyFromPreset>): void {
+  draft.presetId = copy.presetId;
+  draft.mode = copy.mode;
+  if (copy.mode === 'queue') { draft.queueId = copy.queueId; }
+  else { draft.queueId = ''; draft.messageTemplate = copy.messageTemplate; draft.totalIterations = copy.totalIterations; }
+  draft.delaySeconds = copy.delaySeconds;
+  draft.autoContinue = copy.autoContinue;
+  draft.autoScroll = copy.autoScroll;
+  draft.preventDiscard = copy.preventDiscard;
+}
+
+async function applySettingsToRunDraft(settings: SettingsSnapshot): Promise<void> {
+  if (hasNonTerminalRun.value) return;
+  if (settings.defaultPresetId !== null) {
+    try { applyPresetCopyToRun(runWorkingCopyFromPreset(await presetClient.hydrate(settings.defaultPresetId))); return; }
+    catch { /* fall through to direct defaults when the synced preset is unavailable on this device */ }
+  }
+  draft.presetId = '';
+  draft.mode = 'repeat';
+  draft.queueId = '';
+  draft.delaySeconds = settings.defaultDelaySeconds;
+  draft.autoContinue = settings.defaultAutoContinue;
+  draft.autoScroll = settings.defaultAutoScroll;
+  draft.preventDiscard = settings.defaultPreventDiscard;
+}
+
+async function hydrateSettings(applyInitialDefaults = false): Promise<void> {
+  try {
+    const next = await settingsClient.get();
+    if (settingsBase.value !== undefined && next.revision !== settingsBase.value.revision && settingsDirty.value) settingsStale.value = true;
+    else assignSettingsDraft(next);
+    settingsError.value = undefined;
+    if (applyInitialDefaults && !initialRunDefaultsApplied) { initialRunDefaultsApplied = true; await applySettingsToRunDraft(next); }
+  } catch (error) { settingsError.value = error instanceof Error ? error.message : ui('settingsOperationFailed'); }
+}
+
+async function hydrateDiagnostics(): Promise<void> {
+  try { diagnostics.value = await diagnosticsClient.get(); }
+  catch (error) { settingsError.value = error instanceof Error ? error.message : ui('diagnosticsUnavailable'); }
+}
+
+async function hydrateHistory(): Promise<void> {
+  try { history.value = await historyClient.list(); }
+  catch (error) { settingsError.value = error instanceof Error ? error.message : ui('historyOperationFailed'); }
+}
+
+async function saveSettings(): Promise<void> {
+  if (settingsBase.value === undefined) return;
+  settingsBusy.value = true; settingsError.value = undefined;
+  try { validateSettingsDraft(settingsDraft); assignSettingsDraft(await settingsClient.update(settingsBase.value, settingsDraft)); await Promise.all([hydrateHistory(), hydrateDiagnostics()]); }
+  catch (error) { settingsError.value = error instanceof Error ? error.message : ui('settingsOperationFailed'); }
+  finally { settingsBusy.value = false; }
+}
+function resetSettings(): void { if (settingsBase.value !== undefined) assignSettingsDraft(settingsBase.value); }
+async function applyRunDefaults(): Promise<void> { if (settingsBase.value !== undefined) await applySettingsToRunDraft(settingsBase.value); }
+async function refreshSettingsDiagnostics(): Promise<void> { settingsBusy.value = true; try { await Promise.all([hydrateDiagnostics(), hydrateHistory()]); } finally { settingsBusy.value = false; } }
+async function clearRunHistory(): Promise<void> { settingsBusy.value = true; settingsError.value = undefined; try { await historyClient.clear(); await Promise.all([hydrateHistory(), hydrateDiagnostics()]); } catch (error) { settingsError.value = error instanceof Error ? error.message : ui('historyOperationFailed'); } finally { settingsBusy.value = false; } }
+function migrationLabel(): string {
+  const value = diagnostics.value?.database.migrationState;
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const state = (value as Record<string, unknown>).state;
+    const version = (value as Record<string, unknown>).version;
+    if (state === 'complete' && typeof version === 'number') return `${ui('migrationComplete')} v${version}`;
+    if (state === 'running') return ui('migrationRunning');
+  }
+  return ui('notRecorded');
+}
+function diagnosticDataCount(key: string): number { const value = diagnostics.value?.data[key]; return typeof value === 'number' ? value : 0; }
+
 async function hydrateAll(): Promise<void> {
-  await Promise.all([hydrateControl(), hydrateRuns(), hydrateTemplates(), hydratePresets(), hydratePresetReferences(), hydrateQueues(), hydrateQueueReferences()]);
+  await Promise.all([hydrateControl(), hydrateRuns(), hydrateTemplates(), hydratePresets(), hydratePresetReferences(), hydrateQueues(), hydrateQueueReferences(), hydrateSettings(false), hydrateDiagnostics(), hydrateHistory()]);
+  if (!initialRunDefaultsApplied && settingsBase.value !== undefined) { initialRunDefaultsApplied = true; await applySettingsToRunDraft(settingsBase.value); }
 }
 
 function onInvalidation(reason: ControlPlaneInvalidationReason): void {
@@ -352,6 +456,8 @@ function onInvalidation(reason: ControlPlaneInvalidationReason): void {
     void Promise.all([hydrateQueues(), hydratePresetReferences()]);
     return;
   }
+  if (reason === 'settings_changed') { void hydrateSettings(false); return; }
+  if (reason === 'history_changed') { void Promise.all([hydrateHistory(), hydrateDiagnostics()]); return; }
   void hydrateAll();
 }
 
@@ -428,15 +534,7 @@ async function applyRunPreset(): Promise<void> {
   operationBusy.value = true;
   runError.value = undefined;
   try {
-    const copy = runWorkingCopyFromPreset(await presetClient.hydrate(draft.presetId));
-    draft.presetId = copy.presetId;
-    draft.mode = copy.mode;
-    if (copy.mode === 'queue') draft.queueId = copy.queueId;
-    else { draft.queueId = ''; draft.messageTemplate = copy.messageTemplate; draft.totalIterations = copy.totalIterations; }
-    draft.delaySeconds = copy.delaySeconds;
-    draft.autoContinue = copy.autoContinue;
-    draft.autoScroll = copy.autoScroll;
-    draft.preventDiscard = copy.preventDiscard;
+    applyPresetCopyToRun(runWorkingCopyFromPreset(await presetClient.hydrate(draft.presetId)));
   } catch (error) {
     runError.value = error instanceof Error ? error.message : ui('presetHydrationFailed');
   } finally {
@@ -1032,19 +1130,82 @@ onUnmounted(() => connection?.stop());
         </details>
       </div>
 
-      <details v-else class="workspace-card" open>
-        <summary class="workspace-card__heading">
-          <div>
-            <p class="eyebrow">{{ ui('foundation') }}</p>
-            <h2>{{ ui(activeDefinition.titleKey) }}</h2>
+      <div v-else-if="activeWorkspace === 'settings'" class="workspace-stack">
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading">
+            <div><p class="eyebrow">{{ ui('settingsDefaults') }}</p><h2>{{ ui('executionDefaults') }}</h2></div>
+            <span class="state-badge" :data-state="settingsStale ? 'failed' : undefined">{{ settingsStale ? ui('settingsStale') : settingsDirty ? ui('settingsModified') : ui('settingsSaved') }}</span>
+          </summary>
+          <p>{{ ui('settingsDescription') }}</p>
+          <div v-if="settingsStale" class="inline-warning" role="status">{{ ui('settingsStaleGuard') }}</div>
+          <div class="field-stack">
+            <label for="settings-default-preset">{{ ui('defaultPreset') }}</label>
+            <select id="settings-default-preset" v-model="settingsDraft.defaultPresetId" :disabled="settingsBusy">
+              <option :value="null">{{ ui('noDefaultPreset') }}</option>
+              <option v-if="defaultPresetMissing" :value="settingsDraft.defaultPresetId">{{ ui('defaultPresetUnavailable') }}</option>
+              <option v-for="item in presets" :key="item.id" :value="item.id">{{ item.name }} · {{ item.mode === 'repeat' ? ui('repeatMode') : ui('queueMode') }}</option>
+            </select>
+            <small>{{ ui('defaultPresetHelp') }}</small>
           </div>
-          <span class="state-badge">{{ ui('foundationState') }}</span>
-        </summary>
+          <div class="editor-grid">
+            <div class="field-stack"><label for="settings-delay">{{ ui('defaultDelay') }}</label><input id="settings-delay" v-model.number="settingsDraft.defaultDelaySeconds" type="number" min="5" max="3600" step="1" :disabled="settingsBusy"></div>
+            <div class="field-stack"><label for="settings-history-limit">{{ ui('historyRetention') }}</label><input id="settings-history-limit" v-model.number="settingsDraft.historyLimit" type="number" min="1" max="250" step="1" :disabled="settingsBusy"><small>{{ ui('historyRetentionHelp') }}</small></div>
+          </div>
+          <label class="check-row"><input v-model="settingsDraft.defaultAutoContinue" type="checkbox" :disabled="settingsBusy"><span><strong>{{ ui('defaultAutoContinue') }}</strong><small>{{ ui('autoContinueHelp') }}</small></span></label>
+          <label class="check-row"><input v-model="settingsDraft.defaultAutoScroll" type="checkbox" :disabled="settingsBusy"><span><strong>{{ ui('defaultAutoScroll') }}</strong><small>{{ ui('autoScrollHelp') }}</small></span></label>
+          <label class="check-row"><input v-model="settingsDraft.defaultPreventDiscard" type="checkbox" :disabled="settingsBusy"><span><strong>{{ ui('defaultPreventDiscard') }}</strong><small>{{ ui('preventDiscardHelp') }}</small></span></label>
+          <div class="field-stack">
+            <label for="settings-recovery">{{ ui('workerRecovery') }}</label>
+            <select id="settings-recovery" v-model="settingsDraft.recoveryPolicy" :disabled="settingsBusy"><option value="resume">{{ ui('recoveryResume') }}</option><option value="pause">{{ ui('recoveryPause') }}</option></select>
+            <small>{{ ui('workerRecoveryHelp') }}</small>
+          </div>
+          <div class="scope-card"><Icon name="info" size="16" /><div><strong>{{ ui('appearanceSystem') }}</strong><span>{{ ui('appearanceSystemHelp') }}</span></div></div>
+          <div class="actions"><button type="button" class="primary-action" :disabled="settingsBusy || !settingsBase || !settingsDirty || settingsStale" @click="saveSettings">{{ ui('saveSettings') }}</button><button type="button" class="secondary-action" :disabled="settingsBusy || (!settingsDirty && !settingsStale)" @click="resetSettings">{{ ui('resetSettings') }}</button><button type="button" class="secondary-action" :disabled="settingsBusy || !settingsBase || hasNonTerminalRun" @click="applyRunDefaults">{{ ui('applyDefaultsToRun') }}</button></div>
+          <div v-if="settingsError" class="inline-error" role="alert">{{ settingsError }}</div>
+        </details>
+
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading"><div><p class="eyebrow">{{ ui('diagnostics') }}</p><h2>{{ ui('runtimeHealth') }}</h2></div><span class="state-badge" :data-state="diagnostics?.adapter.status === 'unreachable' ? 'unavailable' : undefined">{{ ui(diagnosticsStatusKey) }}</span></summary>
+          <p>{{ ui('diagnosticsDescription') }}</p>
+          <div class="actions"><button type="button" class="secondary-action" :disabled="settingsBusy" @click="refreshSettingsDiagnostics">{{ ui('refreshDiagnostics') }}</button></div>
+          <dl v-if="diagnostics" class="status-grid">
+            <div><dt>{{ ui('runtimeVersion') }}</dt><dd>v{{ diagnostics.runtime.appVersion }}</dd></div>
+            <div><dt>{{ ui('connectedPanels') }}</dt><dd>{{ diagnostics.runtime.connectedPanels }}</dd></div>
+            <div><dt>{{ ui('activeRuns') }}</dt><dd>{{ diagnostics.runtime.activeRuns }}</dd></div>
+            <div><dt>{{ ui('eligibleTabs') }}</dt><dd>{{ diagnostics.tabs.eligibleTargets }}</dd></div>
+            <div><dt>{{ ui('boundTab') }}</dt><dd>{{ diagnostics.tabs.boundTabId ?? ui('none') }}</dd></div>
+            <div><dt>{{ ui('physicalDb') }}</dt><dd>v{{ diagnostics.database.physicalDbVersion }}</dd></div>
+            <div><dt>{{ ui('logicalModel') }}</dt><dd>v{{ diagnostics.database.logicalModelVersion }}</dd></div>
+            <div><dt>{{ ui('migration') }}</dt><dd>{{ migrationLabel() }}</dd></div>
+          </dl>
+          <div v-if="diagnostics?.adapter.capabilities.length" class="structured-list" :aria-label="ui('adapterCapabilities')">
+            <div v-for="capability in diagnostics.adapter.capabilities" :key="capability.key" class="structured-row diagnostic-row"><div class="progress-heading"><strong>{{ capability.key }}</strong><span class="state-badge">{{ capability.requirement === 'required' ? ui('requiredCapability') : ui('conditionalCapability') }}</span></div><span>{{ capability.status }} · {{ capability.count }}</span></div>
+          </div>
+          <p v-else class="compact-empty">{{ ui('bindTabForDiagnostics') }}</p>
+        </details>
+
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading"><div><p class="eyebrow">{{ ui('history') }}</p><h2>{{ ui('runHistory') }}</h2></div><span class="state-badge">{{ history?.totalRetained ?? 0 }}</span></summary>
+          <p>{{ ui('historyDescription') }}</p>
+          <div class="actions"><button type="button" class="danger-action" :disabled="settingsBusy || !history || history.totalRetained === 0" @click="clearRunHistory">{{ ui('clearHistory') }}</button></div>
+          <div v-if="history?.entries.length" class="structured-list" :aria-label="ui('runHistory')">
+            <div v-for="entry in history.entries" :key="entry.id" class="structured-row history-row"><div class="progress-heading"><strong>{{ entry.mode === 'repeat' ? ui('repeatMode') : ui('queueMode') }}</strong><span class="state-badge" :data-state="entry.lifecycleState">{{ ui(runStateKey(entry.lifecycleState)) }}</span></div><span>{{ entry.completedIterations }}/{{ entry.totalIterations }} · {{ ui('tabIdLabel') }} {{ entry.targetTabId }} · {{ new Date(entry.updatedAt).toLocaleString() }}</span><small v-if="entry.failureCode">{{ ui('failureCode') }}: {{ entry.failureCode }}</small></div>
+          </div>
+          <p v-else class="compact-empty">{{ ui('noHistory') }}</p>
+        </details>
+
+        <details class="workspace-card" open>
+          <summary class="workspace-card__heading"><div><p class="eyebrow">{{ ui('data') }}</p><h2>{{ ui('dataInventory') }}</h2></div><span class="state-badge">{{ ui('localData') }}</span></summary>
+          <p>{{ ui('dataDescription') }}</p>
+          <dl v-if="diagnostics" class="status-grid"><div><dt>{{ ui('templates') }}</dt><dd>{{ diagnosticDataCount('templates') }}</dd></div><div><dt>{{ ui('presets') }}</dt><dd>{{ diagnosticDataCount('presets') }}</dd></div><div><dt>{{ ui('queue') }}</dt><dd>{{ diagnosticDataCount('queues') }}</dd></div><div><dt>{{ ui('runsLabel') }}</dt><dd>{{ diagnosticDataCount('runs') }}</dd></div><div><dt>{{ ui('runEvents') }}</dt><dd>{{ diagnosticDataCount('runEvents') }}</dd></div></dl>
+          <div v-if="diagnostics" class="structured-list"><div v-for="storage in diagnostics.storage" :key="String(storage.tier)" class="structured-row"><strong>{{ storage.tier }}</strong><span>{{ storage.purpose }}</span></div></div>
+          <div class="scope-card"><Icon name="info" size="16" /><div><strong>{{ ui('portabilityNext') }}</strong><span>{{ ui('portabilityNextHelp') }}</span></div></div>
+        </details>
+      </div>
+
+      <details v-else class="workspace-card" open>
+        <summary class="workspace-card__heading"><div><p class="eyebrow">{{ ui('foundation') }}</p><h2>{{ ui(activeDefinition.titleKey) }}</h2></div><span class="state-badge">{{ ui('foundationState') }}</span></summary>
         <p>{{ ui(activeDefinition.descriptionKey) }}</p>
-        <div class="scope-card">
-          <Icon name="info" size="16" />
-          <span>{{ ui('futureCapability') }}</span>
-        </div>
       </details>
     </section>
   </main>
