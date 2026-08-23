@@ -23,7 +23,7 @@ function requireInvalidationHint(value: unknown): ControlPlaneInvalidationHint {
   const candidate = value as Record<string, unknown>;
   if (candidate.kind !== 'invalidate' || candidate.schemaVersion !== CONTROL_PLANE_SCHEMA_VERSION) throw new ContractError(ERROR_CODES.invalidMessage, 'invalid invalidation hint');
   if (!Number.isSafeInteger(candidate.sequence) || (candidate.sequence as number) < 1) throw new ContractError(ERROR_CODES.invalidMessage, 'invalid invalidation sequence');
-  if (!['connected', 'authority_changed', 'tab_changed', 'run_changed', 'template_changed', 'preset_changed', 'queue_changed', 'runtime_recovered'].includes(String(candidate.reason))) throw new ContractError(ERROR_CODES.invalidMessage, 'invalid invalidation reason');
+  if (!['connected', 'authority_changed', 'tab_changed', 'run_changed', 'template_changed', 'preset_changed', 'queue_changed', 'settings_changed', 'history_changed', 'runtime_recovered'].includes(String(candidate.reason))) throw new ContractError(ERROR_CODES.invalidMessage, 'invalid invalidation reason');
   return candidate as unknown as ControlPlaneInvalidationHint;
 }
 

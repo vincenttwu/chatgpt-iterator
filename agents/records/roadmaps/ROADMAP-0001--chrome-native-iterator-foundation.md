@@ -5,9 +5,9 @@ record_type: roadmap
 slug: chrome-native-iterator-foundation
 title: "ChatGPT Iterator Chrome-Native Foundation and Product Program"
 status: active
-revision: 13
+revision: 14
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T04:11:00+08:00
+updated_at: 2026-08-24T04:24:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -471,16 +471,18 @@ Make durable user state portable and prove the product behaves truthfully across
 
 #### Work items
 
-- [ ] Versioned export envelope with product/format version and exported-at metadata.
-- [ ] Default configuration export: Templates + Presets + Queues + Settings; Run history opt-in/full-backup only.
-- [ ] Import validation + preview counts/conflicts before mutation.
-- [ ] Merge, replace imported records and full replace semantics with transactional application.
-- [ ] Preserve stable IDs/references and migrate supported older export formats through explicit import adapters.
+- [x] Versioned export envelope with product/format version and exported-at metadata.
+- [x] Default configuration export: Templates + Presets + Queues + Settings; Run history opt-in/full-backup only.
+- [x] Import validation + preview counts/conflicts before mutation.
+- [x] Merge, replace imported records and full replace semantics with transactional application.
+- [x] Preserve stable IDs/references and migrate supported older export formats through explicit import adapters.
 
 #### Step acceptance evidence
 
-- [ ] Round-trip, conflict, rollback and cross-version fixture tests pass.
-- [ ] Failed import cannot leave partial durable state.
+- [x] Round-trip, conflict, rollback and cross-version fixture tests pass.
+- [x] Failed import cannot leave partial durable state.
+
+**STEP-14 fast-path result:** added a product/versioned portable v1 envelope independent from IndexedDB layout. Configuration exports contain Templates, Presets, nested ordered Queues and sync-safe Settings only; full backups additionally contain terminal run snapshots/events and are explicitly treated as sensitive while nonterminal runs are never exported as history. Import is parse/validate -> preview -> explicit Merge / Replace Imported / Replace All -> apply. Stable IDs/references are preserved, candidate post-import references are validated before mutation, preview fingerprints reject stale plans, and unknown format versions are rejected through an explicit adapter registry rather than guessed; no accepted pre-v1 export ever existed, so no fictional legacy adapter was invented. Settings/IndexedDB cross-store application uses compensating rollback: Settings update first, one IndexedDB transaction second, and the exact prior Settings snapshot is restored if the durable transaction fails. Replace All preserves active/nonterminal runs while full backups can replace terminal history. Focused STEP-14 validation passed 10/10, strict portability/runtime/UI TypeScript passed with TypeScript 5.8.3, and the single STEP-13 predecessor smoke passed 9/10 with its sole failure being the intentionally superseded historical assertion that STEP-14 source must not exist; that retained assertion was updated for future accumulated runs but not rerun under fast-path. IndexedDB remains physical v1, export format v1, permissions remain `sidePanel`, `storage`, `alarms`, and the inherited WXT/Vue hydration/full-build lane remains `deferred_environment`.
 
 ### STEP-15 — Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening
 
@@ -553,7 +555,7 @@ Make durable user state portable and prove the product behaves truthfully across
 - [x] STEP-11 — Presets Workspace and Run Configuration Hydration (`v0.0.11`) — stable referenced presets, explicit disposable Run hydration, team-standard lifecycle and reference integrity complete.
 - [x] STEP-12 — Queue Workspace and Queue Execution Mode (`v0.0.12`) — transactional ordered queues, frozen resolved run items, same-coordinator Queue execution and team-standard Queue workspace complete.
 - [x] STEP-13 — Settings, Diagnostics, History and Data Management Surface (`v0.0.13`) — sync-backed defaults, privacy-safe diagnostics, bounded terminal history and team-standard Settings/Data surface complete; Phase P3 closed.
-- [ ] STEP-14 — Versioned Export, Import, Merge/Replace and Backup Semantics (`v0.0.14`).
+- [x] STEP-14 — Versioned Export, Import, Merge/Replace and Backup Semantics (`v0.0.14`) — versioned configuration/full-backup portability, previewed conflict modes, rollback-safe application and explicit adapter registry complete.
 - [ ] STEP-15 — Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening (`v0.0.15`).
 - [ ] STEP-16 — Integrated Product/UI Standard/Accessibility/Package Closure (`v0.0.16`).
 

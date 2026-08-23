@@ -1,26 +1,26 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.13
+version: v0.0.14
 status: accepted_implementation_overlay
 iteration:
   kind: implementation
   roadmap: ROADMAP-0001
-  step: STEP-13
+  step: STEP-14
   step_status: complete
-  phase: P3
-  phase_status: complete
+  phase: P4
+  phase_status: active
 baseline:
-  working_parent: v0.0.12
+  working_parent: v0.0.13
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step13: "10/10 pass"
-  settings_diagnostics_history_typescript: "pass with TypeScript 5.8.3"
-  predecessor_queue_smoke: "10/10 pass"
+  focused_step14: "10/10 pass"
+  portability_runtime_ui_typescript: "pass with TypeScript 5.8.3"
+  predecessor_step13_smoke: "9/10; nine unaffected checks pass, one historical STEP-14-absence assertion superseded and updated without rerun"
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build: inherited_deferred_environment
 next:
-  version: v0.0.14
-  step: STEP-14
-  title: Versioned Export, Import, Merge/Replace and Backup Semantics
+  version: v0.0.15
+  step: STEP-15
+  title: Background-Tab, Freeze/Discard/Reload and Restart Recovery Hardening

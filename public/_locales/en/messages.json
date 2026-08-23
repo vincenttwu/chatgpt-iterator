@@ -793,5 +793,95 @@
   },
   "portabilityNextHelp": {
     "message": "STEP-14 owns versioned export/import, merge/replace, preview, and full-backup semantics. This version does not fake those actions."
+  },
+  "portability": {
+    "message": "Portability"
+  },
+  "exportConfiguration": {
+    "message": "Export configuration"
+  },
+  "exportFullBackup": {
+    "message": "Export full backup"
+  },
+  "exportConfigurationHelp": {
+    "message": "Exports Templates, Presets, Queues, and Settings. Run history is excluded."
+  },
+  "exportFullBackupHelp": {
+    "message": "Includes terminal run history and event payloads. Treat full-backup files as sensitive."
+  },
+  "importData": {
+    "message": "Import data"
+  },
+  "choosePortableFile": {
+    "message": "Choose JSON file"
+  },
+  "importMode": {
+    "message": "Import mode"
+  },
+  "importMerge": {
+    "message": "Merge"
+  },
+  "importReplaceImported": {
+    "message": "Replace imported records"
+  },
+  "importReplaceAll": {
+    "message": "Replace all"
+  },
+  "importMergeHelp": {
+    "message": "Keeps existing records when stable IDs collide and adds missing imported records."
+  },
+  "importReplaceImportedHelp": {
+    "message": "Replaces records whose stable IDs are present in the file and leaves unrelated local records intact."
+  },
+  "importReplaceAllHelp": {
+    "message": "Replaces all local configuration. Full backups also replace terminal history; active runs are preserved."
+  },
+  "previewImport": {
+    "message": "Preview import"
+  },
+  "applyImport": {
+    "message": "Apply import"
+  },
+  "importPreview": {
+    "message": "Import preview"
+  },
+  "importSource": {
+    "message": "Source"
+  },
+  "importKind": {
+    "message": "Kind"
+  },
+  "configurationKind": {
+    "message": "Configuration"
+  },
+  "fullBackupKind": {
+    "message": "Full backup"
+  },
+  "importConflicts": {
+    "message": "ID conflicts"
+  },
+  "importWarnings": {
+    "message": "Warnings"
+  },
+  "importReady": {
+    "message": "Preview ready"
+  },
+  "importApplied": {
+    "message": "Import applied"
+  },
+  "importOperationFailed": {
+    "message": "Portability operation failed"
+  },
+  "noImportSelected": {
+    "message": "Choose a portable JSON file before previewing."
+  },
+  "portabilityFormat": {
+    "message": "Portable format"
+  },
+  "historyRuns": {
+    "message": "History runs"
+  },
+  "historyEvents": {
+    "message": "History events"
   }
 }

@@ -1,5 +1,6 @@
 export * from './icons.ts';
 export * from './messages.ts';
+export * from './portability-workspace.ts';
 export * from './preset-workspace.ts';
 export * from './queue-workspace.ts';
 export * from './run-workspace.ts';

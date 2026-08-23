@@ -10,7 +10,14 @@ export class SettingsService {
 
   async get(): Promise<SettingsSnapshot> {
     const stored = await this.#storage.get(SETTINGS_STORAGE_KEY);
-    return stored === undefined ? createDefaultSettings(this.#now()) : requireSettingsSnapshot(stored);
+    if (stored !== undefined) return requireSettingsSnapshot(stored);
+    const initial = createDefaultSettings(this.#now());
+    await this.#storage.set(SETTINGS_STORAGE_KEY, initial);
+    return initial;
+  }
+
+  async restore(snapshot: SettingsSnapshot): Promise<void> {
+    await this.#storage.set(SETTINGS_STORAGE_KEY, requireSettingsSnapshot(snapshot));
   }
 
   async update(expectedRevision: unknown, input: SettingsWriteInput | Record<string, unknown>): Promise<SettingsSnapshot> {

@@ -1,6 +1,7 @@
 export * from './diagnostics-runtime-server.ts';
 export * from './history-runtime-server.ts';
 export * from './message-router.ts';
+export * from './portability-runtime-server.ts';
 export * from './preset-runtime-server.ts';
 export * from './queue-runtime-server.ts';
 export * from './run-runtime-server.ts';

@@ -10,6 +10,7 @@ import type { QueueHydration, QueueReferenceCatalog, QueueSnapshot } from '../..
 import type { DiagnosticsSnapshot } from '../../src/diagnostics/index.ts';
 import type { RunHistorySnapshot } from '../../src/history/index.ts';
 import type { SettingsSnapshot } from '../../src/settings/index.ts';
+import type { ImportMode, ImportPreview, PortableEnvelope, PortableKind } from '../../src/portability/index.ts';
 import {
   SidePanelOperationalClient,
   canPauseRun,
@@ -64,6 +65,7 @@ import {
   validateSettingsDraft,
   type SettingsDraft,
 } from '../../src/ui/settings-workspace.ts';
+import { SidePanelPortabilityClient, parsePortableJson, portableFilename } from '../../src/ui/portability-workspace.ts';
 import { ui, type UiMessageKey } from '../../src/ui/messages';
 import { WORKSPACES, type WorkspaceId } from '../../src/ui/workspaces';
 import Icon from './components/Icon.vue';
@@ -86,6 +88,7 @@ const queueClient = new SidePanelQueueClient(browser.runtime);
 const settingsClient = new SidePanelSettingsClient(browser.runtime);
 const diagnosticsClient = new SidePanelDiagnosticsClient(browser.runtime);
 const historyClient = new SidePanelHistoryClient(browser.runtime);
+const portabilityClient = new SidePanelPortabilityClient(browser.runtime);
 const templates = ref<TemplateSnapshot[]>([]);
 const selectedTemplateId = ref('');
 const templateBase = ref<TemplateSnapshot>();
@@ -117,6 +120,13 @@ const settingsError = ref<string>();
 const settingsStale = ref(false);
 const diagnostics = ref<DiagnosticsSnapshot>();
 const history = ref<RunHistorySnapshot>();
+const portabilityBusy = ref(false);
+const portabilityError = ref<string>();
+const portabilityNotice = ref<string>();
+const importEnvelope = ref<PortableEnvelope>();
+const importPreview = ref<ImportPreview>();
+const importMode = ref<ImportMode>('merge');
+const importFileName = ref('');
 let initialRunDefaultsApplied = false;
 
 let connection: { stop(): void } | undefined;
@@ -418,6 +428,42 @@ function resetSettings(): void { if (settingsBase.value !== undefined) assignSet
 async function applyRunDefaults(): Promise<void> { if (settingsBase.value !== undefined) await applySettingsToRunDraft(settingsBase.value); }
 async function refreshSettingsDiagnostics(): Promise<void> { settingsBusy.value = true; try { await Promise.all([hydrateDiagnostics(), hydrateHistory()]); } finally { settingsBusy.value = false; } }
 async function clearRunHistory(): Promise<void> { settingsBusy.value = true; settingsError.value = undefined; try { await historyClient.clear(); await Promise.all([hydrateHistory(), hydrateDiagnostics()]); } catch (error) { settingsError.value = error instanceof Error ? error.message : ui('historyOperationFailed'); } finally { settingsBusy.value = false; } }
+async function exportPortable(kind: PortableKind): Promise<void> {
+  portabilityBusy.value = true; portabilityError.value = undefined; portabilityNotice.value = undefined;
+  try {
+    const envelope = await portabilityClient.export(kind);
+    const url = URL.createObjectURL(new Blob([JSON.stringify(envelope, null, 2)], { type: 'application/json' }));
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = portableFilename(envelope); anchor.click(); URL.revokeObjectURL(url);
+  } catch (error) { portabilityError.value = error instanceof Error ? error.message : ui('importOperationFailed'); }
+  finally { portabilityBusy.value = false; }
+}
+async function selectPortableFile(event: Event): Promise<void> {
+  portabilityError.value = undefined; portabilityNotice.value = undefined; importPreview.value = undefined; importEnvelope.value = undefined;
+  const input = event.target as HTMLInputElement; const file = input.files?.[0]; importFileName.value = file?.name ?? '';
+  if (!file) return;
+  try { importEnvelope.value = parsePortableJson(await file.text()); }
+  catch (error) { portabilityError.value = error instanceof Error ? error.message : ui('importOperationFailed'); }
+}
+function clearImportPreview(): void { importPreview.value = undefined; portabilityNotice.value = undefined; }
+async function previewPortableImport(): Promise<void> {
+  if (!importEnvelope.value) { portabilityError.value = ui('noImportSelected'); return; }
+  portabilityBusy.value = true; portabilityError.value = undefined; portabilityNotice.value = undefined;
+  try { importPreview.value = await portabilityClient.preview(importEnvelope.value, importMode.value); portabilityNotice.value = ui('importReady'); }
+  catch (error) { importPreview.value = undefined; portabilityError.value = error instanceof Error ? error.message : ui('importOperationFailed'); }
+  finally { portabilityBusy.value = false; }
+}
+async function applyPortableImport(): Promise<void> {
+  if (!importEnvelope.value || !importPreview.value) return;
+  portabilityBusy.value = true; portabilityError.value = undefined; portabilityNotice.value = undefined;
+  try {
+    await portabilityClient.apply(importEnvelope.value, importMode.value, importPreview.value.planFingerprint);
+    portabilityNotice.value = ui('importApplied'); importPreview.value = undefined;
+    await Promise.all([hydrateTemplates(), hydratePresets(), hydratePresetReferences(), hydrateQueues(), hydrateQueueReferences(), hydrateSettings(false), hydrateHistory(), hydrateDiagnostics()]);
+  } catch (error) { portabilityError.value = error instanceof Error ? error.message : ui('importOperationFailed'); }
+  finally { portabilityBusy.value = false; }
+}
+function importModeHelp(): UiMessageKey { return importMode.value === 'merge' ? 'importMergeHelp' : importMode.value === 'replace_imported' ? 'importReplaceImportedHelp' : 'importReplaceAllHelp'; }
+
 function migrationLabel(): string {
   const value = diagnostics.value?.database.migrationState;
   if (value && typeof value === 'object' && !Array.isArray(value)) {
@@ -1199,7 +1245,23 @@ onUnmounted(() => connection?.stop());
           <p>{{ ui('dataDescription') }}</p>
           <dl v-if="diagnostics" class="status-grid"><div><dt>{{ ui('templates') }}</dt><dd>{{ diagnosticDataCount('templates') }}</dd></div><div><dt>{{ ui('presets') }}</dt><dd>{{ diagnosticDataCount('presets') }}</dd></div><div><dt>{{ ui('queue') }}</dt><dd>{{ diagnosticDataCount('queues') }}</dd></div><div><dt>{{ ui('runsLabel') }}</dt><dd>{{ diagnosticDataCount('runs') }}</dd></div><div><dt>{{ ui('runEvents') }}</dt><dd>{{ diagnosticDataCount('runEvents') }}</dd></div></dl>
           <div v-if="diagnostics" class="structured-list"><div v-for="storage in diagnostics.storage" :key="String(storage.tier)" class="structured-row"><strong>{{ storage.tier }}</strong><span>{{ storage.purpose }}</span></div></div>
-          <div class="scope-card"><Icon name="info" size="16" /><div><strong>{{ ui('portabilityNext') }}</strong><span>{{ ui('portabilityNextHelp') }}</span></div></div>
+          <div class="structured-list">
+            <div class="structured-row"><div><strong>{{ ui('exportConfiguration') }}</strong><small>{{ ui('exportConfigurationHelp') }}</small></div><button type="button" class="secondary-action" :disabled="portabilityBusy" @click="exportPortable('configuration')">{{ ui('exportConfiguration') }}</button></div>
+            <div class="structured-row"><div><strong>{{ ui('exportFullBackup') }}</strong><small>{{ ui('exportFullBackupHelp') }}</small></div><button type="button" class="secondary-action" :disabled="portabilityBusy" @click="exportPortable('full_backup')">{{ ui('exportFullBackup') }}</button></div>
+          </div>
+          <div class="field-stack"><label for="portable-file">{{ ui('importData') }}</label><input id="portable-file" type="file" accept="application/json,.json" :disabled="portabilityBusy" @change="selectPortableFile"><small v-if="importFileName">{{ importFileName }}</small></div>
+          <div class="field-stack"><label for="import-mode">{{ ui('importMode') }}</label><select id="import-mode" v-model="importMode" :disabled="portabilityBusy" @change="clearImportPreview"><option value="merge">{{ ui('importMerge') }}</option><option value="replace_imported">{{ ui('importReplaceImported') }}</option><option value="replace_all">{{ ui('importReplaceAll') }}</option></select><small>{{ ui(importModeHelp()) }}</small></div>
+          <div class="actions"><button type="button" class="secondary-action" :disabled="portabilityBusy || !importEnvelope" @click="previewPortableImport">{{ ui('previewImport') }}</button><button type="button" class="danger-action" :disabled="portabilityBusy || !importPreview" @click="applyPortableImport">{{ ui('applyImport') }}</button></div>
+          <div v-if="importPreview" class="structured-list" :aria-label="ui('importPreview')">
+            <div class="structured-row"><strong>{{ ui('importSource') }}</strong><span>{{ importPreview.sourceAppVersion }} · {{ ui('portabilityFormat') }} v{{ importPreview.formatVersion }}</span></div>
+            <div class="structured-row"><strong>{{ ui('importKind') }}</strong><span>{{ importPreview.kind === 'configuration' ? ui('configurationKind') : ui('fullBackupKind') }}</span></div>
+            <div class="structured-row"><strong>{{ ui('templates') }}</strong><span>{{ importPreview.counts.templates }} · {{ ui('importConflicts') }} {{ importPreview.conflicts.templates }}</span></div>
+            <div class="structured-row"><strong>{{ ui('presets') }}</strong><span>{{ importPreview.counts.presets }} · {{ ui('importConflicts') }} {{ importPreview.conflicts.presets }}</span></div>
+            <div class="structured-row"><strong>{{ ui('queue') }}</strong><span>{{ importPreview.counts.queues }} / {{ importPreview.counts.queueItems }} {{ ui('queueItemCount').toLowerCase() }} · {{ ui('importConflicts') }} {{ importPreview.conflicts.queues }}</span></div>
+            <div v-if="importPreview.kind === 'full_backup'" class="structured-row"><strong>{{ ui('historyRuns') }}</strong><span>{{ importPreview.counts.historyRuns }} / {{ importPreview.counts.historyEvents }} {{ ui('historyEvents').toLowerCase() }} · {{ ui('importConflicts') }} {{ importPreview.conflicts.historyRuns }}</span></div>
+            <div v-for="warning in importPreview.warnings" :key="warning" class="scope-card"><Icon name="info" size="16" /><div><strong>{{ ui('importWarnings') }}</strong><span>{{ warning }}</span></div></div>
+          </div>
+          <div v-if="portabilityNotice" class="inline-warning" role="status">{{ portabilityNotice }}</div><div v-if="portabilityError" class="inline-error" role="alert">{{ portabilityError }}</div>
         </details>
       </div>
 

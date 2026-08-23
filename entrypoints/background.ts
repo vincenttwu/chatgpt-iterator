@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '../src/control-plane/index.ts';
-import { BackgroundMessageRouter, DiagnosticsRuntimeServer, HistoryRuntimeServer, PresetRuntimeServer, QueueRuntimeServer, RunRuntimeServer, SettingsRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
+import { BackgroundMessageRouter, DiagnosticsRuntimeServer, HistoryRuntimeServer, PortabilityRuntimeServer, PresetRuntimeServer, QueueRuntimeServer, RunRuntimeServer, SettingsRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
 import { bootstrapApplicationPersistence, createChromeStorageTiers, restrictChromeStorageToTrustedContexts, type ChromeStorageLike, type PersistenceRuntime } from '../src/persistence/index.ts';
 import {
@@ -20,6 +20,7 @@ import { QueueService } from '../src/queues/index.ts';
 import { SettingsService } from '../src/settings/index.ts';
 import { RunHistoryService } from '../src/history/index.ts';
 import { DiagnosticsService } from '../src/diagnostics/index.ts';
+import { PortabilityService } from '../src/portability/index.ts';
 import { ContractError, ERROR_CODES } from '../src/core/index.ts';
 
 const workerStartedAt = new Date().toISOString();
@@ -41,6 +42,7 @@ let presetServicePromise: Promise<PresetService> | undefined;
 let queueServicePromise: Promise<QueueService> | undefined;
 let historyServicePromise: Promise<RunHistoryService> | undefined;
 let diagnosticsServicePromise: Promise<DiagnosticsService> | undefined;
+let portabilityServicePromise: Promise<PortabilityService> | undefined;
 
 const runServer = new RunRuntimeServer(
   async () => { if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized'); return (await runRuntimePromise).manager; },
@@ -78,7 +80,11 @@ const diagnosticsServer = new DiagnosticsRuntimeServer(async () => {
   if (diagnosticsServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'diagnostics runtime is not initialized');
   return await diagnosticsServicePromise;
 });
-const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer, queueServer, settingsServer, diagnosticsServer, historyServer);
+const portabilityServer = new PortabilityRuntimeServer(
+  async () => { if (portabilityServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'portability runtime is not initialized'); return await portabilityServicePromise; },
+  () => { for (const reason of ['template_changed','preset_changed','queue_changed','settings_changed','history_changed'] as const) ports.broadcast(reason); },
+);
+const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer, queueServer, settingsServer, diagnosticsServer, historyServer, portabilityServer);
 const lifecycle = new TabLifecycleCoordinator(tabBrowser, tabs, discardGuards, (error) => { console.error('chatgpt-iterator: tab lifecycle error', error); });
 
 function reportRunError(error: unknown): void { console.error('chatgpt-iterator: run runtime error', error); }
@@ -109,6 +115,7 @@ export default defineBackground(() => {
   presetServicePromise = persistencePromise.then((runtime) => new PresetService(runtime.repositories));
   queueServicePromise = persistencePromise.then((runtime) => new QueueService(runtime.repositories));
   historyServicePromise = persistencePromise.then((runtime) => new RunHistoryService(runtime.repositories));
+  portabilityServicePromise = persistencePromise.then((runtime) => new PortabilityService(runtime.repositories, settingsService, browser.runtime.getManifest().version));
   runRuntimePromise = persistencePromise.then(async (runtime) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
     manager.subscribe((snapshot) => {
@@ -149,6 +156,7 @@ export default defineBackground(() => {
   void queueServicePromise.catch((error: unknown) => { console.error('chatgpt-iterator: failed to initialize queue runtime', error); });
   void historyServicePromise.catch((error: unknown) => { console.error('chatgpt-iterator: failed to initialize history runtime', error); });
   void diagnosticsServicePromise.catch((error: unknown) => { console.error('chatgpt-iterator: failed to initialize diagnostics runtime', error); });
+  void portabilityServicePromise.catch((error: unknown) => { console.error('chatgpt-iterator: failed to initialize portability runtime', error); });
 
   if (browser.sidePanel?.setPanelBehavior) {
     void browser.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error: unknown) => { console.error('chatgpt-iterator: failed to configure Side Panel action behavior', error); });
