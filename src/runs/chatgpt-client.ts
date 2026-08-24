@@ -1,7 +1,7 @@
 import { ContractError, ERROR_CODES, createRequest, requireMessageEnvelope } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
 import type { TabBrowserLike } from '../tabs/browser.ts';
-import { CHATGPT_ADAPTER_OPERATIONS, type ChatGptAdapterDiagnostics, type ChatGptAdapterSnapshot, type ChatGptClickResult, type ChatGptSendResult } from '../chatgpt/types.ts';
+import { CHATGPT_ADAPTER_OPERATIONS, requireChatGptAdapterSnapshot, type ChatGptAdapterDiagnostics, type ChatGptAdapterSnapshot, type ChatGptClickResult, type ChatGptSendResult } from '../chatgpt/index.ts';
 
 function requireSuccessfulValue(raw: unknown): unknown {
   const response = requireMessageEnvelope(raw);
@@ -16,15 +16,15 @@ export class ChatGptRunClient {
   constructor(browser: Pick<TabBrowserLike, 'sendMessage'>) { this.#browser = browser; }
 
   async snapshot(tabId: number): Promise<ChatGptAdapterSnapshot> {
-    return await this.#request(tabId, 'query', CHATGPT_ADAPTER_OPERATIONS.snapshot, {}) as ChatGptAdapterSnapshot;
+    return requireChatGptAdapterSnapshot(await this.#request(tabId, 'query', CHATGPT_ADAPTER_OPERATIONS.snapshot, {}));
   }
 
   async diagnostics(tabId: number): Promise<ChatGptAdapterDiagnostics> {
     return await this.#request(tabId, 'query', CHATGPT_ADAPTER_OPERATIONS.diagnostics, {}) as ChatGptAdapterDiagnostics;
   }
 
-  async send(tabId: number, message: string, expectedAssistantBaselineSignature: string): Promise<ChatGptSendResult> {
-    return await this.#request(tabId, 'command', CHATGPT_ADAPTER_OPERATIONS.send, { message, expectedAssistantBaselineSignature }) as ChatGptSendResult;
+  async send(tabId: number, message: string, expectedAssistantBaselineFingerprint: string): Promise<ChatGptSendResult> {
+    return await this.#request(tabId, 'command', CHATGPT_ADAPTER_OPERATIONS.send, { message, expectedAssistantBaselineFingerprint }) as ChatGptSendResult;
   }
 
   async continueResponse(tabId: number): Promise<ChatGptClickResult> {

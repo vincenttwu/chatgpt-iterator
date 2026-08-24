@@ -23,11 +23,11 @@ const adapterSnapshot = (overrides = {}) => ({
   ready: true,
   busy: false,
   composerPresent: true,
-  composerDraft: '',
+  composerHasDraft: false,
   sendAvailable: true,
   continueAvailable: false,
   stopAvailable: false,
-  assistantSignature: '1:2:ok',
+  assistantFingerprint: 'af2:11111111111111111111111111111111',
   assistantMessageCount: 1,
   pageAlert: null,
   ...overrides,
@@ -161,15 +161,17 @@ test('STEP-05 tab runtime exposes explicit bind/refresh commands and content ada
   fake.add({ id: 10, windowId: 1, url: 'https://chatgpt.com/c/one' });
   const registry = createRegistry(fake);
   const tabServer = new TabRuntimeServer(registry);
-  const router = new BackgroundMessageRouter(new ControlPlaneServer(new ControlPlaneAuthority()), tabServer);
+  const extensionId = 'abcdefghijklmnopabcdefghijklmnop';
+  const router = new BackgroundMessageRouter(new ControlPlaneServer(new ControlPlaneAuthority()), tabServer, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, extensionId);
+  const panelSender = { id: extensionId, origin: `chrome-extension://${extensionId}`, url: `chrome-extension://${extensionId}/sidepanel.html` };
   const refresh = createRequest({ requestSequence: 1, intent: 'query', source: 'sidepanel', target: 'background', operation: TAB_RUNTIME_OPERATIONS.refresh, payload: {} });
-  const refreshed = requireMessageEnvelope(await router.handle(refresh));
+  const refreshed = requireMessageEnvelope(await router.handle(refresh, panelSender));
   assert.equal(refreshed.outcome.ok && refreshed.outcome.value.targets.length, 1);
   const bind = createRequest({ requestSequence: 2, intent: 'command', source: 'sidepanel', target: 'background', operation: TAB_RUNTIME_OPERATIONS.bind, payload: { tabId: 10 } });
-  const bound = requireMessageEnvelope(await router.handle(bind));
+  const bound = requireMessageEnvelope(await router.handle(bind, panelSender));
   assert.equal(bound.outcome.ok && bound.outcome.value.binding.tabId, 10);
   const state = createRequest({ requestSequence: 1, intent: 'command', source: 'content', target: 'background', operation: TAB_RUNTIME_OPERATIONS.adapterState, payload: { snapshot: adapterSnapshot({ pageAlert: 'Network error' }) } });
-  const stateResult = requireMessageEnvelope(await router.handle(state, { tab: { id: 10, windowId: 1 } }));
+  const stateResult = requireMessageEnvelope(await router.handle(state, { id: extensionId, frameId: 0, origin: 'https://chatgpt.com', url: 'https://chatgpt.com/c/one', tab: { id: 10, windowId: 1, url: 'https://chatgpt.com/c/one' } }));
   assert.equal(stateResult.outcome.ok && stateResult.outcome.value.targets[0].lifecycleState, 'degraded');
 });
 

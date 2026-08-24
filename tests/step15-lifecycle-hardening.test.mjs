@@ -69,17 +69,17 @@ class FakeTabs {
 class FakeClient {
   sends = [];
   async scrollToBottom() {}
-  async send(tabId, message, baseline) { this.sends.push({ tabId, message, baseline }); return { schemaVersion: 1, status: 'sent', assistantBaselineSignature: baseline }; }
+  async send(tabId, message, baseline) { this.sends.push({ tabId, message, baseline }); return { schemaVersion: 2, status: 'sent', assistantBaselineFingerprint: baseline }; }
 }
 
 class FakeWaiter {
-  async waitUntilIdle() { return { assistantSignature: '1:base' }; }
-  async waitForResponse() { return { assistantSignature: '2:done' }; }
+  async waitUntilIdle() { return { assistantFingerprint: 'af2:11111111111111111111111111111111' }; }
+  async waitForResponse() { return { assistantFingerprint: 'af2:22222222222222222222222222222222' }; }
 }
 
 class DeferredWaiter extends FakeWaiter {
   gate = Promise.withResolvers();
-  async waitUntilIdle(_tabId, cancelled) { await this.gate.promise; if (cancelled()) throw new Error('cancelled'); return { assistantSignature: '1:base' }; }
+  async waitUntilIdle(_tabId, cancelled) { await this.gate.promise; if (cancelled()) throw new Error('cancelled'); return { assistantFingerprint: 'af2:11111111111111111111111111111111' }; }
 }
 
 class FakeScheduler {
@@ -116,7 +116,7 @@ test('STEP-15 inactive target execution remains bound to explicit tabId rather t
 test('STEP-15 frozen target suspends a prepared response without false completion and resumes by reconciliation', async () => {
   const { manager } = runHarness();
   let run = await createStarted(manager, { preventDiscard: false });
-  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'prepared', assistantBaselineSignature: '1:base' })).snapshot;
+  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'prepared', assistantBaselineFingerprint: 'af2:11111111111111111111111111111111' })).snapshot;
   await manager.reconcileTabs(tabSnapshot('frozen'));
   let frozen = await manager.get(run.id);
   assert.equal(frozen.lifecycleState, 'frozen');
@@ -136,7 +136,7 @@ test('STEP-15 frozen target suspends a prepared response without false completio
 test('STEP-15 discarded then loading target stays suspended through adapter re-handshake until ready', async () => {
   const { manager } = runHarness();
   let run = await createStarted(manager, { preventDiscard: false });
-  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'prepared', assistantBaselineSignature: '1:base' })).snapshot;
+  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'prepared', assistantBaselineFingerprint: 'af2:11111111111111111111111111111111' })).snapshot;
   await manager.reconcileTabs(tabSnapshot('discarded'));
   assert.equal((await manager.get(run.id)).lifecycleState, 'discarded');
   await manager.reconcileTabs(tabSnapshot('loading'));
@@ -152,7 +152,7 @@ test('STEP-15 discarded then loading target stays suspended through adapter re-h
 test('STEP-15 same-session service-worker recovery preserves waiting-delay deadline for re-arming', async () => {
   const { manager } = runHarness();
   let run = await createStarted(manager, { totalIterations: 2, preventDiscard: false });
-  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'first', assistantBaselineSignature: '1:base' })).snapshot;
+  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'first', assistantBaselineFingerprint: 'af2:11111111111111111111111111111111' })).snapshot;
   run = (await manager.completeIteration(run.id, run.generation, crypto.randomUUID(), '2026-08-24T04:31:00+08:00')).snapshot;
   const recovered = await manager.recoverWorker();
   const scheduler = new FakeScheduler();
@@ -164,7 +164,7 @@ test('STEP-15 same-session service-worker recovery preserves waiting-delay deadl
 test('STEP-15 browser-session reset pauses prepared work, blocks resume, and explicit rebind preserves no-resend semantics', async () => {
   const { manager } = runHarness();
   let run = await createStarted(manager, { preventDiscard: false });
-  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'possibly dispatched before shutdown', assistantBaselineSignature: '1:base' })).snapshot;
+  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'possibly dispatched before shutdown', assistantBaselineFingerprint: 'af2:11111111111111111111111111111111' })).snapshot;
   const recovered = await manager.recoverBrowserSession();
   let paused = recovered.find((item) => item.id === run.id);
   assert.equal(paused.lifecycleState, 'paused');

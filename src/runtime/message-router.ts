@@ -1,4 +1,4 @@
-import { requireMessageEnvelope } from '../core/index.ts';
+import { ContractError, ERROR_CODES, createFailureResponse, requireMessageEnvelope, type RequestEnvelope } from '../core/index.ts';
 import { RUN_RUNTIME_OPERATIONS } from '../runs/types.ts';
 import type { ControlPlaneServer } from '../control-plane/server.ts';
 import { TAB_RUNTIME_OPERATIONS } from '../tabs/types.ts';
@@ -17,7 +17,8 @@ import type { SettingsRuntimeServer } from './settings-runtime-server.ts';
 import type { TemplateRuntimeServer } from './template-runtime-server.ts';
 import type { PresetRuntimeServer } from './preset-runtime-server.ts';
 import type { QueueRuntimeServer } from './queue-runtime-server.ts';
-import type { RuntimeMessageSenderLike, TabRuntimeServer } from './tab-runtime-server.ts';
+import type { TabRuntimeServer } from './tab-runtime-server.ts';
+import { resolveRuntimeCaller, type RuntimeMessageSenderLike } from './caller-context.ts';
 
 const TAB_OPERATIONS = new Set<string>(Object.values(TAB_RUNTIME_OPERATIONS));
 const RUN_OPERATIONS = new Set<string>(Object.values(RUN_RUNTIME_OPERATIONS));
@@ -28,6 +29,19 @@ const SETTINGS_OPERATIONS = new Set<string>(Object.values(SETTINGS_RUNTIME_OPERA
 const DIAGNOSTICS_OPERATIONS = new Set<string>(Object.values(DIAGNOSTICS_RUNTIME_OPERATIONS));
 const HISTORY_OPERATIONS = new Set<string>(Object.values(HISTORY_RUNTIME_OPERATIONS));
 const PORTABILITY_OPERATIONS = new Set<string>(Object.values(PORTABILITY_RUNTIME_OPERATIONS));
+const CONTENT_ENABLED_OPERATIONS = new Set<string>([TAB_RUNTIME_OPERATIONS.adapterState]);
+
+function requireAuthorizedCaller(request: RequestEnvelope, sender: RuntimeMessageSenderLike, extensionId: string): void {
+  if (request.target !== 'background') throw new ContractError(ERROR_CODES.invalidMessage, 'background router accepts background-targeted requests only');
+  const caller = resolveRuntimeCaller(sender, extensionId);
+  if (caller.kind === 'sidepanel') {
+    if (request.source !== 'sidepanel') throw new ContractError(ERROR_CODES.invalidMessage, 'Side Panel caller source metadata does not match verified sender context');
+    if (request.operation === TAB_RUNTIME_OPERATIONS.adapterState) throw new ContractError(ERROR_CODES.invalidMessage, 'Side Panel cannot publish content adapter state');
+    return;
+  }
+  if (request.source !== 'content') throw new ContractError(ERROR_CODES.invalidMessage, 'ChatGPT content caller source metadata does not match verified sender context');
+  if (!CONTENT_ENABLED_OPERATIONS.has(request.operation)) throw new ContractError(ERROR_CODES.invalidMessage, 'ChatGPT content caller is not authorized for this operation');
+}
 
 export class BackgroundMessageRouter {
   readonly #control: ControlPlaneServer;
@@ -40,22 +54,51 @@ export class BackgroundMessageRouter {
   readonly #diagnostics: DiagnosticsRuntimeServer | undefined;
   readonly #history: HistoryRuntimeServer | undefined;
   readonly #portability: PortabilityRuntimeServer | undefined;
+  readonly #extensionId: string;
 
-  constructor(control: ControlPlaneServer, tabs: TabRuntimeServer, runs?: RunRuntimeServer, templates?: TemplateRuntimeServer, presets?: PresetRuntimeServer, queues?: QueueRuntimeServer, settings?: SettingsRuntimeServer, diagnostics?: DiagnosticsRuntimeServer, history?: HistoryRuntimeServer, portability?: PortabilityRuntimeServer) {
-    this.#control = control; this.#tabs = tabs; this.#runs = runs; this.#templates = templates; this.#presets = presets; this.#queues = queues; this.#settings = settings; this.#diagnostics = diagnostics; this.#history = history; this.#portability = portability;
+  constructor(
+    control: ControlPlaneServer,
+    tabs: TabRuntimeServer,
+    runs?: RunRuntimeServer,
+    templates?: TemplateRuntimeServer,
+    presets?: PresetRuntimeServer,
+    queues?: QueueRuntimeServer,
+    settings?: SettingsRuntimeServer,
+    diagnostics?: DiagnosticsRuntimeServer,
+    history?: HistoryRuntimeServer,
+    portability?: PortabilityRuntimeServer,
+    extensionId = 'chatgpt-iterator-test-extension',
+  ) {
+    this.#control = control;
+    this.#tabs = tabs;
+    this.#runs = runs;
+    this.#templates = templates;
+    this.#presets = presets;
+    this.#queues = queues;
+    this.#settings = settings;
+    this.#diagnostics = diagnostics;
+    this.#history = history;
+    this.#portability = portability;
+    this.#extensionId = extensionId;
   }
 
   async handle(raw: unknown, sender: RuntimeMessageSenderLike = {}): Promise<unknown> {
     const message = requireMessageEnvelope(raw);
-    if (TAB_OPERATIONS.has(message.operation)) return await this.#tabs.handle(message, sender);
-    if (RUN_OPERATIONS.has(message.operation)) return this.#runs === undefined ? await this.#control.handle(message) : await this.#runs.handle(message);
-    if (TEMPLATE_OPERATIONS.has(message.operation)) return this.#templates === undefined ? await this.#control.handle(message) : await this.#templates.handle(message);
-    if (PRESET_OPERATIONS.has(message.operation)) return this.#presets === undefined ? await this.#control.handle(message) : await this.#presets.handle(message);
-    if (QUEUE_OPERATIONS.has(message.operation)) return this.#queues === undefined ? await this.#control.handle(message) : await this.#queues.handle(message);
-    if (SETTINGS_OPERATIONS.has(message.operation)) return this.#settings === undefined ? await this.#control.handle(message) : await this.#settings.handle(message);
-    if (DIAGNOSTICS_OPERATIONS.has(message.operation)) return this.#diagnostics === undefined ? await this.#control.handle(message) : await this.#diagnostics.handle(message);
-    if (HISTORY_OPERATIONS.has(message.operation)) return this.#history === undefined ? await this.#control.handle(message) : await this.#history.handle(message);
-    if (PORTABILITY_OPERATIONS.has(message.operation)) return this.#portability === undefined ? await this.#control.handle(message) : await this.#portability.handle(message);
-    return await this.#control.handle(message);
+    if (message.kind !== 'request') throw new ContractError(ERROR_CODES.invalidMessage, 'background router accepts request envelopes only');
+    try {
+      requireAuthorizedCaller(message, sender, this.#extensionId);
+      if (TAB_OPERATIONS.has(message.operation)) return await this.#tabs.handle(message, sender);
+      if (RUN_OPERATIONS.has(message.operation)) return this.#runs === undefined ? await this.#control.handle(message) : await this.#runs.handle(message);
+      if (TEMPLATE_OPERATIONS.has(message.operation)) return this.#templates === undefined ? await this.#control.handle(message) : await this.#templates.handle(message);
+      if (PRESET_OPERATIONS.has(message.operation)) return this.#presets === undefined ? await this.#control.handle(message) : await this.#presets.handle(message);
+      if (QUEUE_OPERATIONS.has(message.operation)) return this.#queues === undefined ? await this.#control.handle(message) : await this.#queues.handle(message);
+      if (SETTINGS_OPERATIONS.has(message.operation)) return this.#settings === undefined ? await this.#control.handle(message) : await this.#settings.handle(message);
+      if (DIAGNOSTICS_OPERATIONS.has(message.operation)) return this.#diagnostics === undefined ? await this.#control.handle(message) : await this.#diagnostics.handle(message);
+      if (HISTORY_OPERATIONS.has(message.operation)) return this.#history === undefined ? await this.#control.handle(message) : await this.#history.handle(message);
+      if (PORTABILITY_OPERATIONS.has(message.operation)) return this.#portability === undefined ? await this.#control.handle(message) : await this.#portability.handle(message);
+      return await this.#control.handle(message);
+    } catch (error) {
+      return createFailureResponse(message, error);
+    }
   }
 }

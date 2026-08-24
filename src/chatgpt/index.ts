@@ -1,3 +1,5 @@
+export * from './fingerprint.ts';
+export * from './compatibility.ts';
 export * from './adapter.ts';
 export * from './dom-environment.ts';
 export * from './errors.ts';

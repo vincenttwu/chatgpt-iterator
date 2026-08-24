@@ -1,6 +1,7 @@
 import { freezeJsonValue } from '../core/json.ts';
 import type { ChatGptAdapterDiagnostics, ChatGptAdapterSnapshot, ChatGptClickResult, ChatGptObservation, ChatGptSendResult, SelectorHealth } from './types.ts';
 import { CHATGPT_ADAPTER_SCHEMA_VERSION } from './types.ts';
+import { createAssistantFingerprint } from './fingerprint.ts';
 import { CHATGPT_ADAPTER_ERROR_CODES, ChatGptAdapterError } from './errors.ts';
 import type { ChatGptDomEnvironment, DomHandle } from './dom-environment.ts';
 import { CHATGPT_SELECTOR_REGISTRY, CONTINUE_TEXT_PATTERN, SEND_ARIA_PATTERN, STOP_ARIA_PATTERN, type SelectorDefinition } from './selectors.ts';
@@ -27,17 +28,18 @@ export class ChatGptAdapter {
     const latest = assistantMessages.at(-1);
     const latestText = latest === undefined ? '' : normalizeText(this.#dom.readText(latest));
     const pageAlert = this.#pageAlert();
+    const assistantFingerprint = createAssistantFingerprint(assistantMessages.length, latestText);
 
     return freezeJsonValue({
       schemaVersion: CHATGPT_ADAPTER_SCHEMA_VERSION,
       ready: composer !== null,
       busy: stop !== null,
       composerPresent: composer !== null,
-      composerDraft: composer === null ? '' : this.#dom.readComposer(composer.handle),
+      composerHasDraft: composer !== null && this.#dom.readComposer(composer.handle).trim().length !== 0,
       sendAvailable: send !== null && !this.#dom.isDisabled(send.handle),
       continueAvailable: continueButton !== null && !this.#dom.isDisabled(continueButton.handle),
       stopAvailable: stop !== null && !this.#dom.isDisabled(stop.handle),
-      assistantSignature: latest === undefined ? '0:' : `${assistantMessages.length}:${latestText.length}:${latestText.slice(-240)}`,
+      assistantFingerprint,
       assistantMessageCount: assistantMessages.length,
       pageAlert,
     });
@@ -69,7 +71,7 @@ export class ChatGptAdapter {
     });
   }
 
-  async send(message: string, timeoutMs = 5_000, expectedAssistantBaselineSignature?: string): Promise<ChatGptSendResult> {
+  async send(message: string, timeoutMs = 5_000, expectedAssistantBaselineFingerprint?: string): Promise<ChatGptSendResult> {
     if (typeof message !== 'string' || message.trim().length === 0) {
       throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.invalidCommand, 'Message must be non-empty');
     }
@@ -79,19 +81,19 @@ export class ChatGptAdapter {
       throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.draftNotEmpty, 'Composer contains unsent text');
     }
 
-    const assistantBaselineSignature = this.snapshot().assistantSignature;
-    if (expectedAssistantBaselineSignature !== undefined && assistantBaselineSignature !== expectedAssistantBaselineSignature) {
+    const assistantBaselineFingerprint = this.snapshot().assistantFingerprint;
+    if (expectedAssistantBaselineFingerprint !== undefined && assistantBaselineFingerprint !== expectedAssistantBaselineFingerprint) {
       throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged, 'Assistant response baseline changed before send');
     }
     this.#dom.writeComposer(composer.handle, message);
     const send = await this.#waitForEnabled(() => this.#findSend(), timeoutMs);
     if (send === null) throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.sendUnavailable, 'Enabled ChatGPT send button was not found');
     const beforeClick = this.snapshot();
-    if (beforeClick.assistantSignature !== assistantBaselineSignature || beforeClick.busy) {
+    if (beforeClick.assistantFingerprint !== assistantBaselineFingerprint || beforeClick.busy) {
       throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged, 'Conversation changed before send click');
     }
     this.#dom.click(send.handle);
-    return freezeJsonValue({ schemaVersion: CHATGPT_ADAPTER_SCHEMA_VERSION, status: 'sent' as const, assistantBaselineSignature });
+    return freezeJsonValue({ schemaVersion: CHATGPT_ADAPTER_SCHEMA_VERSION, status: 'sent' as const, assistantBaselineFingerprint });
   }
 
   continueResponse(): ChatGptClickResult { return this.#clickIfAvailable(this.#findContinue()); }

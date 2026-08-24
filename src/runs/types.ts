@@ -1,6 +1,6 @@
 import type { JsonObject } from '../core/types.ts';
 
-export const RUN_STATE_SCHEMA_VERSION = 1 as const;
+export const RUN_STATE_SCHEMA_VERSION = 2 as const;
 export const RUN_EVENT_SCHEMA_VERSION = 1 as const;
 export const RUN_EVENT_HISTORY_LIMIT = 256 as const;
 export const RUN_RESPONSE_START_TIMEOUT_MS = 120_000 as const;
@@ -31,7 +31,7 @@ export interface RunExecutionCommon extends JsonObject {
   readonly autoContinue: boolean;
   readonly autoScroll: boolean;
   readonly preventDiscard: boolean;
-  readonly assistantBaselineSignature: string|null;
+  readonly assistantBaselineFingerprint: string|null;
   readonly nextDueAt: string|null;
 }
 

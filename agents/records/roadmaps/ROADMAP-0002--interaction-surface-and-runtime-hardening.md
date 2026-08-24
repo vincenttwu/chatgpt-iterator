@@ -5,9 +5,9 @@ record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
 status: active
-revision: 1
+revision: 2
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T11:26:00+08:00
+updated_at: 2026-08-24T11:35:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -461,24 +461,24 @@ Forbidden examples:
 
 ### Work items
 
-- [ ] Introduce an explicit background message-boundary caller context derived/corroborated from Chrome `MessageSender` rather than trusting only the JSON envelope `source`.
-- [ ] Distinguish trusted extension-page callers from top-frame ChatGPT content-script callers; reject unexpected frames/origins/extensions.
-- [ ] Preserve protocol envelope source as descriptive/correlation data, but make actual command authorization depend on verified sender context.
-- [ ] Create ChatGPT adapter schema v2 or equivalent compatible evolution where raw `composerDraft` is replaced by `composerHasDraft` for external snapshots.
-- [ ] Replace text-bearing assistant signature serialization with an opaque deterministic fingerprint suitable for response-baseline comparison.
-- [ ] Keep raw composer reads content-local for draft-safety checks; never return them merely for diagnostics/state projection.
-- [ ] Audit adapter diagnostics/observations for accidental prompt/assistant leakage.
-- [ ] Define the narrow command authorization that the future mini controller will be allowed to use; do **not** build the controller yet.
-- [ ] Add explicit adapters/migration logic for persisted run/portable state if the signature/schema shape changes.
+- [x] Introduce an explicit background message-boundary caller context derived/corroborated from Chrome `MessageSender` rather than trusting only the JSON envelope `source`.
+- [x] Distinguish trusted extension-page callers from top-frame ChatGPT content-script callers; reject unexpected frames/origins/extensions.
+- [x] Preserve protocol envelope source as descriptive/correlation data, but make actual command authorization depend on verified sender context.
+- [x] Create ChatGPT adapter schema v2 or equivalent compatible evolution where raw `composerDraft` is replaced by `composerHasDraft` for external snapshots.
+- [x] Replace text-bearing assistant signature serialization with an opaque deterministic fingerprint suitable for response-baseline comparison.
+- [x] Keep raw composer reads content-local for draft-safety checks; never return them merely for diagnostics/state projection.
+- [x] Audit adapter diagnostics/observations for accidental prompt/assistant leakage.
+- [x] Define the narrow command authorization that the future mini controller will be allowed to use; do **not** build the controller yet.
+- [x] Add explicit adapters/migration logic for persisted run/portable state if the signature/schema shape changes.
 
 ### Acceptance
 
-- [ ] Focused sender-auth tests prove a forged `source: sidepanel` from a content-script sender cannot call Side Panel-only operations.
-- [ ] Top-frame ChatGPT content sender can invoke only explicitly allowed content-origin operations and only for its own `sender.tab` context.
-- [ ] No raw composer text appears in background adapter snapshots/diagnostics/observation payloads.
-- [ ] Assistant baseline comparison still detects response changes without embedding assistant text.
-- [ ] Repeat and Queue duplicate-send safety remains intact.
-- [ ] Existing v1 durable/portable state remains readable through explicit compatibility handling where affected.
+- [x] Focused sender-auth tests prove a forged `source: sidepanel` from a content-script sender cannot call Side Panel-only operations.
+- [x] Top-frame ChatGPT content sender can invoke only explicitly allowed content-origin operations and only for its own `sender.tab` context.
+- [x] No raw composer text appears in background adapter snapshots/diagnostics/observation payloads.
+- [x] Assistant baseline comparison still detects response changes without embedding assistant text.
+- [x] Repeat and Queue duplicate-send safety remains intact.
+- [x] Existing v1 durable/portable state remains readable through explicit compatibility handling where affected.
 
 ### Explicitly out of scope
 
@@ -746,7 +746,7 @@ Forbidden examples:
 # Master checklist
 
 - [x] STEP-01 — Successor Hardening Evaluation, Evidence Freeze, and Roadmap Opening (`v0.0.17`).
-- [ ] STEP-02 — Runtime Caller Authority and Privacy-Minimal Adapter Contract (`v0.0.18`).
+- [x] STEP-02 — Runtime Caller Authority and Privacy-Minimal Adapter Contract (`v0.0.18`).
 - [ ] STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention (`v0.0.19`).
 - [ ] STEP-04 — Timing Semantics and Unified Run Presentation Projection (`v0.0.20`).
 - [ ] STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator (`v0.0.21`).
@@ -786,44 +786,61 @@ Completed step history must not be rewritten as if later decisions were always p
 
 This section is intentionally operational. A new session should be able to resume from it directly.
 
-## Current state after this planning iteration
+## Current state after STEP-02
 
-- **Promoted planning baseline:** `v0.0.17`.
+- **Promoted implementation baseline:** `v0.0.18`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 1.
-- **ROADMAP-0002 progress:** 1/9 steps complete.
-- **Phase:** P1 — Safety Authority, active.
-- **No product/runtime source behavior changed in STEP-01.**
-- Existing v0.0.16 product closure evidence remains the functional baseline.
+- **ROADMAP-0002:** active, revision 2.
+- **ROADMAP-0002 progress:** 2/9 steps complete.
+- **Phase:** P1 — Safety Authority, active; STEP-03 is the remaining P1 step.
+- **Physical IndexedDB:** v1 unchanged.
+- **Global logical model:** v2.
+- **Durable run state:** v2 with explicit v1 compatibility/migration.
+- **Portable envelope:** v1 unchanged; legacy run payloads normalize through the run-state compatibility reader.
+- **ChatGPT adapter:** v2.
+- **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
+
+### STEP-02 implementation facts another session should preserve
+
+- `src/runtime/caller-context.ts` owns actual runtime caller classification.
+- Background routing verifies the own extension ID plus Side Panel document context or top-frame ChatGPT content context before dispatching to domain servers.
+- A forged envelope `source: sidepanel` from content cannot reach Side Panel-only operations.
+- Content-origin background authority is currently enabled only for `tabs.adapterstate`, and the tab runtime consumes the actual `sender.tab` identity.
+- `FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS` is deliberately limited to `pause | resume | stop`; it is a future policy boundary, not an enabled content command surface yet.
+- Adapter v2 external snapshots use `composerHasDraft` and `assistantFingerprint`; no raw composer draft or assistant-text suffix is serialized to background state/observations.
+- Fingerprints use the `af2:<32 hex>` form. The compatibility helper can deterministically transform the old text-bearing signature string into the v2 fingerprint, allowing safe v1 run migration without rereading historical assistant text.
+- Run state v2 uses `assistantBaselineFingerprint`. Logical migration `1 -> 2` rewrites stored run records through the current run parser and removes legacy text-bearing assistant baselines.
+- Repeat and Queue continue to share the same coordinator and generation/idempotency fences. STEP-08 predecessor execution smoke remains green after this contract evolution.
 
 ## Sole next authorized implementation
 
-**`v0.0.18 / ROADMAP-0002 STEP-02 — Runtime Caller Authority and Privacy-Minimal Adapter Contract`**
+**`v0.0.19 / ROADMAP-0002 STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention`**
 
 A continuation should begin by reading:
 
 1. this ROADMAP-0002 file;
 2. `iteration_manifest.yaml`;
-3. `ADR-0001--event-driven-runtime-and-persistence-boundaries.md`;
-4. `CONSTRAINT-0001--team-side-panel-ui-standard.md`;
-5. `AUDIT-0002--v0-0-16-successor-hardening-evaluation.md`;
-6. `REFERENCE-0006--successor-hardening-current-authority.md`;
-7. current `src/chatgpt/types.ts`, `src/chatgpt/adapter.ts`, runtime message router/servers, and background message listener before editing.
+3. `ADR-0001--event-driven-runtime-and-persistence-boundaries.md` revision 3;
+4. `AUDIT-0002--v0-0-16-successor-hardening-evaluation.md`;
+5. `REFERENCE-0006--successor-hardening-current-authority.md`;
+6. `src/runtime/caller-context.ts` and `src/runtime/message-router.ts`;
+7. `src/chatgpt/types.ts`, `src/chatgpt/compatibility.ts`, `src/chatgpt/fingerprint.ts`, and `src/chatgpt/adapter.ts`;
+8. `src/runs/types.ts`, `src/runs/model.ts`, `src/runs/repeat-coordinator.ts`, and the tab lifecycle/registry code before editing.
 
-## STEP-02 implementation cautions
+## STEP-03 implementation cautions
 
-- Do not build the mini controller early merely because the roadmap discusses it.
-- Do not add conversation binding in STEP-02 except schema seams strictly necessary for compatibility; STEP-03 owns behavior.
-- Preserve the existing Side Panel source/client behavior while moving actual authorization to sender-derived/corroborated context.
-- Preserve generation/idempotency and send-baseline safety.
-- If adapter/run schema changes require migration, keep physical IndexedDB v1 unless a real store/index topology change is necessary.
-- Do not delete legacy v1 parser support merely because new writes use v2.
-- Do not expose raw composer text to background to make tests easier.
-- Do not retry unavailable WXT/npm infrastructure as ceremony; run focused dependency-free tests/types and classify actual environment gaps honestly.
+- Do not weaken STEP-02 sender-derived authorization or reintroduce raw composer/assistant text to simplify conversation detection.
+- Conversation identity should derive primarily from current ChatGPT URL/location context; sidebar active-state DOM may be diagnostic corroboration only.
+- Treat `/` as a pending/new-chat context. A run may adopt the first safe `/ -> /c/<id>` transition once, then lock to that conversation identity.
+- A later `/c/A -> /c/B` change on the same tab must suspend/fail closed and require explicit user rebind/resume; do not silently follow the tab.
+- Preserve existing browser-session-reset rebind semantics and generation/idempotency fences.
+- Do not build toolbar badge, mini-controller, docking, or drag behavior early; those remain STEP-05 through STEP-07.
+- Keep physical IndexedDB v1 unless conversation identity truly requires a new store/index topology; prefer logical run-state evolution if necessary.
+- Do not retry unavailable WXT/npm infrastructure as ceremony; focused dependency-free checks remain valid and environment-only gaps remain non-blocking.
 
 ## Environment status carried forward
 
-At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. That remains inherited `deferred_environment` until the environment materially changes. Chromium availability alone is not enough to claim packaged-extension verification.
+At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-02 did not change dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
 
 ## What not to infer
 
@@ -838,3 +855,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | Date | Revision | Change | Status |
 | --- | ---: | --- | --- |
 | 2026-08-24 | 1 | Open successor hardening roadmap at v0.0.17 after v0.0.16 evaluation; freeze sender/privacy, conversation identity, truthful timing/projection, toolbar status, secondary in-page controller, docking/accessibility, adapter drift/retention and integrated closure ownership through v0.0.25. | active |
+| 2026-08-24 | 2 | Complete STEP-02 at v0.0.18: enforce sender-derived runtime caller authority, introduce privacy-minimal ChatGPT adapter v2 and run-state/logical-model v2 compatibility migration, preserve physical DB/export v1, and authorize STEP-03 only. | active |

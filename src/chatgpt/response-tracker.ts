@@ -8,56 +8,56 @@ export interface ResponseTrackerOptions {
 }
 
 export class ResponseCompletionTracker {
-  readonly #baselineSignature: string;
+  readonly #baselineFingerprint: string;
   readonly #startedAt: number;
   readonly #responseStartTimeoutMs: number;
   readonly #responseStableMs: number;
   #observedActivity = false;
-  #lastSignature: string;
+  #lastFingerprint: string;
   #lastChangeAt: number;
 
-  constructor(baselineSignature: string, startedAt: number, options: ResponseTrackerOptions = {}) {
-    this.#baselineSignature = baselineSignature;
+  constructor(baselineFingerprint: string, startedAt: number, options: ResponseTrackerOptions = {}) {
+    this.#baselineFingerprint = baselineFingerprint;
     this.#startedAt = startedAt;
     this.#responseStartTimeoutMs = options.responseStartTimeoutMs ?? 120_000;
     this.#responseStableMs = options.responseStableMs ?? 3_500;
-    this.#lastSignature = baselineSignature;
+    this.#lastFingerprint = baselineFingerprint;
     this.#lastChangeAt = startedAt;
   }
 
   observe(snapshot: ChatGptAdapterSnapshot, now: number): ResponseProgress {
     if (snapshot.continueAvailable) {
       this.#observedActivity = true;
-      return this.#result('continue_available', snapshot.assistantSignature, null);
+      return this.#result('continue_available', snapshot.assistantFingerprint, null);
     }
 
-    if (snapshot.busy || snapshot.assistantSignature !== this.#baselineSignature) this.#observedActivity = true;
-    if (snapshot.assistantSignature !== this.#lastSignature) {
-      this.#lastSignature = snapshot.assistantSignature;
+    if (snapshot.busy || snapshot.assistantFingerprint !== this.#baselineFingerprint) this.#observedActivity = true;
+    if (snapshot.assistantFingerprint !== this.#lastFingerprint) {
+      this.#lastFingerprint = snapshot.assistantFingerprint;
       this.#lastChangeAt = now;
     }
 
     if (this.#observedActivity && !snapshot.busy) {
       const stableAt = this.#lastChangeAt + this.#responseStableMs;
-      if (now >= stableAt) return this.#result('stable', snapshot.assistantSignature, null);
-      return this.#result('active', snapshot.assistantSignature, stableAt);
+      if (now >= stableAt) return this.#result('stable', snapshot.assistantFingerprint, null);
+      return this.#result('active', snapshot.assistantFingerprint, stableAt);
     }
 
     if (!this.#observedActivity) {
       const timeoutAt = this.#startedAt + this.#responseStartTimeoutMs;
-      if (now >= timeoutAt) return this.#result('timed_out', snapshot.assistantSignature, null);
-      return this.#result('waiting_start', snapshot.assistantSignature, timeoutAt);
+      if (now >= timeoutAt) return this.#result('timed_out', snapshot.assistantFingerprint, null);
+      return this.#result('waiting_start', snapshot.assistantFingerprint, timeoutAt);
     }
 
-    return this.#result('active', snapshot.assistantSignature, null);
+    return this.#result('active', snapshot.assistantFingerprint, null);
   }
 
-  #result(state: ResponseProgress['state'], assistantSignature: string, nextDeadlineAt: number | null): ResponseProgress {
+  #result(state: ResponseProgress['state'], assistantFingerprint: string, nextDeadlineAt: number | null): ResponseProgress {
     return freezeJsonValue({
       schemaVersion: CHATGPT_ADAPTER_SCHEMA_VERSION,
       state,
       observedActivity: this.#observedActivity,
-      assistantSignature,
+      assistantFingerprint,
       nextDeadlineAt,
     });
   }

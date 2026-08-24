@@ -1,6 +1,6 @@
 import { ContractError, ERROR_CODES, createRequest, freezeJsonValue, requireMessageEnvelope } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
-import { CHATGPT_ADAPTER_OPERATIONS, CHATGPT_ADAPTER_SCHEMA_VERSION, type ChatGptAdapterSnapshot } from '../chatgpt/types.ts';
+import { CHATGPT_ADAPTER_OPERATIONS, requireChatGptAdapterSnapshot, type ChatGptAdapterSnapshot } from '../chatgpt/index.ts';
 import type { BrowserTabChangeInfoLike, BrowserTabLike, TabBrowserLike } from './browser.ts';
 import {
   CHATGPT_TAB_URL_PATTERNS,
@@ -28,30 +28,7 @@ function isChatGptUrl(value: string | undefined): boolean {
   }
 }
 
-function requireAdapterSnapshot(value: unknown): ChatGptAdapterSnapshot {
-  if (value === null || Array.isArray(value) || typeof value !== 'object') {
-    throw new ContractError(ERROR_CODES.invalidMessage, 'adapter snapshot must be an object');
-  }
-  const candidate = value as Record<string, unknown>;
-  const allowedKeys = new Set(['schemaVersion', 'ready', 'busy', 'composerPresent', 'composerDraft', 'sendAvailable', 'continueAvailable', 'stopAvailable', 'assistantSignature', 'assistantMessageCount', 'pageAlert']);
-  for (const key of Object.keys(candidate)) {
-    if (!allowedKeys.has(key)) throw new ContractError(ERROR_CODES.invalidMessage, `unexpected adapter snapshot field: ${key}`);
-  }
-  const booleanKeys = ['ready', 'busy', 'composerPresent', 'sendAvailable', 'continueAvailable', 'stopAvailable'] as const;
-  if (candidate.schemaVersion !== CHATGPT_ADAPTER_SCHEMA_VERSION) {
-    throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported ChatGPT adapter snapshot schema');
-  }
-  for (const key of booleanKeys) {
-    if (typeof candidate[key] !== 'boolean') throw new ContractError(ERROR_CODES.invalidMessage, `adapter snapshot ${key} must be boolean`);
-  }
-  if (typeof candidate.composerDraft !== 'string' || typeof candidate.assistantSignature !== 'string' || typeof candidate.assistantMessageCount !== 'number') {
-    throw new ContractError(ERROR_CODES.invalidMessage, 'adapter snapshot text/count fields are invalid');
-  }
-  if (!(candidate.pageAlert === null || typeof candidate.pageAlert === 'string')) {
-    throw new ContractError(ERROR_CODES.invalidMessage, 'adapter snapshot pageAlert must be string|null');
-  }
-  return freezeJsonValue(candidate as unknown as ChatGptAdapterSnapshot);
-}
+function requireAdapterSnapshot(value: unknown): ChatGptAdapterSnapshot { return requireChatGptAdapterSnapshot(value); }
 
 function browserLifecycle(tab: BrowserTabLike): ChatGptTabLifecycleState | null {
   if (tab.discarded) return 'discarded';

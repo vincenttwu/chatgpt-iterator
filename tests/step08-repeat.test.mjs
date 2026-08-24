@@ -52,15 +52,15 @@ function runHarness() {
 
 function adapterSnapshot(patch = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     ready: true,
     busy: false,
     composerPresent: true,
-    composerDraft: '',
+    composerHasDraft: false,
     sendAvailable: true,
     continueAvailable: false,
     stopAvailable: false,
-    assistantSignature: '1:4:done',
+    assistantFingerprint: 'af2:11111111111111111111111111111111',
     assistantMessageCount: 1,
     pageAlert: null,
     ...patch,
@@ -71,16 +71,16 @@ class FakeClient {
   sends = [];
   scrolls = [];
   continues = 0;
-  snapshots = [adapterSnapshot({ assistantSignature: '1:4:base' })];
+  snapshots = [adapterSnapshot({ assistantFingerprint: 'af2:22222222222222222222222222222222' })];
   async snapshot() { return this.snapshots.at(-1); }
-  async send(tabId, message, baseline) { this.sends.push({ tabId, message, baseline }); return { schemaVersion: 1, status: 'sent', assistantBaselineSignature: baseline }; }
+  async send(tabId, message, baseline) { this.sends.push({ tabId, message, baseline }); return { schemaVersion: 2, status: 'sent', assistantBaselineFingerprint: baseline }; }
   async scrollToBottom(tabId) { this.scrolls.push(tabId); }
   async continueResponse() { this.continues += 1; return { schemaVersion: 1, clicked: true }; }
 }
 
 class FakeWaiter {
-  idle = adapterSnapshot({ assistantSignature: '1:4:base' });
-  response = adapterSnapshot({ assistantSignature: '2:8:complete' });
+  idle = adapterSnapshot({ assistantFingerprint: 'af2:22222222222222222222222222222222' });
+  response = adapterSnapshot({ assistantFingerprint: 'af2:33333333333333333333333333333333' });
   responseError = null;
   idleGate = null;
   async waitUntilIdle(_tabId, cancelled) {
@@ -152,7 +152,7 @@ test('STEP-08 nominal repeat persists prepared response wait, schedules delay, t
   assert.equal(waiting.execution.completedIterations, 1);
   assert.equal(client.sends.length, 1);
   assert.match(client.sends[0].message, /Iteration 1\/2; remaining=1/);
-  assert.equal(client.sends[0].baseline, '1:4:base');
+  assert.equal(client.sends[0].baseline, 'af2:22222222222222222222222222222222');
   assert.equal(typeof waiting.execution.nextDueAt, 'string');
   scheduler.fire(started.id);
   const completed = await eventually(async () => { const run = await manager.get(started.id); return run?.lifecycleState === 'completed' ? run : null; });
@@ -225,7 +225,7 @@ test('STEP-08 worker recovery from prepared waiting_response never blindly resen
   const waiter = new FakeWaiter();
   const coordinator = new RepeatRunCoordinator(manager, client, waiter, new FakeScheduler());
   let run = await createStarted(manager, { totalIterations: 1 });
-  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'already dispatched or conservatively assumed', assistantBaselineSignature: '1:4:base' })).snapshot;
+  run = (await manager.prepareIteration(run.id, run.generation, crypto.randomUUID(), { iteration: 1, message: 'already dispatched or conservatively assumed', assistantBaselineFingerprint: 'af2:22222222222222222222222222222222' })).snapshot;
   const recovered = await manager.recoverWorker();
   coordinator.recover(recovered);
   const completed = await eventually(async () => { const value = await manager.get(run.id); return value?.lifecycleState === 'completed' ? value : null; });
@@ -248,14 +248,14 @@ test('STEP-08 scheduler uses short timers below 30s and alarms for longer/recove
 test('STEP-08 event-driven waiter clicks Continue from semantic observations and completes on a stability deadline', async () => {
   const hub = new ChatGptObservationHub();
   const client = new FakeClient();
-  client.snapshots = [adapterSnapshot({ assistantSignature: '1:4:base', busy: true, sendAvailable: false })];
+  client.snapshots = [adapterSnapshot({ assistantFingerprint: 'af2:22222222222222222222222222222222', busy: true, sendAvailable: false })];
   const waiter = new EventDrivenChatGptWaiter(client, hub, () => Date.now(), { responseStartTimeoutMs: 100, responseStableMs: 10 });
-  const pending = waiter.waitForResponse(10, '1:4:base', { autoContinue: true, cancelled: () => false });
-  hub.note(10, adapterSnapshot({ assistantSignature: '1:7:partial', continueAvailable: true, busy: false }));
+  const pending = waiter.waitForResponse(10, 'af2:22222222222222222222222222222222', { autoContinue: true, cancelled: () => false });
+  hub.note(10, adapterSnapshot({ assistantFingerprint: 'af2:44444444444444444444444444444444', continueAvailable: true, busy: false }));
   await eventually(() => client.continues === 1);
-  hub.note(10, adapterSnapshot({ assistantSignature: '1:12:final', busy: false, continueAvailable: false }));
+  hub.note(10, adapterSnapshot({ assistantFingerprint: 'af2:55555555555555555555555555555555', busy: false, continueAvailable: false }));
   const result = await pending;
-  assert.equal(result.assistantSignature, '1:12:final');
+  assert.equal(result.assistantFingerprint, 'af2:55555555555555555555555555555555');
 });
 
 test('STEP-08 source wiring is event-driven, uses alarms only for coarse scheduling, and adds no polling loop', async () => {
@@ -264,12 +264,12 @@ test('STEP-08 source wiring is event-driven, uses alarms only for coarse schedul
   ]);
   assert.match(background, /RepeatRunCoordinator/);
   assert.match(background, /DurableRunScheduler/);
-  assert.match(content, /assistantSignature/);
+  assert.match(content, /assistantFingerprint/);
   assert.match(scheduler, /RUN_SHORT_DELAY_THRESHOLD_MS/);
   assert.match(scheduler, /alarms\.create|#alarms\.create/);
   assert.match(waiter, /ResponseCompletionTracker/);
   assert.match(coordinator, /prepareIteration/);
-  assert.match(server, /expectedAssistantBaselineSignature/);
+  assert.match(server, /expectedAssistantBaselineFingerprint/);
   assert.match(manifest, /'alarms'/);
   for (const source of [background, content, scheduler, waiter, coordinator]) {
     assert.doesNotMatch(source, /setInterval\s*\(/);

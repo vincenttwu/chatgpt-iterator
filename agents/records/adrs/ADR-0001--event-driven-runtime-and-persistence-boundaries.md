@@ -5,9 +5,9 @@ record_type: adr
 slug: event-driven-runtime-and-persistence-boundaries
 title: "Event-Driven Runtime and Persistence Boundaries"
 status: accepted
-revision: 2
+revision: 3
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T04:48:00+08:00
+updated_at: 2026-08-24T11:35:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -16,7 +16,7 @@ scope:
   packages: []
   paths: [entrypoints/, src/runtime/, src/chatgpt/, src/persistence/, src/tabs/]
 relations:
-  related: [ROADMAP-0001, CONSTRAINT-0001, REFERENCE-0001, REFERENCE-0002]
+  related: [ROADMAP-0001, ROADMAP-0002, CONSTRAINT-0001, REFERENCE-0001, REFERENCE-0002, REFERENCE-0006]
   depends_on: [REFERENCE-0001, CONSTRAINT-0001]
   blocks: []
   supersedes: []
@@ -69,3 +69,17 @@ CONSTRAINT-0001 is mandatory. Presentation may not replace runtime or persistenc
 ## ROADMAP-0001 closure disposition
 
 At v0.0.16 the decision remains **accepted**. The completed product preserves the four authority zones, explicit tab binding, event-driven adapter, IndexedDB/storage separation and persisted recovery fences. Browser-session reset now pauses and requires explicit target rebind because tab IDs are session-scoped; same-session worker restart may reconcile persisted work without blind resend. Repeat and Queue share one coordinator. Portability format v1 remains independent of physical IndexedDB v1. No closure change requires a superseding ADR.
+
+
+## ROADMAP-0002 STEP-02 caller and privacy boundary
+
+At `v0.0.18`, cross-context authorization is tightened without changing the four authority zones:
+
+- background request authorization derives the caller class from Chrome `MessageSender` metadata and the extension's own runtime ID;
+- Side Panel authority requires an own-extension Side Panel document; top-frame ChatGPT content authority requires an own-extension content sender, `frameId === 0`, an eligible ChatGPT origin/URL, and its actual `sender.tab` identity;
+- the message envelope `source` remains versioned correlation metadata and must agree with the verified caller, but it is no longer sufficient authorization by itself;
+- current content-origin background authority is restricted to adapter-state publication for the sender's own tab; the future mini-controller policy is intentionally limited to Pause/Resume/Stop semantics and is not enabled as a command surface in STEP-02;
+- ChatGPT adapter schema v2 exposes `composerHasDraft` and an opaque deterministic `assistantFingerprint`; raw composer text remains content-local and assistant text is not serialized into background snapshots/observations;
+- run state schema v2 stores `assistantBaselineFingerprint`; logical persistence advances to v2 with an explicit v1->v2 run migration while physical IndexedDB remains v1 and portable format v1 remains readable through compatibility normalization.
+
+These changes strengthen the existing background/application and content-adapter boundary; they do not authorize a popup, second execution engine, conversation binding, or new host permission.

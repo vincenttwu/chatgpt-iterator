@@ -1,12 +1,10 @@
 import { ContractError, ERROR_CODES, createFailureResponse, createSuccessResponse, requireMessageEnvelope, type RequestEnvelope, type ResponseEnvelope } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
-import type { ChatGptAdapterSnapshot } from '../chatgpt/types.ts';
+import { requireChatGptAdapterSnapshot, type ChatGptAdapterSnapshot } from '../chatgpt/index.ts';
 import type { ChatGptTabRegistry } from '../tabs/registry.ts';
 import { TAB_RUNTIME_OPERATIONS } from '../tabs/types.ts';
 
-export interface RuntimeMessageSenderLike {
-  readonly tab?: { readonly id?: number; readonly windowId: number };
-}
+import type { RuntimeMessageSenderLike } from './caller-context.ts';
 
 export type AdapterStateListener = (tabId: number, windowId: number, snapshot: ChatGptAdapterSnapshot) => void;
 
@@ -61,9 +59,9 @@ export class TabRuntimeServer {
           const tabId = sender.tab?.id;
           const windowId = sender.tab?.windowId;
           if (tabId === undefined || windowId === undefined) throw new ContractError(ERROR_CODES.invalidMessage, 'content adapter state requires sender tab identity');
-          const rawSnapshot = requireAdapterState(request.payload);
-          const result = await this.#registry.noteAdapterState(tabId, windowId, rawSnapshot);
-          this.#adapterStateListener?.(tabId, windowId, rawSnapshot as ChatGptAdapterSnapshot);
+          const snapshot = requireChatGptAdapterSnapshot(requireAdapterState(request.payload));
+          const result = await this.#registry.noteAdapterState(tabId, windowId, snapshot);
+          this.#adapterStateListener?.(tabId, windowId, snapshot);
           return createSuccessResponse(request, result);
         }
         default:

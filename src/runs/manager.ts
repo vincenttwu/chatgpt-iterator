@@ -89,7 +89,7 @@ export class DurableRunManager {
   async prepareIteration(runId: string, expectedGeneration: unknown, commandId: string, input: {
     iteration: number;
     message: string;
-    assistantBaselineSignature: string;
+    assistantBaselineFingerprint: string;
     delayAfterSeconds?: number | null;
   }): Promise<RunMutationResult> {
     return await this.#transition(runId, expectedGeneration, commandId, 'iteration_prepared', (current, now) => {
@@ -101,7 +101,7 @@ export class DurableRunManager {
         activeIteration: input.iteration,
         activeMessage: input.message,
         activeDelayAfterSeconds: input.delayAfterSeconds ?? null,
-        assistantBaselineSignature: input.assistantBaselineSignature,
+        assistantBaselineFingerprint: input.assistantBaselineFingerprint,
         nextDueAt: null,
       });
       return nextRunState(current, { lifecycleState: 'waiting_response', execution, now });
@@ -120,7 +120,7 @@ export class DurableRunManager {
         activeIteration: null,
         activeMessage: null,
         activeDelayAfterSeconds: null,
-        assistantBaselineSignature: null,
+        assistantBaselineFingerprint: null,
         nextDueAt: done ? null : nextDueAt,
       });
       if (!done && nextDueAt === null) throw new ContractError(ERROR_CODES.invalidMessage, 'non-final iteration requires nextDueAt');

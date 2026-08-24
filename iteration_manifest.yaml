@@ -1,34 +1,40 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.17
-status: accepted_successor_planning
+version: v0.0.18
+status: accepted_implementation
 iteration:
-  kind: planning
+  kind: implementation
   roadmap: ROADMAP-0002
   roadmap_status: active
-  step: STEP-01
+  step: STEP-02
   step_status: complete
   phase: P1
   phase_status: active
 baseline:
-  working_parent: v0.0.16
+  working_parent: v0.0.17
   prior_roadmap: ROADMAP-0001
   prior_roadmap_status: closed
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
+schemas:
+  physical_db_version: 1
+  logical_model_version: 2
+  export_format_version: 1
+  run_state_schema_version: 2
+  chatgpt_adapter_schema_version: 2
 validation:
-  successor_roadmap_self_contained: pass
-  v0_0_16_code_boundary_audit: pass
-  current_chatgpt_html_evidence_recorded: pass
-  current_chrome_wcag_authority_refreshed: pass
-  product_runtime_source: unchanged_from_v0.0.16
-  product_test_suite: "not rerun: planning-only iteration; inherited v0.0.16 closure baseline is 133/133"
+  focused_step02: "9/9 pass"
+  strict_dependency_free_typescript: pass
+  predecessor_repeat_shared_coordinator_smoke: "9/9 pass"
+  sender_authority: pass
+  adapter_privacy_projection: pass
+  v1_run_and_portable_compatibility: pass
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build_package: inherited_deferred_environment
 next:
   status: authorized
-  version: v0.0.18
+  version: v0.0.19
   roadmap: ROADMAP-0002
-  step: STEP-02
-  title: Runtime Caller Authority and Privacy-Minimal Adapter Contract
+  step: STEP-03
+  title: Conversation Identity and Wrong-Conversation Send Prevention

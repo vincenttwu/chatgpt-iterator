@@ -86,7 +86,7 @@ test('STEP-06 physical IndexedDB v1 declares all seven authority stores and requ
 
 test('STEP-06 physical, logical and export version authorities are explicitly separate', () => {
   assert.equal(PHYSICAL_DB_VERSION, 1);
-  assert.equal(LOGICAL_MODEL_VERSION, 1);
+  assert.equal(LOGICAL_MODEL_VERSION, 2);
   assert.equal(EXPORT_FORMAT_VERSION, 1);
   const bootstrapSource = new URL('../src/persistence/bootstrap.ts', import.meta.url);
   assert.ok(bootstrapSource);
@@ -132,11 +132,11 @@ test('STEP-06 logical migration bootstrap is resumable/idempotent and distinct f
   const driver = new MemoryDriver();
   const repositories = new ApplicationRepositories(driver);
   const first = await migrateLogicalModel(repositories, LOGICAL_MIGRATIONS, () => '2026-08-24T03:05:00+08:00');
-  assert.deepEqual(first, { fromVersion: 0, toVersion: 1, applied: 1 });
+  assert.deepEqual(first, { fromVersion: 0, toVersion: 2, applied: 2 });
   const second = await migrateLogicalModel(repositories, LOGICAL_MIGRATIONS, () => '2026-08-24T03:06:00+08:00');
-  assert.deepEqual(second, { fromVersion: 1, toVersion: 1, applied: 0 });
+  assert.deepEqual(second, { fromVersion: 2, toVersion: 2, applied: 0 });
   const metadata = await repositories.readonly(['metadata'], async (tx) => tx.repository('metadata').get('logicalMigrationState'));
-  assert.deepEqual(metadata.value, { state: 'complete', version: 1 });
+  assert.deepEqual(metadata.value, { state: 'complete', version: 2 });
 });
 
 test('STEP-06 Chrome storage tiers are namespaced, purpose-bounded and restricted to trusted extension contexts', async () => {

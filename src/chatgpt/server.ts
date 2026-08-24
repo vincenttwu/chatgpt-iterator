@@ -4,23 +4,33 @@ import { CHATGPT_ADAPTER_ERROR_CODES, ChatGptAdapterError } from './errors.ts';
 import { CHATGPT_ADAPTER_OPERATIONS } from './types.ts';
 import type { ChatGptAdapterSnapshot } from './types.ts';
 import type { ChatGptAdapter } from './adapter.ts';
+import { assistantFingerprintFromLegacySignature, isAssistantFingerprint } from './fingerprint.ts';
 
 function requireEmptyPayload(payload: JsonObject): void {
   if (Object.keys(payload).length !== 0) throw new ContractError(ERROR_CODES.invalidMessage, 'operation payload must be empty');
 }
 
-function requireSendPayload(payload: JsonObject): { message: string; expectedAssistantBaselineSignature?: string } {
+function requireSendPayload(payload: JsonObject): { message: string; expectedAssistantBaselineFingerprint?: string } {
   const keys = Object.keys(payload);
-  if (!keys.every((key) => key === 'message' || key === 'expectedAssistantBaselineSignature') || typeof payload.message !== 'string') {
-    throw new ContractError(ERROR_CODES.invalidMessage, 'chatgpt.send payload must contain message and optional expectedAssistantBaselineSignature');
+  if (!keys.every((key) => key === 'message' || key === 'expectedAssistantBaselineFingerprint' || key === 'expectedAssistantBaselineSignature') || typeof payload.message !== 'string') {
+    throw new ContractError(ERROR_CODES.invalidMessage, 'chatgpt.send payload must contain message and optional expected assistant baseline');
+  }
+  if (payload.expectedAssistantBaselineFingerprint !== undefined && payload.expectedAssistantBaselineSignature !== undefined) {
+    throw new ContractError(ERROR_CODES.invalidMessage, 'chatgpt.send baseline must use one compatibility field only');
   }
   const message = payload.message;
   if (message.trim().length === 0 || message.length > 65_536) throw new ContractError(ERROR_CODES.invalidMessage, 'message must be 1..65536 characters');
-  const baseline = payload.expectedAssistantBaselineSignature;
-  if (!(baseline === undefined || (typeof baseline === 'string' && baseline.length <= 4_096))) {
-    throw new ContractError(ERROR_CODES.invalidMessage, 'expectedAssistantBaselineSignature must be a bounded string when supplied');
+  const fingerprint = payload.expectedAssistantBaselineFingerprint;
+  if (fingerprint !== undefined) {
+    if (!isAssistantFingerprint(fingerprint)) throw new ContractError(ERROR_CODES.invalidMessage, 'expectedAssistantBaselineFingerprint must be an opaque adapter v2 fingerprint');
+    return { message, expectedAssistantBaselineFingerprint: fingerprint };
   }
-  return baseline === undefined ? { message } : { message, expectedAssistantBaselineSignature: baseline };
+  const legacy = payload.expectedAssistantBaselineSignature;
+  if (legacy !== undefined) {
+    if (typeof legacy !== 'string' || legacy.length > 4_096) throw new ContractError(ERROR_CODES.invalidMessage, 'legacy assistant baseline must be a bounded string');
+    return { message, expectedAssistantBaselineFingerprint: assistantFingerprintFromLegacySignature(legacy) };
+  }
+  return { message };
 }
 
 function normalizeAdapterError(error: unknown): ContractError {
@@ -59,7 +69,7 @@ export class ChatGptAdapterServer {
           return createSuccessResponse(request, this.#adapter.diagnostics());
         case CHATGPT_ADAPTER_OPERATIONS.send: {
           const input = requireSendPayload(request.payload);
-          return createSuccessResponse(request, await this.#adapter.send(input.message, 5_000, input.expectedAssistantBaselineSignature));
+          return createSuccessResponse(request, await this.#adapter.send(input.message, 5_000, input.expectedAssistantBaselineFingerprint));
         }
         case CHATGPT_ADAPTER_OPERATIONS.continueResponse:
           requireEmptyPayload(request.payload);

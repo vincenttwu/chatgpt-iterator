@@ -33,7 +33,7 @@ export class EventDrivenChatGptWaiter {
     const started = this.#now();
     const initial = await this.#client.snapshot(tabId);
     if (cancelled()) throw new ContractError(ERROR_CODES.staleRequest, 'run execution cancelled');
-    if (initial.composerDraft.trim().length !== 0) throw new ContractError(ERROR_CODES.staleRequest, 'ChatGPT composer contains an unsent draft');
+    if (initial.composerHasDraft) throw new ContractError(ERROR_CODES.staleRequest, 'ChatGPT composer contains an unsent draft');
     if (initial.ready && !initial.busy && initial.sendAvailable) return initial;
     return await new Promise<ChatGptAdapterSnapshot>((resolve, reject) => {
       let settled = false;
@@ -47,7 +47,7 @@ export class EventDrivenChatGptWaiter {
       };
       const inspect = (snapshot: ChatGptAdapterSnapshot) => {
         if (cancelled()) return finish(new ContractError(ERROR_CODES.staleRequest, 'run execution cancelled'));
-        if (snapshot.composerDraft.trim().length !== 0) return finish(new ContractError(ERROR_CODES.staleRequest, 'ChatGPT composer contains an unsent draft'));
+        if (snapshot.composerHasDraft) return finish(new ContractError(ERROR_CODES.staleRequest, 'ChatGPT composer contains an unsent draft'));
         if (snapshot.ready && !snapshot.busy && snapshot.sendAvailable) finish(null, snapshot);
       };
       const unsubscribe = this.#hub.subscribe(tabId, inspect);
@@ -57,8 +57,8 @@ export class EventDrivenChatGptWaiter {
     });
   }
 
-  async waitForResponse(tabId: number, baseline: string, options: ResponseWaitOptions): Promise<ChatGptAdapterSnapshot> {
-    const tracker = new ResponseCompletionTracker(baseline, this.#now(), {
+  async waitForResponse(tabId: number, baselineFingerprint: string, options: ResponseWaitOptions): Promise<ChatGptAdapterSnapshot> {
+    const tracker = new ResponseCompletionTracker(baselineFingerprint, this.#now(), {
       responseStartTimeoutMs: this.#responseStartTimeoutMs,
       responseStableMs: this.#responseStableMs,
     });
@@ -90,7 +90,7 @@ export class EventDrivenChatGptWaiter {
         if (progress.state === 'stable') return finish(null, snapshot);
         if (progress.state === 'continue_available') {
           if (!options.autoContinue) return finish(new ContractError(ERROR_CODES.unavailable, 'ChatGPT requires Continue but automatic Continue is disabled'));
-          const fingerprint = `${snapshot.assistantSignature}:${snapshot.assistantMessageCount}`;
+          const fingerprint = `${snapshot.assistantFingerprint}:${snapshot.assistantMessageCount}`;
           if (!continueInFlight && continueFingerprint !== fingerprint) {
             continueFingerprint = fingerprint;
             continueInFlight = true;

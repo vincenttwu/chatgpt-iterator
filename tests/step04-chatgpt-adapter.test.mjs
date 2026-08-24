@@ -8,6 +8,7 @@ import {
   ChatGptAdapter,
   ChatGptAdapterServer,
   ResponseCompletionTracker,
+  isAssistantFingerprint,
 } from '../src/chatgpt/index.ts';
 
 const text = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -88,7 +89,8 @@ test('STEP-04 adapter snapshots ready, busy, response, continue and visible erro
   assert.equal(snapshot.continueAvailable, true);
   assert.equal(snapshot.stopAvailable, true);
   assert.equal(snapshot.assistantMessageCount, 2);
-  assert.match(snapshot.assistantSignature, /^2:25:Latest assistant response$/);
+  assert.equal(isAssistantFingerprint(snapshot.assistantFingerprint), true);
+  assert.equal(JSON.stringify(snapshot).includes('Latest assistant response'), false);
   assert.equal(snapshot.pageAlert, 'Something went wrong. Please retry.');
   assert.equal(adapter.diagnostics().status, 'degraded');
 });
@@ -97,7 +99,7 @@ test('STEP-04 send preserves empty-draft safety, captures response baseline, wri
   const { composer, send, adapter } = readyFixture();
   const result = await adapter.send('Continue with the next version.');
   assert.equal(result.status, 'sent');
-  assert.equal(result.assistantBaselineSignature, '0:');
+  assert.equal(isAssistantFingerprint(result.assistantBaselineFingerprint), true);
   assert.equal(composer.draft, 'Continue with the next version.');
   assert.equal(send.clicks, 1);
 
@@ -158,12 +160,12 @@ test('STEP-04 MutationObserver stream coalesces DOM activity and emits only sema
 test('STEP-04 response tracker preserves response-start timeout, continue and stable-completion semantics without polling ownership', () => {
   const { adapter } = readyFixture();
   const baseline = adapter.snapshot();
-  const tracker = new ResponseCompletionTracker(baseline.assistantSignature, 1_000, { responseStartTimeoutMs: 120_000, responseStableMs: 3_500 });
+  const tracker = new ResponseCompletionTracker(baseline.assistantFingerprint, 1_000, { responseStartTimeoutMs: 120_000, responseStableMs: 3_500 });
   let progress = tracker.observe(baseline, 1_000);
   assert.equal(progress.state, 'waiting_start');
   assert.equal(progress.nextDeadlineAt, 121_000);
 
-  const active = { ...baseline, busy: true, assistantSignature: '1:5:Hello', assistantMessageCount: 1 };
+  const active = { ...baseline, busy: true, assistantFingerprint: 'af2:11111111111111111111111111111111', assistantMessageCount: 1 };
   progress = tracker.observe(active, 2_000);
   assert.equal(progress.state, 'active');
 
@@ -174,9 +176,9 @@ test('STEP-04 response tracker preserves response-start timeout, continue and st
   progress = tracker.observe(quiet, 5_500);
   assert.equal(progress.state, 'stable');
 
-  const timeoutTracker = new ResponseCompletionTracker('0:', 1_000);
+  const timeoutTracker = new ResponseCompletionTracker(baseline.assistantFingerprint, 1_000);
   assert.equal(timeoutTracker.observe(baseline, 121_000).state, 'timed_out');
-  const continueTracker = new ResponseCompletionTracker('0:', 1_000);
+  const continueTracker = new ResponseCompletionTracker(baseline.assistantFingerprint, 1_000);
   assert.equal(continueTracker.observe({ ...baseline, continueAvailable: true }, 2_000).state, 'continue_available');
 });
 

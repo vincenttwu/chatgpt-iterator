@@ -85,7 +85,7 @@ const portabilityServer = new PortabilityRuntimeServer(
   async () => { if (portabilityServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'portability runtime is not initialized'); return await portabilityServicePromise; },
   () => { for (const reason of ['template_changed','preset_changed','queue_changed','settings_changed','history_changed'] as const) ports.broadcast(reason); },
 );
-const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer, queueServer, settingsServer, diagnosticsServer, historyServer, portabilityServer);
+const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer, queueServer, settingsServer, diagnosticsServer, historyServer, portabilityServer, browser.runtime.id);
 const lifecycle = new TabLifecycleCoordinator(tabBrowser, tabs, discardGuards, (error) => { console.error('chatgpt-iterator: tab lifecycle error', error); });
 
 function reportRunError(error: unknown): void { console.error('chatgpt-iterator: run runtime error', error); }

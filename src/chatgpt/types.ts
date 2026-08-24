@@ -1,6 +1,6 @@
 import type { JsonObject } from '../core/types.ts';
 
-export const CHATGPT_ADAPTER_SCHEMA_VERSION = 1 as const;
+export const CHATGPT_ADAPTER_SCHEMA_VERSION = 2 as const;
 export const CHATGPT_ADAPTER_OPERATIONS = Object.freeze({
   snapshot: 'chatgpt.snapshot',
   diagnostics: 'chatgpt.diagnostics',
@@ -34,11 +34,11 @@ export interface ChatGptAdapterSnapshot extends JsonObject {
   readonly ready: boolean;
   readonly busy: boolean;
   readonly composerPresent: boolean;
-  readonly composerDraft: string;
+  readonly composerHasDraft: boolean;
   readonly sendAvailable: boolean;
   readonly continueAvailable: boolean;
   readonly stopAvailable: boolean;
-  readonly assistantSignature: string;
+  readonly assistantFingerprint: string;
   readonly assistantMessageCount: number;
   readonly pageAlert: string | null;
 }
@@ -54,7 +54,7 @@ export interface ChatGptObservation extends JsonObject {
 export interface ChatGptSendResult extends JsonObject {
   readonly schemaVersion: number;
   readonly status: 'sent';
-  readonly assistantBaselineSignature: string;
+  readonly assistantBaselineFingerprint: string;
 }
 
 export interface ChatGptClickResult extends JsonObject {
@@ -68,6 +68,6 @@ export interface ResponseProgress extends JsonObject {
   readonly schemaVersion: number;
   readonly state: ResponseProgressState;
   readonly observedActivity: boolean;
-  readonly assistantSignature: string;
+  readonly assistantFingerprint: string;
   readonly nextDeadlineAt: number | null;
 }

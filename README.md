@@ -1,105 +1,58 @@
-# ChatGPT Iterator — v0.0.17
+# ChatGPT Iterator — v0.0.18
 
 Chrome-native Manifest V3 Side Panel controller for durable ChatGPT Repeat and Queue workflows.
 
 ## Product status
 
-**ROADMAP-0001 is closed at v0.0.16. ROADMAP-0002 is now active at v0.0.17.**
+**ROADMAP-0001 is closed at v0.0.16. ROADMAP-0002 is active at v0.0.18 with 2/9 steps complete.**
 
-`v0.0.17` is a planning/evidence-freeze iteration only: it records the successor hardening program without changing product/runtime behavior. The sole next authorized implementation is:
+`v0.0.18` completes **ROADMAP-0002 STEP-02 — Runtime Caller Authority and Privacy-Minimal Adapter Contract**. The sole next authorized implementation is:
 
-**v0.0.18 / ROADMAP-0002 STEP-02 — Runtime Caller Authority and Privacy-Minimal Adapter Contract**
+**v0.0.19 / ROADMAP-0002 STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention**
 
-ROADMAP-0002 is intentionally self-contained and includes a semi-handoff section with current architecture, identified gaps, user-provided current ChatGPT DOM evidence, proposed successor contracts, step acceptance criteria and continuation cautions.
+The originally requested `chatgpt-iterator-v0.0.0` archive never became available. The accepted planning/implementation lineage remains the source of truth; no byte-for-byte ancestry claim is fabricated.
 
-The originally requested `chatgpt-iterator-v0.0.0` archive never became available. The accepted v0.0.1 planning overlay and explicitly authorized v0.0.2+ implementation lineage remain the forward source of truth; no byte-for-byte ancestry claim is fabricated.
+## What v0.0.18 changes
 
-## Current accepted product baseline
+- Background request authorization now derives/corroborates the caller from Chrome `MessageSender` instead of trusting only envelope `source`.
+- Own-extension Side Panel callers and top-frame ChatGPT content callers are distinguished fail-closed; unexpected frames, origins and extension IDs are rejected.
+- Content-origin background authority currently permits only adapter-state publication and uses the actual `sender.tab` identity.
+- The future mini-controller authorization contract is intentionally narrow: Pause / Resume / Stop only, with no controller UI enabled yet.
+- ChatGPT adapter schema is now **v2**: external snapshots expose `composerHasDraft` rather than raw draft text and `assistantFingerprint` rather than text-bearing assistant signatures.
+- Raw composer reads stay inside the content adapter for send safety.
+- Durable run state is now **v2** with `assistantBaselineFingerprint`.
+- Global logical persistence is **v2** with explicit v1 -> v2 run migration; physical IndexedDB remains **v1**.
+- Portable envelope remains **v1** and explicitly normalizes legacy run snapshots through compatibility parsing.
+- Repeat/Queue orchestration, generation fencing, idempotency, Side Panel IA, permissions and host scope are unchanged.
 
-The deployable/source behavior remains exactly the closed **v0.0.16** product baseline:
+## Current product surface
 
-- global Side Panel with **Run · Queue · Presets · Templates · Settings**;
-- explicit ChatGPT target tab binding rather than ambient active-tab execution;
-- durable **Repeat** and ordered **Queue** workflows through one recovery-aware coordinator;
-- pause/resume/stop, automatic Continue, bounded delays, discard protection and truthful frozen/discarded/reconnecting states;
-- safe recovery across Side Panel closure, service-worker restart and target reload;
-- browser/extension-session reset pauses unfinished work and requires explicit target rebind before Resume;
-- stable/revisioned Templates, Presets and Queues in extension-origin IndexedDB;
-- privacy-safe public diagnostics and bounded terminal history;
-- versioned configuration export and explicitly sensitive full backup with preview-before-import Merge / Replace imported / Replace all.
+The primary product remains the Side Panel with **Run · Queue · Presets · Templates · Settings**. Run uses explicit ChatGPT target binding; Repeat and Queue share one recovery-aware coordinator; Templates/Presets/Queues are stable revisioned definitions; Settings includes diagnostics/history/data portability; browser-session resets require explicit target rebind before Resume.
 
-## ROADMAP-0002 successor direction
+ROADMAP-0002 is hardening-focused rather than workflow expansion. The remaining sequence is conversation identity, truthful timing/shared presentation projection, toolbar status, minimal in-page controller, accessible docking/dragging, adapter drift/retention hardening, then integrated closure.
 
-The successor is **hardening + interaction-surface work**, not workflow expansion. Its priority order is:
+## Data, privacy, and permissions
 
-1. sender-derived runtime caller authority and privacy-minimal adapter payloads;
-2. conversation identity so same-tab ChatGPT navigation cannot send into the wrong conversation;
-3. truthful pause/delay semantics and one shared run presentation projection;
-4. toolbar badge/title status while preserving toolbar-click → Side Panel;
-5. a minimal in-page Shadow DOM controller that recovers the original userscript's launcher/progress/Pause/Resume/Stop convenience without owning durable state;
-6. accessible docking/optional dragging with composer-collision avoidance;
-7. ChatGPT structural-vs-transient capability drift, observation coalescing and terminal data compaction;
-8. integrated successor closure.
+Declared permissions remain only `sidePanel`, `storage`, and `alarms`. Content scope remains only `https://chatgpt.com/*` and `https://chat.openai.com/*`. No `activeTab`, `debugger`, `scripting`, `<all_urls>`, `unlimitedStorage`, remote executable code, `eval`, or arbitrary template scripting is introduced.
 
-The implementation program runs from **v0.0.18 through v0.0.25**. No `v0.1.0` promotion is implied.
+Adapter/background observation payloads no longer serialize composer draft contents or assistant-text suffixes. Active run execution still retains the message content required for durable recovery; terminal content compaction is intentionally owned by ROADMAP-0002 STEP-08 rather than being pulled forward.
 
-See:
+## Validation
 
-- `agents/records/roadmaps/ROADMAP-0002--interaction-surface-and-runtime-hardening.md`
-- `agents/records/audits/AUDIT-0002--v0-0-16-successor-hardening-evaluation.md`
-- `agents/records/references/REFERENCE-0006--successor-hardening-current-authority.md`
+For v0.0.18:
 
-## Direct-first Run workflow
+- STEP-02 focused caller/privacy/schema suite: **9/9 PASS**;
+- strict dependency-free TypeScript across changed core/adapter/persistence/tabs/runs/runtime/portability domains: **PASS**;
+- single predecessor smoke, STEP-08 Repeat/shared coordinator: **9/9 PASS**;
+- physical DB remains v1; portable format remains v1; no permission or host-scope change.
 
-1. Open the extension Side Panel.
-2. In **Run**, select the exact ready ChatGPT tab.
-3. Keep **No preset — direct configuration**, or explicitly Apply a saved Preset.
-4. Choose Repeat or Queue mode and configure the disposable working copy.
-5. Start the run. Pause, Resume or Stop from the durable run card as needed.
-6. If a browser/session reset occurs, select the intended ready ChatGPT tab, **Rebind selected target**, then Resume.
-
-Templates, Presets and Queues use revision-safe working copies with explicit **New · Load · Save As · Update · Reset · Duplicate · Delete** lifecycle. Queue items use explicit **Move Up · Move Down · Remove** ordering rather than drag-only authority.
-
-## UI and accessibility contract
-
-CRSniffer remains the mandatory team Side Panel interaction standard. `agents/records/matrices/MATRIX-0001--integrated-team-side-panel-closure.md` records the v0.0.16 integrated mapping.
-
-The accepted Side Panel provides roving keyboard tabs, one atomic polite status lane, visible focus, 2.75rem minimum control targets, 1.5rem checkbox controls inside clickable rows, narrow-panel reflow, icon-preserving tab compression, reduced-motion handling, forced-color compatibility, and system/native-aware light/dark colors.
-
-ROADMAP-0002 may add a **secondary in-page mini controller**, but it must remain a projection/client of background application authority. It does not replace the Side Panel and may not become durable execution authority. Optional dragging must have non-drag dock/snap/reset alternatives.
-
-## Data and permissions
-
-Chrome 132+ is the supported baseline. Declared permissions remain only:
-
-- `sidePanel`
-- `storage`
-- `alarms`
-
-The content script is scoped only to `https://chatgpt.com/*` and `https://chat.openai.com/*`. Extension-page CSP is self-only (`script-src 'self'; object-src 'self';`). No `activeTab`, `debugger`, `scripting`, `<all_urls>`, `unlimitedStorage`, remote executable script, `eval`, or arbitrary template scripting is part of the current product.
-
-IndexedDB physical version remains **v1**. Portable/export format remains **v1** at roadmap opening. ROADMAP-0002 may evolve logical run/adapter/portable schemas only through explicit compatibility handling.
-
-## Validation and build status
-
-`v0.0.17` changes records/version identity only; product/runtime/test source is intentionally unchanged from v0.0.16.
-
-Inherited v0.0.16 repository-controlled closure evidence:
-
-- STEP-16 focused closure: **9/9 PASS**;
-- accumulated STEP-02 through STEP-16 suite: **133/133 PASS**;
-- strict dependency-free TypeScript: **PASS across 96 source files**;
-- minimal permission/CSP/no-remote-code, localization, accessibility/responsive and CRSniffer matrix inspections: **PASS**.
-
-The planning iteration does not re-run that full product suite merely to certify unchanged product source.
-
-A fresh v0.0.16 closure npm hydration attempt timed out after 120 seconds and produced neither `node_modules` nor a lockfile. WXT prepare/full Vue typecheck/build/package and real Chrome install/upgrade remain inherited **DEFERRED_ENVIRONMENT** until the environment materially changes.
+WXT/Vue hydrated build/package remains inherited **DEFERRED_ENVIRONMENT** from the closed v0.0.16 environment because dependencies are still not hydrated and this step changed no dependency.
 
 ## Architecture authority
 
-- `ADR-0001` remains accepted: Side Panel presentation, background/application authority, extension persistence and ChatGPT content adapter stay separated.
-- `CONSTRAINT-0001` remains active: the CRSniffer team Side Panel grammar continues to govern applicable UI work.
+- `ADR-0001` revision 3 records sender-derived caller authority and privacy-minimal adapter/run evolution.
+- `CONSTRAINT-0001` remains active: CRSniffer team Side Panel grammar governs applicable UI work.
 - `ROADMAP-0001` remains immutable closed history.
-- `ROADMAP-0002` is the active successor authority.
+- `ROADMAP-0002` is the active successor/handoff authority and contains the exact continuation contract.
 
-`dumps/donors/` is immutable reference material and is not runtime code.
+`dumps/donors/` remains immutable reference material and is not runtime code.

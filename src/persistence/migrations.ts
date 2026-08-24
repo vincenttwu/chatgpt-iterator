@@ -2,6 +2,7 @@ import type { JsonObject } from '../core/types.ts';
 import type { MetadataRecord } from './types.ts';
 import type { ApplicationRepositories } from './repositories.ts';
 import { LOGICAL_MODEL_VERSION } from './versions.ts';
+import { requireRunSnapshot } from '../runs/model.ts';
 
 const MODEL_VERSION_KEY = 'logicalModelVersion';
 const MIGRATION_STATE_KEY = 'logicalMigrationState';
@@ -62,4 +63,18 @@ export async function migrateLogicalModel(
 /** Fresh v1 databases need no data rewrite; this migration establishes logical v1. */
 export const LOGICAL_MIGRATIONS: readonly LogicalMigration[] = Object.freeze([
   { fromVersion: 0, toVersion: 1, async run() { /* no-op bootstrap migration */ } },
+  {
+    fromVersion: 1,
+    toVersion: 2,
+    async run(repositories) {
+      await repositories.write(['runs'], async (transaction) => {
+        const runs = transaction.repository('runs');
+        for (const record of await runs.list()) {
+          const state = requireRunSnapshot(record.state);
+          if (record.logicalVersion === state.schemaVersion && JSON.stringify(record.state) === JSON.stringify(state)) continue;
+          await runs.put({ ...record, logicalVersion: state.schemaVersion, state });
+        }
+      });
+    },
+  },
 ]);
