@@ -39,6 +39,11 @@ function timestamp(value: unknown, label: string): string {
   return value;
 }
 function optionalTimestamp(value: unknown, label: string): string|null { return value === null ? null : timestamp(value, label); }
+function optionalRemainingDelayMs(value: unknown): number|null {
+  if (value === null || value === undefined) return null;
+  if (!Number.isSafeInteger(value) || (value as number) < 0 || (value as number) > 3_600_000) throw new ContractError(ERROR_CODES.invalidMessage, 'remainingDelayMs must be an integer from 0..3600000');
+  return value as number;
+}
 function message(value: unknown, label: string): string {
   if (typeof value !== 'string' || value.trim().length === 0 || value.length > 65536) throw new ContractError(ERROR_CODES.invalidMessage, `${label} must be 1..65536 characters`);
   return value;
@@ -105,7 +110,9 @@ function common(raw: Record<string, unknown>) {
     autoScroll: bool(raw.autoScroll, 'autoScroll'),
     preventDiscard: raw.preventDiscard === undefined ? true : bool(raw.preventDiscard, 'preventDiscard'),
     assistantBaselineFingerprint,
+    responseStartedAt: raw.responseStartedAt === undefined ? null : optionalTimestamp(raw.responseStartedAt, 'responseStartedAt'),
     nextDueAt: optionalTimestamp(raw.nextDueAt, 'nextDueAt'),
+    remainingDelayMs: optionalRemainingDelayMs(raw.remainingDelayMs),
   };
 }
 
@@ -145,18 +152,18 @@ export function requireRunExecutionState(value: unknown): RunExecutionState {
 }
 
 export function createRepeatRunState(input: { messageTemplate?:unknown; totalIterations?:unknown; delaySeconds?:unknown; autoContinue?:unknown; autoScroll?:unknown; preventDiscard?:unknown } = {}): RepeatRunState {
-  return requireRepeatRunState({ mode:'repeat', messageTemplate:input.messageTemplate ?? DEFAULT_REPEAT_MESSAGE, totalIterations:input.totalIterations ?? DEFAULT_REPEAT_ITERATIONS, completedIterations:0, activeIteration:null, activeMessage:null, activeDelayAfterSeconds:null, delaySeconds:input.delaySeconds ?? DEFAULT_REPEAT_DELAY_SECONDS, autoContinue:input.autoContinue ?? true, autoScroll:input.autoScroll ?? true, preventDiscard:input.preventDiscard ?? true, assistantBaselineFingerprint:null, nextDueAt:null });
+  return requireRepeatRunState({ mode:'repeat', messageTemplate:input.messageTemplate ?? DEFAULT_REPEAT_MESSAGE, totalIterations:input.totalIterations ?? DEFAULT_REPEAT_ITERATIONS, completedIterations:0, activeIteration:null, activeMessage:null, activeDelayAfterSeconds:null, delaySeconds:input.delaySeconds ?? DEFAULT_REPEAT_DELAY_SECONDS, autoContinue:input.autoContinue ?? true, autoScroll:input.autoScroll ?? true, preventDiscard:input.preventDiscard ?? true, assistantBaselineFingerprint:null, responseStartedAt:null, nextDueAt:null, remainingDelayMs:null });
 }
 
 export function createQueueRunState(input: { queueId:unknown; queueRevision:unknown; items:unknown; delaySeconds?:unknown; autoContinue?:unknown; autoScroll?:unknown; preventDiscard?:unknown }): QueueRunState {
   const items = Array.isArray(input.items) ? input.items : [];
-  return requireQueueRunState({ mode:'queue', queueId:input.queueId, queueRevision:input.queueRevision, items, totalIterations:items.length, completedIterations:0, activeIteration:null, activeMessage:null, activeDelayAfterSeconds:null, delaySeconds:input.delaySeconds ?? DEFAULT_REPEAT_DELAY_SECONDS, autoContinue:input.autoContinue ?? true, autoScroll:input.autoScroll ?? true, preventDiscard:input.preventDiscard ?? true, assistantBaselineFingerprint:null, nextDueAt:null });
+  return requireQueueRunState({ mode:'queue', queueId:input.queueId, queueRevision:input.queueRevision, items, totalIterations:items.length, completedIterations:0, activeIteration:null, activeMessage:null, activeDelayAfterSeconds:null, delaySeconds:input.delaySeconds ?? DEFAULT_REPEAT_DELAY_SECONDS, autoContinue:input.autoContinue ?? true, autoScroll:input.autoScroll ?? true, preventDiscard:input.preventDiscard ?? true, assistantBaselineFingerprint:null, responseStartedAt:null, nextDueAt:null, remainingDelayMs:null });
 }
 
 export function requireRunSnapshot(value: unknown): DurableRunSnapshot {
   if (value === null || Array.isArray(value) || typeof value !== 'object') throw new ContractError(ERROR_CODES.invalidMessage, 'run state must be an object');
   const raw = value as Record<string, unknown>;
-  if (raw.schemaVersion !== 1 && raw.schemaVersion !== 2 && raw.schemaVersion !== RUN_STATE_SCHEMA_VERSION) throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported run state schema');
+  if (raw.schemaVersion !== 1 && raw.schemaVersion !== 2 && raw.schemaVersion !== 3 && raw.schemaVersion !== RUN_STATE_SCHEMA_VERSION) throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported run state schema');
   const lifecycleState = raw.lifecycleState;
   if (typeof lifecycleState !== 'string' || !LIFECYCLE.has(lifecycleState as RunLifecycleState)) throw new ContractError(ERROR_CODES.invalidMessage, 'invalid run lifecycle state');
   const resumeState = raw.resumeState === null ? null : raw.resumeState;
@@ -164,9 +171,22 @@ export function requireRunSnapshot(value: unknown): DurableRunSnapshot {
   const parsedFailure = failure(raw.failure);
   if (lifecycleState === 'failed' && parsedFailure === null) throw new ContractError(ERROR_CODES.invalidMessage, 'failed run requires failure detail');
   if (lifecycleState !== 'failed' && parsedFailure !== null) throw new ContractError(ERROR_CODES.invalidMessage, 'only failed run may carry failure detail');
-  const conversationBinding: RunConversationBinding = raw.schemaVersion === RUN_STATE_SCHEMA_VERSION
+  const conversationBinding: RunConversationBinding = raw.schemaVersion === RUN_STATE_SCHEMA_VERSION || raw.schemaVersion === 3
     ? requireRunConversationBinding(raw.conversationBinding)
     : freezeJsonValue({ kind: 'unbound' as const, conversationId: null });
+  const updatedAt = timestamp(raw.updatedAt, 'updatedAt');
+  let execution = raw.execution === undefined ? createRepeatRunState() : requireRunExecutionState(raw.execution);
+  if (raw.schemaVersion !== RUN_STATE_SCHEMA_VERSION) {
+    const patch: Record<string, unknown> = {};
+    if ((lifecycleState === 'waiting_response' || resumeState === 'waiting_response') && execution.responseStartedAt === null) patch.responseStartedAt = updatedAt;
+    if (lifecycleState === 'paused' && resumeState === 'waiting_delay' && execution.remainingDelayMs === null) {
+      patch.remainingDelayMs = execution.nextDueAt === null ? 0 : Math.max(0, Math.min(3_600_000, Date.parse(execution.nextDueAt) - Date.parse(updatedAt)));
+      patch.nextDueAt = null;
+    }
+    if (Object.keys(patch).length > 0) execution = requireRunExecutionState({ ...execution, ...patch });
+  }
+  if (lifecycleState === 'waiting_delay' && (execution.nextDueAt === null || execution.remainingDelayMs !== null)) throw new ContractError(ERROR_CODES.invalidMessage, 'waiting_delay requires an absolute due time and no frozen remainder');
+  if (lifecycleState === 'paused' && resumeState === 'waiting_delay' && (execution.nextDueAt !== null || execution.remainingDelayMs === null)) throw new ContractError(ERROR_CODES.invalidMessage, 'paused waiting_delay requires a frozen remainder and no absolute due time');
   return freezeJsonValue({
     schemaVersion: RUN_STATE_SCHEMA_VERSION,
     id: requireEntityId(raw.id, 'run id'),
@@ -178,9 +198,9 @@ export function requireRunSnapshot(value: unknown): DurableRunSnapshot {
     resumeState: resumeState as RunActiveState|null,
     suspensionReason: suspensionReason(raw.suspensionReason, lifecycleState as RunLifecycleState),
     failure: parsedFailure,
-    execution: raw.execution === undefined ? createRepeatRunState() : requireRunExecutionState(raw.execution),
+    execution,
     createdAt: timestamp(raw.createdAt, 'createdAt'),
-    updatedAt: timestamp(raw.updatedAt, 'updatedAt'),
+    updatedAt,
   });
 }
 

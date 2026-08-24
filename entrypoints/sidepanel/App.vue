@@ -3,6 +3,7 @@ import { browser } from 'wxt/browser';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { SidePanelControlClient, type ControlPlaneInvalidationReason, type ControlPlaneSnapshot } from '../../src/control-plane/index.ts';
 import { DEFAULT_REPEAT_DELAY_SECONDS, DEFAULT_REPEAT_ITERATIONS, DEFAULT_REPEAT_MESSAGE, isRunTerminal, type DurableRunSnapshot, type RunLifecycleState } from '../../src/runs/index.ts';
+import { projectRunPresentation } from '../../src/presentation/index.ts';
 import { TAB_REGISTRY_SCHEMA_VERSION, type ChatGptTabLifecycleState, type ChatGptTabRegistrySnapshot, type ChatGptTabTarget } from '../../src/tabs/index.ts';
 import type { TemplateSnapshot } from '../../src/templates/index.ts';
 import type { PresetReferenceCatalog, PresetSnapshot } from '../../src/presets/index.ts';
@@ -13,12 +14,7 @@ import type { SettingsSnapshot } from '../../src/settings/index.ts';
 import type { ImportMode, ImportPreview, PortableEnvelope, PortableKind } from '../../src/portability/index.ts';
 import {
   SidePanelOperationalClient,
-  canPauseRun,
-  canResumeRun,
-  canStartExistingRun,
-  canStopRun,
   choosePrimaryRun,
-  runProgress,
 } from '../../src/ui/run-workspace.ts';
 import {
   SidePanelTemplateClient,
@@ -152,7 +148,12 @@ const connectionLabel = computed(() => connectionState.value === 'connected'
 const targets = computed(() => snapshot.value?.tabs.targets ?? []);
 const selectedTarget = computed(() => targets.value.find((target) => target.tabId === selectedTabId.value));
 const currentRun = computed(() => choosePrimaryRun(runs.value));
-const currentProgress = computed(() => currentRun.value === undefined ? undefined : runProgress(currentRun.value));
+const presentationNow = ref(Date.now());
+const currentRunTarget = computed(() => {
+  const run = currentRun.value;
+  return run === undefined ? undefined : targets.value.find((target) => target.tabId === run.targetTabId && target.windowId === run.targetWindowId);
+});
+const currentProjection = computed(() => currentRun.value === undefined ? undefined : projectRunPresentation(currentRun.value, { now:presentationNow.value, ...(currentRunTarget.value === undefined ? {} : { target:currentRunTarget.value }) }));
 const hasNonTerminalRun = computed(() => runs.value.some((run) => !isRunTerminal(run.lifecycleState)));
 const templateDirty = computed(() => isTemplateDraftDirty(templateDraft, templateBase.value));
 const templateLatest = computed(() => templateBase.value === undefined ? undefined : templates.value.find((item) => item.id === templateBase.value?.id));
@@ -186,14 +187,10 @@ const diagnosticsStatusKey = computed<UiMessageKey>(() => diagnostics.value?.ada
 
 const liveStatusMessage = computed(() => {
   const parts = [ui(activeDefinition.value.titleKey), connectionLabel.value];
-  const run = currentRun.value;
-  if (run !== undefined) {
-    parts.push(ui(runStateKey(run.lifecycleState)));
-    if (run.lifecycleState === 'frozen') parts.push(ui('frozenExplanation'));
-    else if (run.lifecycleState === 'discarded') parts.push(ui('discardedExplanation'));
-    else if (run.lifecycleState === 'reconnecting') parts.push(ui('targetReconnectExplanation'));
-    else if (run.lifecycleState === 'paused' && run.suspensionReason === 'browser_session_reset') parts.push(ui('browserSessionResetExplanation'));
-    else if (run.lifecycleState === 'paused' && run.suspensionReason === 'conversation_changed') parts.push(ui('conversationChangedExplanation'));
+  const projection = currentProjection.value;
+  if (projection !== undefined) {
+    parts.push(ui(projection.labelKey));
+    if (projection.attentionKey !== null) parts.push(ui(projection.attentionKey));
   }
   if (activeWorkspace.value === 'queue' && queueStale.value) parts.push(ui('queueStaleGuard'));
   if (activeWorkspace.value === 'presets' && presetStale.value) parts.push(ui('presetStaleGuard'));
@@ -805,7 +802,10 @@ function onTabKeydown(event: KeyboardEvent, workspace: WorkspaceId): void {
   void selectWorkspace(WORKSPACES[nextIndex]!.id, true);
 }
 
+let presentationClock: ReturnType<typeof setInterval> | undefined;
+
 onMounted(() => {
+  presentationClock = setInterval(() => { presentationNow.value = Date.now(); }, 250);
   connection = controlClient.connect({
     onInvalidation,
     onStateChange: (state) => {
@@ -816,7 +816,10 @@ onMounted(() => {
   void hydrateAll();
 });
 
-onUnmounted(() => connection?.stop());
+onUnmounted(() => {
+  if (presentationClock !== undefined) clearInterval(presentationClock);
+  connection?.stop();
+});
 </script>
 
 <template>
@@ -839,7 +842,7 @@ onUnmounted(() => connection?.stop());
       <span v-if="snapshot">{{ ui('controlPlaneRevision') }} {{ snapshot.authorityRevision }}</span>
       <template v-if="currentRun">
         <span aria-hidden="true">·</span>
-        <span class="state-badge shell-state-badge" :data-state="currentRun.lifecycleState">{{ ui(runStateKey(currentRun.lifecycleState)) }}</span>
+        <span v-if="currentProjection" class="state-badge shell-state-badge" :data-tone="currentProjection.tone">{{ ui(currentProjection.labelKey) }}</span>
       </template>
     </div>
 
@@ -970,40 +973,38 @@ onUnmounted(() => connection?.stop());
               <p class="eyebrow">{{ ui('currentRun') }}</p>
               <h2>{{ ui('progress') }}</h2>
             </div>
-            <span v-if="currentRun" class="state-badge" :data-state="currentRun.lifecycleState">{{ ui(runStateKey(currentRun.lifecycleState)) }}</span>
+            <span v-if="currentProjection" class="state-badge" :data-tone="currentProjection.tone">{{ ui(currentProjection.labelKey) }}</span>
           </summary>
           <p v-if="!currentRun" class="compact-empty">{{ ui('noCurrentRun') }}</p>
           <template v-else>
             <dl class="status-grid">
-              <div><dt>{{ ui('runState') }}</dt><dd>{{ ui(runStateKey(currentRun.lifecycleState)) }}</dd></div>
+              <div><dt>{{ ui('runState') }}</dt><dd>{{ currentProjection ? ui(currentProjection.labelKey) : '' }}</dd></div>
               <div><dt>{{ ui('runMode') }}</dt><dd>{{ currentRun.execution.mode === 'repeat' ? ui('repeatMode') : ui('queueMode') }}</dd></div>
               <div><dt>{{ ui('target') }}</dt><dd>#{{ currentRun.targetTabId }}</dd></div>
-              <div><dt>{{ ui('completedIterations') }}</dt><dd>{{ currentProgress?.completed }} / {{ currentProgress?.total }}</dd></div>
+              <div><dt>{{ ui('completedIterations') }}</dt><dd>{{ currentProjection?.completed }} / {{ currentProjection?.total }}</dd></div>
+              <div v-if="currentProjection?.delayRemainingSeconds !== null"><dt>{{ ui(currentProjection?.delayFrozen ? 'pausedDelayRemaining' : 'delayRemaining') }}</dt><dd>{{ currentProjection?.delayRemainingSeconds }}s</dd></div>
+              <div v-if="currentProjection?.responseElapsedSeconds !== null"><dt>{{ ui('responseElapsed') }}</dt><dd>{{ currentProjection?.responseElapsedSeconds }}s<template v-if="currentProjection?.responseIndeterminate"> · {{ ui('responseTimingIndeterminate') }}</template></dd></div>
               <div><dt>{{ ui('updated') }}</dt><dd>{{ new Date(currentRun.updatedAt).toLocaleTimeString() }}</dd></div>
             </dl>
             <div class="progress-block">
               <div class="progress-heading">
                 <strong>{{ ui('progress') }}</strong>
-                <span>{{ currentProgress?.percent }}%</span>
+                <span>{{ currentProjection?.percent }}%</span>
               </div>
-              <progress :value="currentProgress?.completed ?? 0" :max="currentProgress?.total ?? 1" />
-              <small v-if="currentProgress?.currentIteration">{{ ui('currentIteration') }} {{ currentProgress.currentIteration }} / {{ currentProgress.total }}</small>
+              <progress :value="currentProjection?.completed ?? 0" :max="currentProjection?.total ?? 1" />
+              <small v-if="currentProjection?.currentIteration">{{ ui('currentIteration') }} {{ currentProjection.currentIteration }} / {{ currentProjection.total }}</small>
             </div>
-            <div v-if="currentRun.lifecycleState === 'frozen'" class="inline-warning">{{ ui('frozenExplanation') }}</div>
-            <div v-else-if="currentRun.lifecycleState === 'discarded'" class="inline-warning">{{ ui('discardedExplanation') }}</div>
-            <div v-else-if="currentRun.lifecycleState === 'reconnecting'" class="inline-warning">{{ ui('targetReconnectExplanation') }}</div>
-            <div v-else-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'browser_session_reset'" class="inline-warning">{{ ui('browserSessionResetExplanation') }}</div>
-            <div v-else-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'conversation_changed'" class="inline-warning">{{ ui('conversationChangedExplanation') }}</div>
+            <div v-if="currentProjection?.attentionKey && currentRun.lifecycleState !== 'failed'" class="inline-warning">{{ ui(currentProjection.attentionKey) }}</div>
             <div v-else-if="connectionState === 'reconnecting'" class="inline-warning">{{ ui('reconnectExplanation') }}</div>
             <div v-else-if="currentRun.lifecycleState === 'failed'" class="inline-error" role="alert">
               {{ ui('failedExplanation') }}<template v-if="currentRun.failure"> {{ currentRun.failure.message }}</template>
             </div>
             <div class="actions">
-              <button v-if="canStartExistingRun(currentRun.lifecycleState)" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('start')">{{ ui('startExisting') }}</button>
-              <button v-if="canPauseRun(currentRun.lifecycleState)" type="button" class="secondary-action" :disabled="operationBusy" @click="mutateCurrent('pause')">{{ ui('pause') }}</button>
-              <button v-if="currentRun.lifecycleState === 'paused' && (currentRun.suspensionReason === 'browser_session_reset' || currentRun.suspensionReason === 'conversation_changed')" type="button" class="primary-action" :disabled="operationBusy || selectedTarget?.lifecycleState !== 'ready'" @click="rebindCurrent">{{ ui('rebindTarget') }}</button>
-              <button v-if="canResumeRun(currentRun.lifecycleState) && currentRun.suspensionReason !== 'browser_session_reset' && currentRun.suspensionReason !== 'conversation_changed'" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('resume')">{{ ui('resume') }}</button>
-              <button v-if="canStopRun(currentRun.lifecycleState)" type="button" class="danger-action" :disabled="operationBusy" @click="mutateCurrent('stop')">{{ ui('stop') }}</button>
+              <button v-if="currentProjection?.actions.start" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('start')">{{ ui('startExisting') }}</button>
+              <button v-if="currentProjection?.actions.pause" type="button" class="secondary-action" :disabled="operationBusy" @click="mutateCurrent('pause')">{{ ui('pause') }}</button>
+              <button v-if="currentProjection?.actions.rebind" type="button" class="primary-action" :disabled="operationBusy || selectedTarget?.lifecycleState !== 'ready'" @click="rebindCurrent">{{ ui('rebindTarget') }}</button>
+              <button v-if="currentProjection?.actions.resume" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('resume')">{{ ui('resume') }}</button>
+              <button v-if="currentProjection?.actions.stop" type="button" class="danger-action" :disabled="operationBusy" @click="mutateCurrent('stop')">{{ ui('stop') }}</button>
             </div>
           </template>
         </details>

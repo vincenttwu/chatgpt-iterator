@@ -5,9 +5,9 @@ record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
 status: active
-revision: 3
+revision: 4
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T12:25:00+08:00
+updated_at: 2026-08-24T12:41:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -531,28 +531,29 @@ Forbidden examples:
 ## STEP-04 — Timing Semantics and Unified Run Presentation Projection
 
 **Target:** `v0.0.20`  
+**Status:** complete.  
 **Purpose:** Make pause/countdown semantics truthful and create one state projection for every future presentation surface.  
 **Depends on:** P1 complete.  
 **Primary paths:** `src/runs/`, `src/runtime/`, `src/ui/`, scheduler tests.
 
 ### Work items
 
-- [ ] Replace pause-during-delay behavior that preserves stale absolute `nextDueAt` with durable **remaining delay** semantics.
-- [ ] On Pause from `waiting_delay`, compute and persist bounded `remainingDelayMs` (or equivalent) and clear/cancel active due authority.
-- [ ] On Resume, create a fresh due time from the preserved remainder rather than from the original wall-clock due time.
-- [ ] Preserve scheduler/worker recovery behavior for paused delay state across service-worker termination.
-- [ ] Define one pure `RunPresentationProjection`/projector from durable run + current time + target/conversation state.
-- [ ] Include lifecycle label/tone, completed/total, current iteration, exact delay countdown, response elapsed time, rebind/attention flags and available actions.
-- [ ] Never fabricate a response completion ETA while ChatGPT is generating; waiting response is elapsed/indeterminate.
-- [ ] Refactor the Side Panel run card to consume the shared projection instead of locally remapping lifecycle state.
-- [ ] Centralize semantic state tones so later toolbar/controller surfaces cannot diverge.
+- [x] Replace pause-during-delay behavior that preserves stale absolute `nextDueAt` with durable **remaining delay** semantics.
+- [x] On Pause from `waiting_delay`, compute and persist bounded `remainingDelayMs` (or equivalent) and clear/cancel active due authority.
+- [x] On Resume, create a fresh due time from the preserved remainder rather than from the original wall-clock due time.
+- [x] Preserve scheduler/worker recovery behavior for paused delay state across service-worker termination.
+- [x] Define one pure `RunPresentationProjection`/projector from durable run + current time + target/conversation state.
+- [x] Include lifecycle label/tone, completed/total, current iteration, exact delay countdown, response elapsed time, rebind/attention flags and available actions.
+- [x] Never fabricate a response completion ETA while ChatGPT is generating; waiting response is elapsed/indeterminate.
+- [x] Refactor the Side Panel run card to consume the shared projection instead of locally remapping lifecycle state.
+- [x] Centralize semantic state tones so later toolbar/controller surfaces cannot diverge.
 
 ### Acceptance
 
-- [ ] Pause 6 seconds into a 10-second delay, wait arbitrarily long, Resume → approximately 4 seconds remain.
-- [ ] Worker restart while paused does not consume or duplicate remaining delay.
-- [ ] Projection tests cover every lifecycle/suspension state and do not rely on color alone.
-- [ ] Side Panel behavior remains functionally equivalent except for corrected delay semantics and richer truthful state.
+- [x] Pause 6 seconds into a 10-second delay, wait arbitrarily long, Resume → approximately 4 seconds remain.
+- [x] Worker restart while paused does not consume or duplicate remaining delay.
+- [x] Projection tests cover every lifecycle/suspension state and do not rely on color alone.
+- [x] Side Panel behavior remains functionally equivalent except for corrected delay semantics and richer truthful state.
 
 ### Explicitly out of scope
 
@@ -787,71 +788,65 @@ Completed step history must not be rewritten as if later decisions were always p
 
 This section is intentionally operational. A new session should be able to resume from it directly.
 
-## Current state after STEP-03
+## Current state after STEP-04
 
-- **Promoted implementation baseline:** `v0.0.19`.
+- **Promoted implementation baseline:** `v0.0.20`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 3.
-- **ROADMAP-0002 progress:** 3/9 steps complete.
+- **ROADMAP-0002:** active, revision 4.
+- **ROADMAP-0002 progress:** 4/9 steps complete.
 - **Phase P1 — Safety Authority:** complete at STEP-03.
-- **Phase P2 — Runtime Visibility and Secondary Control:** next; STEP-04 is its only authorized entry.
+- **Phase P2 — Runtime Visibility and Secondary Control:** active at 1/4 after STEP-04.
 - **Physical IndexedDB:** v1 unchanged.
-- **Global logical model:** v3.
-- **Durable run state:** v3 with explicit v1/v2 normalization.
+- **Global logical model:** v4.
+- **Durable run state:** v4 with explicit v1/v2/v3 normalization.
 - **Portable envelope:** v1 unchanged.
-- **ChatGPT adapter:** v3.
-- **Tab registry:** v2.
+- **ChatGPT adapter:** v3 unchanged.
+- **Tab registry:** v2 unchanged.
 - **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
 
-### STEP-02 safety facts that remain non-negotiable
+### Safety facts from P1 that remain non-negotiable
 
-- `src/runtime/caller-context.ts` owns actual runtime caller classification from Chrome `MessageSender`.
-- Background routing verifies own-extension Side Panel callers versus top-frame ChatGPT content callers; envelope `source` remains descriptive/correlation data rather than standalone authorization.
-- A forged `source: sidepanel` from content cannot reach Side Panel-only operations.
-- Adapter/background observation remains privacy-minimal: `composerHasDraft` and opaque assistant fingerprints replace raw composer/assistant-text transport.
-- `FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS` remains a policy boundary only; the in-page controller is not enabled before STEP-06.
+- Runtime caller classification remains derived from Chrome `MessageSender`; a forged envelope source is not authority.
+- Adapter/background observation remains privacy-minimal: no raw composer draft or assistant-text suffix transport.
+- Durable runs remain bound to explicit tab plus conversation authority; same-tab conversation mismatch suspends and requires explicit rebind.
+- Repeat and Queue continue through one coordinator with final point-of-click conversation verification.
+- The future mini-controller policy remains bounded and is still not enabled before STEP-06.
 
-### STEP-03 implementation facts another session should preserve
+### STEP-04 implementation facts another session should preserve
 
-- `src/chatgpt/conversation.ts` is the semantic URL/location authority for ChatGPT conversation context. It recognizes eligible-host `/` as `new_chat`, `/c/<id>` as a concrete `conversation`, and other/foreign/malformed locations as `unsupported`.
-- `ChatGptAdapterSnapshot` schema v3 carries this semantic context. The tab registry v2 also projects it so runtime reconciliation does not inspect sidebar DOM.
-- Durable run state v3 carries `conversationBinding` independently from `(tabId, windowId)`. Binding kinds are `unbound`, `pending_new_chat`, and concrete `conversation`.
-- A run created on `/` may adopt the first concrete `/c/<id>` exactly once. That adoption is durable and generation-fenced.
-- Once concrete, a same-tab `/c/A -> /c/B`, conversation -> new-chat, or supported -> unsupported context becomes a mismatch and suspends the run with `conversation_changed` before later external work.
-- `RunExecutionCoordinator`/`RepeatRunCoordinator` is still the one orchestration loop for both Repeat and Queue. It reconciles conversation state before prepare/send, while waiting for response, and after response completion.
-- `chatgpt.send` receives `expectedConversation`; the content adapter re-checks it immediately before clicking Send. A navigation race between preparation and click therefore fails closed without a click.
-- When the adapter proves the prepared send was rejected before click, the manager may clear that safely-unsent prepared unit before suspending. It does not make the same assumption for an already waiting response.
-- Side Panel Resume stays blocked after `conversation_changed` until explicit **Rebind selected target**. Rebind verifies the current ready target and current conversation.
-- A run suspended after browser-session reset must rebind to its previously established conversation when one exists. A run that was already `waiting_response` when conversation mismatch occurred must also return to its original conversation because the prior send may already have happened.
-- After a successful explicit conversation-change rebind outside that ambiguous waiting-response case, the run remains ordinarily `paused` with the existing user-pause convention until the user separately presses Resume.
-- Legacy v1/v2 runs without reliable conversation provenance normalize to v3 `unbound` rather than inventing a binding.
-- Physical IndexedDB and portable envelope remain v1; only logical/run/adapter/tab-registry schemas advanced.
+- Durable run state schema v4 adds common `responseStartedAt` and `remainingDelayMs` timing fields; logical persistence advances to v4 through an explicit 3->4 run rewrite while physical IndexedDB remains v1.
+- Active `waiting_delay` owns an absolute `nextDueAt` and must have no frozen remainder. A paused run whose `resumeState` is `waiting_delay` owns only `remainingDelayMs` and clears `nextDueAt`.
+- Pause computes the bounded remainder from the current durable due time. Resume constructs a fresh due timestamp from that remainder, so time spent paused never consumes the requested delay.
+- Worker recovery of an already paused delay preserves the same frozen remainder and does not schedule it. Browser-session or conversation-change transitions into a paused waiting-delay state also preserve/freeze the remainder rather than leaving stale due authority.
+- `responseStartedAt` is persisted when an iteration enters `waiting_response` and cleared on normal iteration completion; presentation may show elapsed time but never a completion ETA.
+- `src/presentation/run-projection.ts` is the pure shared presentation authority. `RunPresentationProjection` includes lifecycle label key, semantic tone, progress/current iteration, delay countdown or frozen remainder, response elapsed/indeterminate state, attention/rebind semantics and available actions.
+- The Side Panel current-run card now consumes that projector. Its 250ms display clock is presentation-only; it does not drive execution, response observation or scheduling.
+- Semantic run tones are centralized as `neutral|active|waiting|paused|attention|success|error`, while text labels/warnings remain authoritative so state is never color-only.
+- Legacy v3 paused-delay snapshots normalize to v4 by deriving the frozen remainder from their old due time and pause/update timestamp. Legacy response waits receive an explicit compatibility start timestamp rather than becoming unreadable.
+- No toolbar badge, action popup, in-page controller or new permission was introduced in STEP-04.
 
 ## Sole next authorized implementation
 
-**`v0.0.20 / ROADMAP-0002 STEP-04 — Timing Semantics and Unified Run Presentation Projection`**
+**`v0.0.21 / ROADMAP-0002 STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator`**
 
 A continuation should begin by reading:
 
-1. this ROADMAP-0002 file;
-2. `iteration_manifest.yaml`;
-3. `ADR-0001--event-driven-runtime-and-persistence-boundaries.md` revision 4;
-4. `src/runs/types.ts`, `src/runs/model.ts`, `src/runs/manager.ts`, `src/runs/repeat-coordinator.ts`, and `src/runs/scheduler.ts`;
-5. `src/chatgpt/conversation.ts`, `src/chatgpt/types.ts`, and `src/chatgpt/adapter.ts`;
-6. `src/runtime/run-runtime-server.ts` and `entrypoints/background.ts`;
-7. Run workspace presentation code before creating the shared projection.
+1. this ROADMAP-0002 file and `iteration_manifest.yaml`;
+2. `src/presentation/run-projection.ts`;
+3. `src/runs/types.ts`, `src/runs/model.ts`, `src/runs/manager.ts`, `src/runs/repeat-coordinator.ts`, and `src/runs/scheduler.ts`;
+4. `entrypoints/sidepanel/App.vue` for the accepted presentation consumer;
+5. `entrypoints/background.ts` and current Side Panel/action behavior before wiring toolbar status.
 
-## STEP-04 implementation cautions
+## STEP-05 implementation cautions
 
-- Do not change conversation binding while fixing timing. `conversation_changed` and `browser_session_reset` remain explicit rebind gates.
-- Preserve the single Repeat/Queue coordinator; STEP-04 is timing/projection hardening, not an orchestration rewrite.
-- Pause during `waiting_delay` must freeze a durable remaining duration instead of letting wall-clock pause time consume the delay.
-- Worker restart while paused must preserve that remainder without introducing duplicate scheduling or sends.
-- The new `RunPresentationProjection` must be pure/reusable and must become the Side Panel's state vocabulary before toolbar or in-page surfaces consume it.
-- Countdown may be exact for a known delay deadline/remainder. Waiting for ChatGPT response remains elapsed/indeterminate; do not fabricate ETA.
-- Do not build toolbar badge or mini-controller early; those remain STEP-05 and STEP-06.
-- Keep physical IndexedDB v1 unless a structural store/index change is genuinely unavoidable. Prefer additive/logical run-state evolution.
-- Do not retry unavailable WXT/npm infrastructure as ceremony; focused dependency-free checks remain valid and environment-only gaps remain non-blocking.
+- Keep toolbar click -> Side Panel behavior; do not add `action.default_popup`.
+- Toolbar badge/title must consume the STEP-04 projection rather than re-deriving lifecycle/progress/timing.
+- Badge text is concise and supplemental; accessible title/text remains authoritative and no state is color-only.
+- Multiple simultaneous runs require deterministic aggregation instead of pretending one run is globally unique.
+- Reconstruct action state from durable runs on worker restart; do not make service-worker globals canonical.
+- Do not build the in-page controller early; that remains STEP-06.
+- Keep physical IndexedDB v1 and current permissions unless a genuine owning-step need proves otherwise.
+- Do not retry unavailable WXT/npm infrastructure as ceremony.
 
 ## Environment status carried forward
 
@@ -872,3 +867,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | 2026-08-24 | 1 | Open successor hardening roadmap at v0.0.17 after v0.0.16 evaluation; freeze sender/privacy, conversation identity, truthful timing/projection, toolbar status, secondary in-page controller, docking/accessibility, adapter drift/retention and integrated closure ownership through v0.0.25. | active |
 | 2026-08-24 | 2 | Complete STEP-02 at v0.0.18: enforce sender-derived runtime caller authority, introduce privacy-minimal ChatGPT adapter v2 and run-state/logical-model v2 compatibility migration, preserve physical DB/export v1, and authorize STEP-03 only. | active |
 | 2026-08-24 | 3 | Complete STEP-03 at v0.0.19: add semantic conversation context, durable independent conversation binding, one-time new-chat adoption, fail-closed same-tab mismatch suspension/rebind, point-of-click conversation verification, and shared Repeat/Queue guarding; close P1 and authorize STEP-04 only. | active |
+| 2026-08-24 | 4 | Complete STEP-04 at v0.0.20: freeze paused delay as durable remaining duration, resume from a fresh due time, add response elapsed authority, introduce the pure shared RunPresentationProjection and centralized semantic tones, move the Side Panel run card to that projection, advance logical/run schema to v4 only, and authorize STEP-05. | active |

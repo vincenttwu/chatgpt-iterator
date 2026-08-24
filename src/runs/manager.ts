@@ -27,6 +27,21 @@ function executionWith(current: DurableRunSnapshot, patch: Record<string, unknow
   return requireRunExecutionState({ ...current.execution, ...patch });
 }
 
+function freezeRemainingDelay(current: DurableRunSnapshot, now: string): RunExecutionState {
+  if (resumeBase(current) !== 'waiting_delay') return current.execution;
+  if (current.execution.remainingDelayMs !== null && current.execution.nextDueAt === null) return current.execution;
+  const due = current.execution.nextDueAt;
+  const remainingDelayMs = due === null ? 0 : Math.max(0, Math.min(3_600_000, Date.parse(due) - Date.parse(now)));
+  return executionWith(current, { nextDueAt:null, remainingDelayMs });
+}
+
+function resumeFrozenDelay(current: DurableRunSnapshot, now: string): RunExecutionState {
+  if (current.resumeState !== 'waiting_delay') return current.execution;
+  const remaining = current.execution.remainingDelayMs;
+  if (remaining === null) throw new ContractError(ERROR_CODES.internal, 'paused waiting delay lacks remaining duration');
+  return executionWith(current, { nextDueAt:new Date(Date.parse(now) + remaining).toISOString(), remainingDelayMs:null });
+}
+
 export class DurableRunManager {
   readonly #repository: DurableRunRepository;
   readonly #listeners = new Set<(snapshot: DurableRunSnapshot) => void>();
@@ -106,7 +121,9 @@ export class DurableRunManager {
         activeMessage: input.message,
         activeDelayAfterSeconds: input.delayAfterSeconds ?? null,
         assistantBaselineFingerprint: input.assistantBaselineFingerprint,
+        responseStartedAt: now,
         nextDueAt: null,
+        remainingDelayMs: null,
       });
       return nextRunState(current, { lifecycleState: 'waiting_response', execution, now });
     }, { iteration: input.iteration });
@@ -125,7 +142,9 @@ export class DurableRunManager {
         activeMessage: null,
         activeDelayAfterSeconds: null,
         assistantBaselineFingerprint: null,
+        responseStartedAt: null,
         nextDueAt: done ? null : nextDueAt,
+        remainingDelayMs: null,
       });
       if (!done && nextDueAt === null) throw new ContractError(ERROR_CODES.invalidMessage, 'non-final iteration requires nextDueAt');
       return nextRunState(current, { lifecycleState: done ? 'completed' : 'waiting_delay', execution, now });
@@ -135,7 +154,7 @@ export class DurableRunManager {
   async delayElapsed(runId: string, expectedGeneration: unknown, commandId: string): Promise<RunMutationResult> {
     return await this.#transition(runId, expectedGeneration, commandId, 'delay_elapsed', (current, now) => {
       if (current.lifecycleState !== 'waiting_delay') throw new ContractError(ERROR_CODES.staleRequest, `cannot elapse delay from ${current.lifecycleState}`);
-      const execution = executionWith(current, { nextDueAt: null });
+      const execution = executionWith(current, { nextDueAt: null, remainingDelayMs:null });
       return nextRunState(current, { lifecycleState: 'running', execution, now });
     });
   }
@@ -152,7 +171,7 @@ export class DurableRunManager {
       if (!(isRunActive(current.lifecycleState) || current.lifecycleState === 'frozen' || current.lifecycleState === 'discarded' || current.lifecycleState === 'reconnecting')) {
         throw new ContractError(ERROR_CODES.staleRequest, `cannot pause run from ${current.lifecycleState}`);
       }
-      return nextRunState(current, { lifecycleState: 'paused', resumeState: resumeBase(current), suspensionReason: 'user', now });
+      return nextRunState(current, { lifecycleState: 'paused', resumeState: resumeBase(current), suspensionReason: 'user', execution:freezeRemainingDelay(current, now), now });
     });
   }
 
@@ -160,7 +179,8 @@ export class DurableRunManager {
     return await this.#transition(runId, expectedGeneration, commandId, 'resumed', (current, now) => {
       if (current.lifecycleState !== 'paused') throw new ContractError(ERROR_CODES.staleRequest, `cannot resume run from ${current.lifecycleState}`);
       if (current.suspensionReason === 'browser_session_reset' || current.suspensionReason === 'conversation_changed') throw new ContractError(ERROR_CODES.staleRequest, 'rebind the intended ChatGPT tab and conversation before resuming');
-      return nextRunState(current, { lifecycleState: current.resumeState ?? 'running', suspensionReason: null, now });
+      const execution = resumeFrozenDelay(current, now);
+      return nextRunState(current, { lifecycleState: current.resumeState ?? 'running', suspensionReason: null, execution, now });
     });
   }
 
@@ -224,9 +244,12 @@ export class DurableRunManager {
           activeMessage: null,
           activeDelayAfterSeconds: null,
           assistantBaselineFingerprint: null,
+          responseStartedAt: null,
           nextDueAt: null,
+          remainingDelayMs: null,
         });
       }
+      if (resumeState === 'waiting_delay') execution = freezeRemainingDelay({ ...current, execution } as DurableRunSnapshot, now);
       return nextRunState(current, { lifecycleState: 'paused', resumeState, suspensionReason: 'conversation_changed', execution, now });
     }, { reason: 'conversation_changed', safeToRetryPreparedIteration });
   }
@@ -271,6 +294,7 @@ export class DurableRunManager {
         lifecycleState: suspend ? 'paused' : current.lifecycleState,
         resumeState: suspend ? resumeBase(current) : current.resumeState,
         suspensionReason: suspend ? 'browser_session_reset' : current.suspensionReason,
+        execution: suspend ? freezeRemainingDelay(current, now) : current.execution,
         now,
       }), { recovery: 'browser_session_reset' });
       recovered.push(result.snapshot);

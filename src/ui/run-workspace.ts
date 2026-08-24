@@ -2,6 +2,7 @@ import { ContractError, ERROR_CODES, createRequest, requireMessageEnvelope } fro
 import type { JsonObject, MessageIntent } from '../core/types.ts';
 import { requireRunSnapshot } from '../runs/model.ts';
 import { RUN_RUNTIME_OPERATIONS, isRunTerminal, type DurableRunSnapshot, type RunLifecycleState } from '../runs/types.ts';
+import { projectRunPresentation } from '../presentation/run-projection.ts';
 import { TAB_REGISTRY_SCHEMA_VERSION, TAB_RUNTIME_OPERATIONS, type ChatGptTabRegistrySnapshot } from '../tabs/types.ts';
 
 export interface SidePanelOperationalRuntimeLike {
@@ -180,17 +181,8 @@ export function choosePrimaryRun(runs: readonly DurableRunSnapshot[]): DurableRu
 }
 
 export function runProgress(run: DurableRunSnapshot): RunProgressView {
-  const total = run.execution.totalIterations;
-  const completed = run.execution.completedIterations;
-  const currentIteration = run.execution.activeIteration ?? (
-    isRunTerminal(run.lifecycleState) ? null : Math.min(completed + 1, total)
-  );
-  return {
-    completed,
-    total,
-    currentIteration,
-    percent: total === 0 ? 0 : Math.round((completed / total) * 100),
-  };
+  const projection = projectRunPresentation(run);
+  return { completed:projection.completed, total:projection.total, currentIteration:projection.currentIteration, percent:projection.percent };
 }
 
 export function canPauseRun(state: RunLifecycleState): boolean {

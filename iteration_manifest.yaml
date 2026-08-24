@@ -1,17 +1,17 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.19
+version: v0.0.20
 status: accepted_implementation
 iteration:
   kind: implementation
   roadmap: ROADMAP-0002
   roadmap_status: active
-  step: STEP-03
+  step: STEP-04
   step_status: complete
-  phase: P1
-  phase_status: complete
+  phase: P2
+  phase_status: active
 baseline:
-  working_parent: v0.0.18
+  working_parent: v0.0.19
   prior_roadmap: ROADMAP-0001
   prior_roadmap_status: closed
   originally_requested: chatgpt-iterator-v0.0.0
@@ -19,25 +19,25 @@ baseline:
   exact_original_reconciliation: deferred_provenance
 schemas:
   physical_db_version: 1
-  logical_model_version: 3
+  logical_model_version: 4
   export_format_version: 1
-  run_state_schema_version: 3
+  run_state_schema_version: 4
   chatgpt_adapter_schema_version: 3
   tab_registry_schema_version: 2
 validation:
-  focused_step03: "10/10 pass"
+  focused_step04: "9/9 pass"
   strict_dependency_free_typescript: pass
-  predecessor_step02_caller_privacy_smoke: "9/9 pass"
-  conversation_context_parsing: pass
-  wrong_conversation_send_prevention: pass
-  new_chat_first_binding: pass
-  repeat_queue_shared_guard: pass
-  point_of_click_conversation_check: pass
+  predecessor_step03_conversation_smoke: "8/10; two historical schema-version assertions superseded by authorized STEP-04 v4 evolution"
+  paused_delay_remainder: pass
+  worker_restart_paused_delay: pass
+  shared_run_presentation_projection: pass
+  response_elapsed_indeterminate: pass
+  sidepanel_projection_consumer: pass
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build_package: inherited_deferred_environment
 next:
   status: authorized
-  version: v0.0.20
+  version: v0.0.21
   roadmap: ROADMAP-0002
-  step: STEP-04
-  title: Timing Semantics and Unified Run Presentation Projection
+  step: STEP-05
+  title: Toolbar Status and At-a-Glance Runtime Indicator

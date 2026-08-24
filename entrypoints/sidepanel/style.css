@@ -499,3 +499,10 @@ progress {
 @media (forced-colors: active) {
   .structured-row { forced-color-adjust: auto; }
 }
+
+/* STEP-04 centralized run presentation tones. Text labels remain authoritative; color is supplemental. */
+.state-badge[data-tone="attention"],
+.state-badge[data-tone="error"] { border-color: var(--border-strong); font-weight: 700; }
+.state-badge[data-tone="active"]::before,
+.state-badge[data-tone="waiting"]::before { content: "●"; margin-inline-end: 0.35rem; }
+.state-badge[data-tone="success"] { font-weight: 700; }

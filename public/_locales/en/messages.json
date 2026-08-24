@@ -895,5 +895,17 @@
   },
   "conversationChangedExplanation": {
     "message": "The target tab moved to a different ChatGPT conversation. The run is paused before another send. Return to the intended conversation or explicitly rebind the selected ready target, then resume."
+  },
+  "delayRemaining": {
+    "message": "Next send in"
+  },
+  "pausedDelayRemaining": {
+    "message": "Paused delay remaining"
+  },
+  "responseElapsed": {
+    "message": "Response wait elapsed"
+  },
+  "responseTimingIndeterminate": {
+    "message": "No completion ETA"
   }
 }

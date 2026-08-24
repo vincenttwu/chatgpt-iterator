@@ -5,16 +5,16 @@ record_type: adr
 slug: event-driven-runtime-and-persistence-boundaries
 title: "Event-Driven Runtime and Persistence Boundaries"
 status: accepted
-revision: 4
+revision: 5
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T12:25:00+08:00
+updated_at: 2026-08-24T12:41:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
 scope:
   repository: workspace
   packages: []
-  paths: [entrypoints/, src/runtime/, src/chatgpt/, src/persistence/, src/tabs/]
+  paths: [entrypoints/, src/runtime/, src/chatgpt/, src/persistence/, src/tabs/, src/runs/, src/presentation/]
 relations:
   related: [ROADMAP-0001, ROADMAP-0002, CONSTRAINT-0001, REFERENCE-0001, REFERENCE-0002, REFERENCE-0006]
   depends_on: [REFERENCE-0001, CONSTRAINT-0001]
@@ -101,3 +101,18 @@ At `v0.0.19`, explicit tab targeting is strengthened into **tab-plus-conversatio
 
 This is a logical authority evolution only: global logical model and run state advance to v3, ChatGPT adapter snapshots advance to v3, and tab-registry snapshots advance to v2. Physical IndexedDB remains v1 and portable envelope format remains v1.
 
+
+## ROADMAP-0002 STEP-04 timing and presentation authority
+
+At `v0.0.20`, runtime timing truth and presentation vocabulary are hardened without changing execution ownership:
+
+- active `waiting_delay` state owns an absolute persisted `nextDueAt`; a paused run whose resume state is `waiting_delay` instead owns a bounded persisted `remainingDelayMs` and no active absolute due time;
+- Pause freezes that remaining duration, scheduler cancellation removes volatile wake authority, and Resume creates a fresh due time from the frozen remainder. Wall-clock time spent paused therefore cannot consume the user's requested inter-iteration delay;
+- same-session worker recovery preserves paused remainder without scheduling it. Browser-session/conversation transitions that pause a waiting delay apply the same frozen-remainder invariant rather than leaving stale due authority;
+- durable run schema/logical persistence advance to v4 for timing fields and explicit v3 compatibility normalization. Physical IndexedDB remains v1 and portable envelope format remains v1;
+- response waits persist `responseStartedAt` so presentation may report elapsed wait duration. No runtime or UI may fabricate a response completion ETA;
+- `src/presentation/run-projection.ts` is the pure shared state projection for all presentation surfaces. The Side Panel consumes it first; later toolbar and in-page surfaces must reuse it rather than re-derive lifecycle/progress/timing semantics;
+- semantic presentation tones are centralized, but textual lifecycle labels, attention explanations and action availability remain authoritative so state is never communicated only by color;
+- the Side Panel's local display clock exists only to redraw countdown/elapsed text. It is not scheduler, response-observation or durable execution authority.
+
+This preserves the four original authority zones and the single Repeat/Queue coordinator. Toolbar status and the in-page controller remain separately owned by later roadmap steps.
