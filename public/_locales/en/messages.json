@@ -728,6 +728,33 @@
   "openSidePanel": {
     "message": "Open Side Panel"
   },
+  "inPagePosition": {
+    "message": "Position"
+  },
+  "moveInPageController": {
+    "message": "Move ChatGPT Iterator"
+  },
+  "resetInPageControllerPosition": {
+    "message": "Reset position"
+  },
+  "dockTopLeft": {
+    "message": "Top left"
+  },
+  "dockMiddleLeft": {
+    "message": "Middle left"
+  },
+  "dockBottomLeft": {
+    "message": "Bottom left"
+  },
+  "dockTopRight": {
+    "message": "Top right"
+  },
+  "dockMiddleRight": {
+    "message": "Middle right"
+  },
+  "dockBottomRight": {
+    "message": "Bottom right"
+  },
   "eligibleTabs": {
     "message": "Eligible tabs"
   },

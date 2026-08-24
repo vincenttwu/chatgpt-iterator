@@ -2,6 +2,11 @@ import { ContractError, ERROR_CODES, createRequest, freezeJsonValue, requireMess
 import type { JsonObject } from '../core/types.ts';
 import { isRunTerminal, type DurableRunSnapshot } from '../runs/types.ts';
 import type { ChatGptTabTarget } from '../tabs/types.ts';
+import {
+  DEFAULT_INPAGE_CONTROLLER_DOCK,
+  isInPageControllerDock,
+  type InPageControllerDock,
+} from './inpage-placement.ts';
 import { projectRunPresentation, type RunPresentationProjection } from './run-projection.ts';
 
 export const INPAGE_CONTROLLER_SCHEMA_VERSION = 1 as const;
@@ -15,6 +20,7 @@ export const INPAGE_CONTROLLER_OPERATIONS = Object.freeze({
   stop: 'inpage.stop',
   openPanel: 'inpage.openpanel',
   setCollapsed: 'inpage.setcollapsed',
+  setDock: 'inpage.setdock',
 } as const);
 
 export type InPageControllerOperation = (typeof INPAGE_CONTROLLER_OPERATIONS)[keyof typeof INPAGE_CONTROLLER_OPERATIONS];
@@ -24,6 +30,7 @@ export interface InPageControllerSnapshot extends JsonObject {
   readonly schemaVersion: number;
   readonly projectedAt: string;
   readonly collapsed: boolean;
+  readonly dock: InPageControllerDock;
   readonly state: InPageControllerState;
   readonly activeRunCount: number;
   readonly runId: string|null;
@@ -34,6 +41,7 @@ export interface InPageControllerSnapshot extends JsonObject {
 export interface InPageControllerPreference extends JsonObject {
   readonly schemaVersion: number;
   readonly collapsed: boolean;
+  readonly dock: InPageControllerDock;
 }
 
 export interface InPageControllerInvalidation extends JsonObject {
@@ -58,24 +66,33 @@ export function requireInPageControllerPreference(value: unknown): InPageControl
   if (candidate.schemaVersion !== INPAGE_CONTROLLER_SCHEMA_VERSION || typeof candidate.collapsed !== 'boolean') {
     throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported in-page controller preference');
   }
-  return freezeJsonValue({ schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION, collapsed:candidate.collapsed });
+  if (candidate.dock !== undefined && !isInPageControllerDock(candidate.dock)) throw new ContractError(ERROR_CODES.invalidMessage, 'in-page controller dock is invalid');
+  return freezeJsonValue({ schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION, collapsed:candidate.collapsed, dock:candidate.dock ?? DEFAULT_INPAGE_CONTROLLER_DOCK });
 }
 
 export function defaultInPageControllerPreference(): InPageControllerPreference {
-  return freezeJsonValue({ schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION, collapsed:true });
+  return freezeJsonValue({ schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION, collapsed:true, dock:DEFAULT_INPAGE_CONTROLLER_DOCK });
+}
+
+function normalizeProjectionPreference(value: boolean|InPageControllerPreference): InPageControllerPreference {
+  return typeof value === 'boolean'
+    ? freezeJsonValue({ schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION, collapsed:value, dock:DEFAULT_INPAGE_CONTROLLER_DOCK })
+    : value;
 }
 
 export function projectInPageControllerStatus(
   runs: readonly DurableRunSnapshot[],
   target: ChatGptTabTarget|undefined,
-  collapsed: boolean,
+  preferenceOrCollapsed: boolean|InPageControllerPreference,
   now: number = Date.now(),
 ): InPageControllerSnapshot {
+  const preference = normalizeProjectionPreference(preferenceOrCollapsed);
   if (target === undefined) {
     return freezeJsonValue({
       schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION,
       projectedAt:new Date(now).toISOString(),
-      collapsed,
+      collapsed:preference.collapsed,
+      dock:preference.dock,
       state:'idle' as const,
       activeRunCount:0,
       runId:null,
@@ -88,7 +105,8 @@ export function projectInPageControllerStatus(
     return freezeJsonValue({
       schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION,
       projectedAt:new Date(now).toISOString(),
-      collapsed,
+      collapsed:preference.collapsed,
+      dock:preference.dock,
       state:relevant.length === 0 ? 'idle' as const : 'multiple' as const,
       activeRunCount:relevant.length,
       runId:null,
@@ -100,7 +118,8 @@ export function projectInPageControllerStatus(
   return freezeJsonValue({
     schemaVersion:INPAGE_CONTROLLER_SCHEMA_VERSION,
     projectedAt:new Date(now).toISOString(),
-    collapsed,
+    collapsed:preference.collapsed,
+    dock:preference.dock,
     state:'single' as const,
     activeRunCount:1,
     runId:run.id,
@@ -163,6 +182,7 @@ export class InPageControllerClient {
 
   async status(): Promise<InPageControllerSnapshot> { return requireInPageControllerSnapshot(await this.#request(INPAGE_CONTROLLER_OPERATIONS.status, 'query', {})); }
   async setCollapsed(collapsed: boolean): Promise<InPageControllerSnapshot> { return requireInPageControllerSnapshot(await this.#request(INPAGE_CONTROLLER_OPERATIONS.setCollapsed, 'command', { collapsed })); }
+  async setDock(dock: InPageControllerDock): Promise<InPageControllerSnapshot> { return requireInPageControllerSnapshot(await this.#request(INPAGE_CONTROLLER_OPERATIONS.setDock, 'command', { dock })); }
   async pause(runId: string, expectedGeneration: number): Promise<InPageControllerSnapshot> { return requireInPageControllerSnapshot(await this.#request(INPAGE_CONTROLLER_OPERATIONS.pause, 'command', { runId, expectedGeneration })); }
   async resume(runId: string, expectedGeneration: number): Promise<InPageControllerSnapshot> { return requireInPageControllerSnapshot(await this.#request(INPAGE_CONTROLLER_OPERATIONS.resume, 'command', { runId, expectedGeneration })); }
   async stop(runId: string, expectedGeneration: number): Promise<InPageControllerSnapshot> { return requireInPageControllerSnapshot(await this.#request(INPAGE_CONTROLLER_OPERATIONS.stop, 'command', { runId, expectedGeneration })); }
@@ -175,6 +195,8 @@ export function requireInPageControllerSnapshot(value: unknown): InPageControlle
   if (candidate.schemaVersion !== INPAGE_CONTROLLER_SCHEMA_VERSION) throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported in-page controller snapshot');
   if (typeof candidate.projectedAt !== 'string' || Number.isNaN(Date.parse(candidate.projectedAt))) throw new ContractError(ERROR_CODES.invalidMessage, 'in-page projectedAt is invalid');
   if (typeof candidate.collapsed !== 'boolean') throw new ContractError(ERROR_CODES.invalidMessage, 'in-page collapsed flag is invalid');
+  const dock = candidate.dock === undefined ? DEFAULT_INPAGE_CONTROLLER_DOCK : candidate.dock;
+  if (!isInPageControllerDock(dock)) throw new ContractError(ERROR_CODES.invalidMessage, 'in-page controller dock is invalid');
   if (candidate.state !== 'idle' && candidate.state !== 'single' && candidate.state !== 'multiple') throw new ContractError(ERROR_CODES.invalidMessage, 'in-page controller state is invalid');
   if (!Number.isSafeInteger(candidate.activeRunCount) || (candidate.activeRunCount as number) < 0) throw new ContractError(ERROR_CODES.invalidMessage, 'in-page activeRunCount is invalid');
   if (candidate.state === 'single') {
@@ -184,5 +206,5 @@ export function requireInPageControllerSnapshot(value: unknown): InPageControlle
   } else if (candidate.runId !== null || candidate.generation !== null || candidate.projection !== null) {
     throw new ContractError(ERROR_CODES.invalidMessage, 'non-single in-page snapshot must not expose run control identity');
   }
-  return freezeJsonValue(candidate as unknown as InPageControllerSnapshot);
+  return freezeJsonValue({ ...candidate, dock } as unknown as InPageControllerSnapshot);
 }

@@ -5,9 +5,9 @@ record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
 status: active
-revision: 6
+revision: 7
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T13:19:00+08:00
+updated_at: 2026-08-24T13:29:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -653,25 +653,35 @@ The roadmap-bounded optional **Start default Preset** action is not exposed beca
 
 ### Work items
 
-- [ ] Define canonical dock/snap positions rather than persisting arbitrary unbounded coordinates.
-- [ ] At minimum support deterministic placements such as top-right, middle-right, bottom-right and bottom-left where viewport/layout allows.
-- [ ] Detect/avoid collision with the current sticky composer/control safe area; bottom-right must not be assumed safe.
-- [ ] Add optional pointer dragging from a dedicated handle/header with snapping to canonical positions.
-- [ ] Provide click/tap alternatives such as **Dock left/right**, **Move up/down** or position menu plus **Reset position** so dragging is never required.
-- [ ] Persist only normalized placement/collapsed preference through extension-owned small settings.
-- [ ] Clamp/recover safely after viewport resize, zoom, mobile/narrow layouts or ChatGPT layout change.
-- [ ] Preserve visible focus, keyboard operation, 44px-class comfortable touch targets where practical, forced-colors, reduced-motion and non-color state cues.
-- [ ] Ensure the controller remains outside ChatGPT pointer-events traps and does not block composer/send/scroll controls.
+- [x] Define canonical dock/snap positions rather than persisting arbitrary unbounded coordinates.
+- [x] At minimum support deterministic placements such as top-right, middle-right, bottom-right and bottom-left where viewport/layout allows.
+- [x] Detect/avoid collision with the current sticky composer/control safe area; bottom-right must not be assumed safe.
+- [x] Add optional pointer dragging from a dedicated handle/header with snapping to canonical positions.
+- [x] Provide click/tap alternatives such as **Dock left/right**, **Move up/down** or position menu plus **Reset position** so dragging is never required.
+- [x] Persist only normalized placement/collapsed preference through extension-owned small settings.
+- [x] Clamp/recover safely after viewport resize, zoom, mobile/narrow layouts or ChatGPT layout change.
+- [x] Preserve visible focus, keyboard operation, 44px-class comfortable touch targets where practical, forced-colors, reduced-motion and non-color state cues.
+- [x] Ensure the controller remains outside ChatGPT pointer-events traps and does not block composer/send/scroll controls.
 
 ### Acceptance
 
-- [ ] Controller never loads off-screen after viewport/zoom changes.
-- [ ] Every drag placement can be achieved/reset with non-drag single-pointer controls.
-- [ ] Narrow and wide fixture layouts avoid known composer overlap zones.
-- [ ] Reduced-motion and forced-color behavior remain functional.
-- [ ] Placement preference corruption falls back to a safe canonical dock.
+- [x] Controller never loads off-screen after viewport/zoom changes.
+- [x] Every drag placement can be achieved/reset with non-drag single-pointer controls.
+- [x] Narrow and wide fixture layouts avoid known composer overlap zones.
+- [x] Reduced-motion and forced-color behavior remain functional.
+- [x] Placement preference corruption falls back to a safe canonical dock.
 
 **P2 closes when STEP-07 is accepted.**
+
+### Result
+
+`v0.0.23` replaces the provisional fixed top-right mini-controller placement with a bounded canonical dock model. Six named docks (`top_left`, `middle_left`, `bottom_left`, `top_right`, `middle_right`, `bottom_right`) are the only durable placement vocabulary; arbitrary pixel coordinates never cross the content/background boundary and are never stored. Pointer dragging is available only from a dedicated trusted-event handle and snaps to one of those docks on release. The same six placements plus **Reset position** are available through ordinary single-pointer buttons, while the handle also supports Arrow-key movement and Home reset, so dragging is never required.
+
+The presentation layer computes transient geometry from the preferred dock, current visual viewport, measured controller size and ChatGPT layout collision rectangles. Bottom placements are lifted above the current sticky thread-bottom/composer safe area when necessary while the requested dock remains the durable preference, so temporary composer growth, viewport resize, zoom or layout changes do not corrupt user preference. `BrowserChatGptLayoutAdvisor` keeps the ChatGPT-specific `#thread-bottom-container` / `[data-composer-surface="true"]` knowledge inside `src/chatgpt/`; the content entrypoint consumes only its collision-rectangle API and event-driven ResizeObserver notifications. The controller also listens to normal/visual viewport resize/scroll and its own ResizeObserver, clamps all computed geometry on-screen, limits expanded-card height, and falls back to the safe top-right dock when stored placement is invalid.
+
+Placement remains a small background-owned trusted local-storage preference alongside collapse state under the existing `inpageController.v1` record. The controller presentation protocol remains schema v1 through additive `dock` compatibility: legacy `{schemaVersion:1, collapsed}` records normalize to `top_right`, while old content can ignore the extra field during extension-update overlap. The closed Shadow DOM, trusted user-event controls, single polite status region, 44px-class controls, reduced-motion, forced-colors, Side-Panel-primary hierarchy, sender/tab/conversation/generation authority, event-driven invalidation, no-polling rule, physical DB v1, logical/run v4, portable v1, permissions and host scope remain unchanged.
+
+Focused STEP-07 validation passed 12/12; the strict presentation/layout TypeScript lane passed with `exactOptionalPropertyTypes`, the changed runtime server passed a strict dependency-free lane, content-entrypoint syntax passed, and the single untouched STEP-06 predecessor smoke passed 10/10 before implementation. WXT/Vue hydration remains inherited `deferred_environment`. **Phase P2 — Runtime Visibility and Secondary Control closes at v0.0.23.**
 
 ---
 
@@ -771,7 +781,7 @@ The roadmap-bounded optional **Start default Preset** action is not exposed beca
 - [x] STEP-04 — Timing Semantics and Unified Run Presentation Projection (`v0.0.20`).
 - [x] STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator (`v0.0.21`).
 - [x] STEP-06 — Minimal In-Page Run Controller (`v0.0.22`).
-- [ ] STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery (`v0.0.23`).
+- [x] STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery (`v0.0.23`).
 - [ ] STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening (`v0.0.24`).
 - [ ] STEP-09 — Integrated Successor Hardening Closure (`v0.0.25`).
 
@@ -806,76 +816,81 @@ Completed step history must not be rewritten as if later decisions were always p
 
 This section is intentionally operational. A new session should be able to resume from it directly.
 
-## Current state after STEP-06
+## Current state after STEP-07
 
-- **Promoted implementation baseline:** `v0.0.22`.
+- **Promoted implementation baseline:** `v0.0.23`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 6.
-- **ROADMAP-0002 progress:** 6/9 steps complete.
+- **ROADMAP-0002:** active, revision 7.
+- **ROADMAP-0002 progress:** 7/9 steps complete.
 - **Phase P1 — Safety Authority:** complete at STEP-03.
-- **Phase P2 — Runtime Visibility and Secondary Control:** active at 3/4 after STEP-06.
+- **Phase P2 — Runtime Visibility and Secondary Control:** **complete at STEP-07**.
+- **Phase P3 — Drift/Retention and Closure:** next; 0/2 complete.
 - **Physical IndexedDB:** v1 unchanged.
 - **Global logical model:** v4 unchanged.
 - **Durable run state:** v4 with explicit v1/v2/v3 normalization.
 - **Portable envelope:** v1 unchanged.
 - **ChatGPT adapter:** v3 unchanged.
 - **Tab registry:** v2 unchanged.
+- **In-page controller protocol:** v1 additive-compatible; normalized dock preference is part of the safe projection.
 - **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
 
-### Safety/timing facts from STEP-02 through STEP-05 that remain non-negotiable
+### Non-negotiable authority carried into P3
 
-- Runtime caller classification remains derived from Chrome `MessageSender`; a forged envelope source is not authority.
+- Runtime caller classification remains derived from Chrome `MessageSender`; forged envelope `source` metadata is not authority.
 - Adapter/background observation remains privacy-minimal: no raw composer draft or assistant-text suffix transport.
 - Durable runs remain bound to explicit tab plus conversation authority; same-tab conversation mismatch suspends and requires explicit rebind.
 - Repeat and Queue continue through one coordinator with final point-of-click conversation verification.
 - Paused delay owns frozen `remainingDelayMs`; active waiting delay owns `nextDueAt`; Resume reconstructs a fresh due time.
-- `src/presentation/run-projection.ts` remains the single lifecycle/progress/timing/attention/action vocabulary for Side Panel, toolbar, and mini controller.
+- `src/presentation/run-projection.ts` remains the single lifecycle/progress/timing/attention/action vocabulary for Side Panel, toolbar and mini controller.
 - Toolbar click remains Side Panel; `action.default_popup` remains absent.
+- The mini controller remains a disposable secondary presentation surface and cannot own durable run/configuration state.
 
-### STEP-06 implementation facts another session should preserve
+### STEP-06/STEP-07 mini-controller facts another session must preserve
 
-- `src/presentation/inpage-controller.ts` owns the safe mini-controller projection/client contract. A status response contains only schema/time/collapse state, local active-run count, run ID + generation fence for an unambiguous local run, and `RunPresentationProjection`; it never exports `messageTemplate`, Queue content, active message, composer draft, assistant text, history, or configuration payloads.
-- `src/runtime/inpage-controller-runtime-server.ts` owns the background command boundary. Router authorization permits only the explicit `inpage.*` operations from verified top-frame ChatGPT content callers; another tab/window run cannot be operated.
-- `src/runtime/run-control.ts` is the shared Pause/Resume/Stop transition + coordinator-side-effect path used by both Side Panel run runtime and mini-controller runtime. Do not fork these controls into a second execution path.
-- Resume from the mini controller performs current target/conversation reconciliation before the shared transition. If the conversation changed, Resume fails closed and the user must open the Side Panel for explicit rebind. Stop remains safely available for the run bound to the caller tab even when the conversation is mismatched.
-- Multiple nonterminal runs targeting one tab deliberately produce an ambiguous/read-only mini-controller state. The mini surface must not choose one run as canonical.
-- `src/presentation/inpage-controller-dom.ts` owns a **closed Shadow DOM** UI host appended under `document.documentElement`. The page surface is disposable presentation only; removing/reloading it cannot stop or corrupt the durable background run.
-- Page action listeners require trusted user events. Expanded mode has one polite atomic status region, keyboard-operable native buttons, Escape collapse, and 44px-class button height.
-- The default STEP-06 placement is a provisional top-right fixed position. Freeform drag, canonical docking/snap, composer collision handling, viewport/zoom recovery, and normalized placement persistence remain STEP-07 and must not be backfilled into STEP-06 history.
-- Collapse preference is background-owned in the trusted local Chrome-storage tier at `inpageController.v1`; content scripts still have no direct storage authority.
-- Run mutations emit lightweight in-page invalidation hints. Temporal countdown/elapsed text advances locally from the received projection using presentation-only boundary timers; there is no periodic ChatGPT/status polling loop.
-- The optional Start default Preset control remains absent because no explicit mini-controller quick-start setting exists. Do not add it implicitly.
-- Open Side Panel uses the verified caller tab and `sidePanel.open({tabId})` from the user-initiated page action. Existing toolbar `openPanelOnActionClick` behavior is unchanged.
-- STEP-06 introduces no schema, DB, portable-format, permission, host-scope, dependency, toolbar-popup, or workflow-domain change.
+- `src/presentation/inpage-controller.ts` owns the privacy-safe projection/client contract. Content receives only controller state, active-run count, one unambiguous run ID/generation fence, `RunPresentationProjection`, collapse state and canonical dock; no prompt/history/configuration body data is exposed.
+- `src/runtime/inpage-controller-runtime-server.ts` owns in-page command and preference authority. Verified top-frame ChatGPT content may use only explicit `inpage.*` operations; another tab/window run cannot be operated.
+- `src/runtime/run-control.ts` remains the shared Pause/Resume/Stop manager/coordinator side-effect path. Do not fork execution semantics for the mini surface.
+- Resume remains conversation-guarded. Multiple nonterminal runs targeting one tab remain read-only ambiguity.
+- `src/presentation/inpage-controller-dom.ts` owns the **closed Shadow DOM** host under `document.documentElement`; user actions remain trusted-event gated.
+- Canonical durable docks are `top_left`, `middle_left`, `bottom_left`, `top_right`, `middle_right`, `bottom_right`. No arbitrary persisted `x/y`, `left/top`, or viewport-relative coordinates are authorized.
+- Dragging is optional input only: the dedicated handle snaps to canonical docks. All dock results plus reset are available with single-pointer buttons; Arrow keys/Home provide an additional keyboard path.
+- `src/presentation/inpage-placement.ts` is the pure normalized placement/collision/clamp authority. Temporary obstacle avoidance changes rendered geometry only, not the stored dock.
+- `src/chatgpt/layout.ts` centralizes the current advisory collision selectors (`#thread-bottom-container`, fallback `[data-composer-surface="true"]`). Presentation/content layers must not duplicate those selectors.
+- ResizeObserver plus normal/visual viewport events drive repositioning. There is no interval/status/ChatGPT polling loop.
+- Collapse + canonical dock preference remains background-owned in trusted local Chrome storage under `inpageController.v1`; legacy collapse-only records normalize to safe `top_right`; corrupted docks fall back safely.
+- Reduced-motion, forced-colors, visible focus, one polite live status region, 44px-class targets, non-color state cues and off-screen clamping are part of the accepted controller contract.
+- The optional Start-default-Preset control remains absent because no explicit quick-start opt-in exists.
+- Open Side Panel uses verified caller-tab `sidePanel.open({tabId})`; toolbar `openPanelOnActionClick` remains unchanged.
 
 ## Sole next authorized implementation
 
-**`v0.0.23 / ROADMAP-0002 STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery`**
+**`v0.0.24 / ROADMAP-0002 STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening`**
 
 A continuation should begin by reading:
 
 1. this ROADMAP-0002 file and `iteration_manifest.yaml`;
-2. `src/presentation/inpage-controller.ts` and `src/presentation/inpage-controller-dom.ts`;
-3. `src/presentation/run-projection.ts` and `src/presentation/toolbar-status.ts`;
-4. `src/runtime/inpage-controller-runtime-server.ts`, `src/runtime/run-control.ts`, and `src/runtime/message-router.ts`;
-5. `entrypoints/chatgpt.content.ts` and `entrypoints/background.ts`;
-6. the current ChatGPT composer evidence in `REFERENCE-0006` before defining collision zones.
+2. `src/chatgpt/selectors.ts`, `src/chatgpt/adapter.ts`, `src/chatgpt/layout.ts`, `src/chatgpt/dom-environment.ts`, `src/chatgpt/types.ts`, and `src/chatgpt/compatibility.ts`;
+3. `src/runs/` run model/repository/coordinator and `src/history/`;
+4. `src/diagnostics/` and `src/portability/`;
+5. `entrypoints/chatgpt.content.ts` plus current adapter-state publication behavior;
+6. `REFERENCE-0006` and `AUDIT-0002` for the current ChatGPT evidence and retained-content/drift findings.
 
-## STEP-07 implementation cautions
+## STEP-08 implementation cautions
 
-- Keep the mini controller secondary and keep the current closed Shadow DOM / trusted-event / background-authority boundaries.
-- Add canonical normalized dock/snap positions; do not persist arbitrary unbounded pixel coordinates.
-- Current top-right placement is provisional. STEP-07 owns real collision avoidance against the sticky composer/control safe area and must handle narrow/wide viewport, resize, zoom, and corrupted preference recovery.
-- Optional dragging must use a dedicated handle/header and snap to canonical positions. Every drag result must also be reachable/reset with non-drag single-pointer controls; dragging can never be the only placement method.
-- Preserve keyboard focus, 44px-class touch targets where practical, forced-colors, reduced-motion, and non-color state cues.
-- Persist only normalized placement/collapse UI preference in extension-owned trusted small storage. Do not move run/configuration authority into content.
-- Preserve event-driven invalidation and presentation-only temporal timers; do not introduce ChatGPT polling.
-- Keep physical IndexedDB v1, logical/run v4, portable v1, current permissions/hosts, and no toolbar popup unless a genuine owning-step need proves otherwise.
+- Reclassify ChatGPT DOM knowledge into structural anchors versus transient capabilities without weakening the currently working adapter semantics.
+- Prefer visible `#prompt-textarea[contenteditable="true"]`; the hidden fallback textarea must not become an accidental send target.
+- Send/Stop/Continue absence is state-dependent and should not automatically mean adapter failure.
+- Add structural preflight before send authority and explicit degradation/error classifications for SPA/capability drift.
+- Coalesce streaming observations semantically; do not return to 400ms polling or make toolbar/mini presentation timers execution authority.
+- Preserve conversation point-of-click checks and privacy-minimal adapter fingerprints.
+- Minimize terminal retained prompt-bearing state only after proving active/recovery semantics still have the data they need; portability/full-backup compatibility must remain explicit.
+- Keep the accepted STEP-07 layout advisor advisory: selector drift diagnostics may cover it, but layout geometry must never become send authority.
+- Keep physical IndexedDB v1 unless a genuinely necessary storage-shape change proves otherwise; do not bump versions ceremonially.
 - Do not retry unavailable WXT/npm infrastructure as ceremony.
 
 ## Environment status carried forward
 
-At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-06 changes no dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
+At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-07 changes no dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
 
 ## What not to infer
 
@@ -883,7 +898,7 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 - There is no authorization for a post-v0.0.25 roadmap.
 - The mini controller is not a replacement for the Side Panel.
 - A conventional Chrome toolbar popup is not currently authorized.
-- Toolbar boundary timers are presentation refresh only, not an execution polling mechanism.
+- Presentation timing/reposition observers are not execution polling mechanisms.
 - Current ChatGPT HTML selectors are evidence, not guaranteed API contracts.
 
 # Revision history
@@ -896,3 +911,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | 2026-08-24 | 4 | Complete STEP-04 at v0.0.20: freeze paused delay as durable remaining duration, resume from a fresh due time, add response elapsed authority, introduce the pure shared RunPresentationProjection and centralized semantic tones, move the Side Panel run card to that projection, advance logical/run schema to v4 only, and authorize STEP-05. | active |
 | 2026-08-24 | 5 | Complete STEP-05 at v0.0.21: add a background-owned toolbar badge/title adapter over RunPresentationProjection, deterministic global/per-tab multi-run aggregation, presentation-only countdown/elapsed boundary refresh, stale action cleanup and worker reconstruction from durable runs; preserve toolbar-click to Side Panel, no popup, no schema/permission change, and authorize STEP-06. | active |
 | 2026-08-24 | 6 | Complete STEP-06 at v0.0.22: add a secondary closed-Shadow-DOM in-page status/controller over RunPresentationProjection, sender-derived same-tab generation-fenced Pause/Resume/Stop, explicit conversation-guarded Resume, background-owned collapse preference, trusted-event controls, event-driven invalidation and presentation-only temporal updates; preserve Side Panel primary authority, no quick-start opt-in, no schema/permission/popup change, and authorize STEP-07. | active |
+| 2026-08-24 | 7 | Complete STEP-07 at v0.0.23: add six canonical dock positions, trusted dedicated-handle drag-to-snap, equivalent single-pointer and keyboard placement/reset controls, background-owned normalized dock persistence with legacy/corruption recovery, visual-viewport/off-screen clamping, ChatGPT-layer sticky-composer collision avoidance and event-driven resize/layout recovery; close P2 with no execution/schema/permission/popup change and authorize STEP-08. | active |

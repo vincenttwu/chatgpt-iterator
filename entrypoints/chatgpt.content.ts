@@ -1,7 +1,7 @@
 import { browser } from 'wxt/browser';
 import { createRequest } from '../src/core/index.ts';
 import { TAB_RUNTIME_OPERATIONS } from '../src/tabs/types.ts';
-import { BrowserChatGptDomEnvironment, ChatGptAdapter, ChatGptAdapterServer, type ChatGptAdapterSnapshot } from '../src/chatgpt/index.ts';
+import { BrowserChatGptDomEnvironment, BrowserChatGptLayoutAdvisor, ChatGptAdapter, ChatGptAdapterServer, type ChatGptAdapterSnapshot } from '../src/chatgpt/index.ts';
 import {
   createInPageControllerCopy,
   InPageControllerClient,
@@ -15,6 +15,7 @@ export default defineContentScript({
   runAt: 'document_idle',
   main() {
     const adapter = new ChatGptAdapter(new BrowserChatGptDomEnvironment(document, window));
+    const layoutAdvisor = new BrowserChatGptLayoutAdvisor(document, window);
     let latestSnapshot: ChatGptAdapterSnapshot = adapter.snapshot();
     let adapterStateSequence = 0;
     let adapterStateFingerprint = '';
@@ -35,6 +36,7 @@ export default defineContentScript({
     const stopObservation = adapter.observe((observation) => {
       latestSnapshot = observation.snapshot;
       publishAdapterState(latestSnapshot);
+      layoutAdvisor.refresh();
     });
     const server = new ChatGptAdapterServer(adapter, () => latestSnapshot);
 
@@ -60,11 +62,14 @@ export default defineContentScript({
 
     controllerView = new InPageRunControllerView(document, window, controllerCopy, {
       setCollapsed:(collapsed) => apply(controllerClient.setCollapsed(collapsed)),
+      setDock:(dock) => apply(controllerClient.setDock(dock)),
       pause:(runId,generation) => apply(controllerClient.pause(runId,generation)),
       resume:(runId,generation) => apply(controllerClient.resume(runId,generation)),
       stop:(runId,generation) => apply(controllerClient.stop(runId,generation)),
       openSidePanel:() => { void controllerClient.openPanel().catch((error: unknown) => controllerView.showError(error instanceof Error ? error.message : String(error))); },
+      collisionRects:() => layoutAdvisor.collisionRects(),
     });
+    const stopLayoutObservation = layoutAdvisor.observe(() => controllerView.reposition());
 
     browser.runtime.onMessage.addListener((message: unknown) => {
       if (isInPageControllerInvalidation(message)) { queueMicrotask(refreshController); return undefined; }
@@ -76,6 +81,7 @@ export default defineContentScript({
       stopped=true;
       window.clearTimeout(startupRetry);
       stopObservation();
+      stopLayoutObservation();
       controllerView.destroy();
     }, { once:true });
   },

@@ -9,6 +9,7 @@ import {
   requireInPageControllerPreference,
   type InPageControllerSnapshot,
 } from '../presentation/inpage-controller.ts';
+import { isInPageControllerDock, type InPageControllerDock } from '../presentation/inpage-placement.ts';
 import { isRunTerminal } from '../runs/types.ts';
 import type { DurableRunManager } from '../runs/manager.ts';
 import type { ChatGptTabTarget } from '../tabs/types.ts';
@@ -57,25 +58,36 @@ export class InPageControllerRuntimeServer {
     this.#storage = storage;
   }
 
-  async #collapsed(): Promise<boolean> {
+  async #preference() {
     const stored = await this.#storage.get(INPAGE_CONTROLLER_STORAGE_KEY);
-    if (stored === undefined) return true;
-    try { return requireInPageControllerPreference(stored).collapsed; }
+    if (stored === undefined) return defaultInPageControllerPreference();
+    try { return requireInPageControllerPreference(stored); }
     catch {
       const fallback = defaultInPageControllerPreference();
       await this.#storage.set(INPAGE_CONTROLLER_STORAGE_KEY, fallback);
-      return fallback.collapsed;
+      return fallback;
     }
   }
 
   async #setCollapsed(collapsed: boolean): Promise<void> {
-    await this.#storage.set(INPAGE_CONTROLLER_STORAGE_KEY, { schemaVersion:1, collapsed });
+    const stored = await this.#storage.get(INPAGE_CONTROLLER_STORAGE_KEY);
+    if (stored !== undefined && stored !== null && !Array.isArray(stored) && typeof stored === 'object' && !('dock' in stored)) {
+      await this.#storage.set(INPAGE_CONTROLLER_STORAGE_KEY, { schemaVersion:1, collapsed });
+      return;
+    }
+    const current = await this.#preference();
+    await this.#storage.set(INPAGE_CONTROLLER_STORAGE_KEY, { ...current, collapsed });
+  }
+
+  async #setDock(dock: InPageControllerDock): Promise<void> {
+    const current = await this.#preference();
+    await this.#storage.set(INPAGE_CONTROLLER_STORAGE_KEY, { ...current, dock });
   }
 
   async #status(tabId: number, windowId: number): Promise<InPageControllerSnapshot> {
     const manager = await this.#manager();
     const target = await this.#target(tabId, windowId);
-    return projectInPageControllerStatus(await manager.list(), target, await this.#collapsed());
+    return projectInPageControllerStatus(await manager.list(), target, await this.#preference());
   }
 
   async #requireOwnedRun(manager: DurableRunManager, runId: string, tabId: number, windowId: number) {
@@ -118,6 +130,12 @@ export class InPageControllerRuntimeServer {
         case INPAGE_CONTROLLER_OPERATIONS.setCollapsed: {
           if (request.intent !== 'command' || typeof (request.payload as Record<string, unknown>).collapsed !== 'boolean') throw new ContractError(ERROR_CODES.invalidMessage, 'inpage.setcollapsed requires a boolean collapsed value');
           await this.#setCollapsed((request.payload as Record<string, unknown>).collapsed as boolean);
+          return createSuccessResponse(request, await this.#status(tabId, windowId));
+        }
+        case INPAGE_CONTROLLER_OPERATIONS.setDock: {
+          const dock = (request.payload as Record<string, unknown>).dock;
+          if (request.intent !== 'command' || !isInPageControllerDock(dock)) throw new ContractError(ERROR_CODES.invalidMessage, 'inpage.setdock requires a canonical dock value');
+          await this.#setDock(dock);
           return createSuccessResponse(request, await this.#status(tabId, windowId));
         }
         case INPAGE_CONTROLLER_OPERATIONS.pause:
