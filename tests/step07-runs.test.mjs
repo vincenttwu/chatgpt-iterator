@@ -135,9 +135,10 @@ test('STEP-07 run events are structured and bounded while sequence remains monot
   const { repository, manager } = harness();
   const ready = await created(manager);
   let run = (await manager.start(ready.id, 1, crypto.randomUUID())).snapshot;
-  const states = ['waiting_response', 'waiting_delay', 'running'];
   for (let i = 0; i < RUN_EVENT_HISTORY_LIMIT + 8; i++) {
-    run = (await manager.setActiveState(run.id, run.generation, crypto.randomUUID(), states[i % states.length])).snapshot;
+    run = run.lifecycleState === 'running'
+      ? (await manager.pause(run.id, run.generation, crypto.randomUUID())).snapshot
+      : (await manager.resume(run.id, run.generation, crypto.randomUUID())).snapshot;
   }
   const events = await repository.events(run.id);
   assert.equal(events.length, RUN_EVENT_HISTORY_LIMIT);

@@ -1,17 +1,17 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.24
-status: accepted_implementation
+version: v0.0.25
+status: accepted_roadmap_closure
 iteration:
-  kind: implementation
+  kind: closure
   roadmap: ROADMAP-0002
-  roadmap_status: active
-  step: STEP-08
+  roadmap_status: closed
+  step: STEP-09
   step_status: complete
   phase: P3
-  phase_status: active
+  phase_status: complete
 baseline:
-  working_parent: v0.0.23
+  working_parent: v0.0.24
   prior_roadmap: ROADMAP-0001
   prior_roadmap_status: closed
   originally_requested: chatgpt-iterator-v0.0.0
@@ -26,20 +26,18 @@ schemas:
   tab_registry_schema_version: 2
   inpage_controller_schema_version: 1
 validation:
-  focused_step08: "11/11 pass"
-  focused_adapter_privacy_compatibility: "18/18 pass"
-  strict_changed_source_typescript: pass
-  predecessor_step07_smoke: "11/12 pass; only superseded logical-model-v4 static assertion failed, all controller behavior passed; retained assertion updated for future accumulated runs"
-  streaming_observation_coalescing: pass
-  terminal_repeat_queue_compaction: pass
-  legacy_run_backup_normalization: pass
-  physical_db_format_stability: pass
-  no_new_permission_popup_or_polling: pass
-  package_hydration: inherited_deferred_environment
-  wxt_prepare_typecheck_build_package: inherited_deferred_environment
+  focused_step09: "11/11 pass"
+  accumulated_repository_suite: "214/214 pass"
+  reconciled_preclosure_accumulated_suite: "203/203 pass"
+  strict_dependency_free_typescript: "pass across 110 source files with global TypeScript compiler"
+  integrated_closure_matrix: pass
+  permission_csp_host_remote_code: pass
+  static_closure_consistency: "52/52 pass"
+  package_hydration: "deferred_environment: one fresh npm install attempt timed out after 120 seconds and produced neither node_modules nor package-lock.json"
+  wxt_prepare_typecheck_build_package: deferred_environment
+  packaged_chrome_real_chatgpt_smoke: "deferred_environment: Chromium present at /usr/bin/chromium but no hydrated WXT build exists to launch"
 next:
-  status: authorized
-  version: v0.0.25
-  roadmap: ROADMAP-0002
-  step: STEP-09
-  title: Integrated Successor Hardening Closure
+  status: not_authorized
+  version: null
+  roadmap: null
+  step: null

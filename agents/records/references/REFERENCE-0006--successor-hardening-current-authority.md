@@ -5,9 +5,9 @@ record_type: reference
 slug: successor-hardening-current-authority
 title: "Successor Hardening Current Browser, Accessibility, and ChatGPT Surface Authority"
 status: active
-revision: 1
+revision: 2
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T11:26:00+08:00
+updated_at: 2026-08-24T14:08:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -16,7 +16,7 @@ scope:
   packages: []
   paths: [entrypoints/, src/chatgpt/, src/runtime/, src/runs/, agents/records/roadmaps/ROADMAP-0002--interaction-surface-and-runtime-hardening.md]
 relations:
-  related: [ROADMAP-0002, AUDIT-0002, ADR-0001, CONSTRAINT-0001]
+  related: [ROADMAP-0002, AUDIT-0002, AUDIT-0003, MATRIX-0002, ADR-0001, CONSTRAINT-0001]
   depends_on: []
   blocks: []
   supersedes: []
@@ -106,3 +106,11 @@ The planning session included a current ChatGPT page HTML capture. Relevant obse
 | Date | Revision | Change | Status |
 | --- | ---: | --- | --- |
 | 2026-08-24 | 1 | Freeze current Chrome MessageSender/action/Side Panel, WCAG dragging, and user-provided ChatGPT DOM facts for ROADMAP-0002 planning. | active |
+
+## ROADMAP-0002 closure recheck — v0.0.25
+
+The external/browser facts frozen at roadmap opening remain the controlling reference at closure. No new Chrome permission or host authority was required by STEP-02 through STEP-09. The content script remains scoped to `https://chatgpt.com/*` and `https://chat.openai.com/*`; toolbar click remains Side Panel authority; sender-derived trust continues to use actual runtime sender metadata; drag remains optional with non-drag alternatives.
+
+Current ChatGPT HTML evidence remains treated as drift-prone evidence rather than an API. The product now encodes that stance directly by separating structural composer/assistant anchors, transient action capabilities and diagnostics in the selector registry.
+
+Closure environment recheck: Chromium is present at `/usr/bin/chromium`. A single fresh `npm install --ignore-scripts --no-audit --no-fund` attempt timed out after 120 seconds and left neither `node_modules` nor `package-lock.json`. WXT prepare/full Vue typecheck/build/package and packaged Chrome/real-ChatGPT smoke therefore remain `DEFERRED_ENVIRONMENT`; no unavailable lane is recorded as passed.

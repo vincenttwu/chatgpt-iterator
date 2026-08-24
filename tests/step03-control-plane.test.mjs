@@ -146,6 +146,6 @@ test('STEP-03 extension wiring keeps control authority in background and Side Pa
   assert.match(app, /SidePanelControlClient/);
   assert.match(app, /hydrateControl/);
   assert.match(app, /onInvalidation/);
-  assert.match(app, /onUnmounted\(\(\) => connection\?\.stop\(\)\)/);
+  assert.match(app, /onUnmounted\(\(\) => \{[\s\S]*connection\?\.stop\(\);[\s\S]*\}\)/);
   assert.doesNotMatch(app, /localStorage|indexedDB/);
 });

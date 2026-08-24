@@ -206,7 +206,7 @@ test('STEP-11 preventDiscard is durable Run input wired to existing guard author
   assert.equal(createRepeatRunState().preventDiscard, true);
   assert.match(runTypes, /preventDiscard/);
   assert.match(runUi, /preventDiscard: draft\.preventDiscard/);
-  assert.match(runtime, /preventDiscard: payload\.preventDiscard/);
+  assert.match(runtime, /preventDiscard:\s*payload\.preventDiscard/);
   assert.match(coordinator, /discardGuards.*acquire/);
   assert.match(coordinator, /discardGuards.*release/);
   assert.match(background, /new RepeatRunCoordinator\(manager, client, waiter, scheduler, discardGuards\)/);

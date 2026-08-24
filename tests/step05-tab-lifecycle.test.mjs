@@ -30,6 +30,8 @@ const adapterSnapshot = (overrides = {}) => ({
   assistantFingerprint: 'af2:11111111111111111111111111111111',
   assistantMessageCount: 1,
   pageAlert: null,
+  degradationCodes: overrides.pageAlert ? ['page_alert'] : [],
+  conversation: { schemaVersion: 1, kind: 'conversation', conversationId: 'one', pathname: '/c/one' },
   ...overrides,
 });
 

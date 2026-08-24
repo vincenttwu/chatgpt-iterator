@@ -12,16 +12,17 @@ import {
   choosePrimaryRun,
   runProgress,
 } from '../src/ui/run-workspace.ts';
+import { TAB_REGISTRY_SCHEMA_VERSION } from '../src/tabs/index.ts';
 
 const text = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const now = '2026-08-24T04:00:00+08:00';
 
 function tabSnapshot(binding = null) {
   return {
-    schemaVersion: 1,
+    schemaVersion: TAB_REGISTRY_SCHEMA_VERSION,
     revision: 1,
     targets: [{
-      schemaVersion: 1,
+      schemaVersion: TAB_REGISTRY_SCHEMA_VERSION,
       tabId: 41,
       windowId: 7,
       active: true,
@@ -34,6 +35,7 @@ function tabSnapshot(binding = null) {
       adapterReady: true,
       adapterBusy: false,
       pageAlert: null,
+      conversation: { schemaVersion: 1, kind: 'conversation', conversationId: 'example', pathname: '/c/example' },
     }],
     binding,
     lastTermination: null,
@@ -49,7 +51,7 @@ class FakeRuntime {
     this.requests.push(request);
     switch (request.operation) {
       case 'tabs.refresh': return createSuccessResponse(request, tabSnapshot());
-      case 'tabs.bind': return createSuccessResponse(request, tabSnapshot({ schemaVersion: 1, tabId: 41, windowId: 7, boundAt: now, reason: 'explicit' }));
+      case 'tabs.bind': return createSuccessResponse(request, tabSnapshot({ schemaVersion: TAB_REGISTRY_SCHEMA_VERSION, tabId: 41, windowId: 7, boundAt: now, reason: 'explicit' }));
       case 'run.list': return createSuccessResponse(request, [this.ready]);
       case 'run.create': return createSuccessResponse(request, { run: this.ready, idempotent: false });
       case 'run.start': {
@@ -103,7 +105,7 @@ test('STEP-09 run view model selects nonterminal authority, reports progress, an
 });
 
 test('STEP-09 Run workspace is the normal operational entry point and keeps Presets optional', async () => {
-  const app = await text('entrypoints/sidepanel/App.vue');
+  const [app, messages] = await Promise.all([text('entrypoints/sidepanel/App.vue'), text('src/ui/messages.ts')]);
   assert.match(app, /activeWorkspace = ref<WorkspaceId>\('run'\)/);
   assert.match(app, /id="target-tab"/);
   assert.match(app, /refreshTargets/);
@@ -118,8 +120,9 @@ test('STEP-09 Run workspace is the normal operational entry point and keeps Pres
   assert.match(app, /mutateCurrent\('resume'\)/);
   assert.match(app, /mutateCurrent\('stop'\)/);
   assert.match(app, /<progress/);
-  assert.match(app, /frozenExplanation/);
-  assert.match(app, /discardedExplanation/);
+  assert.match(app, /currentProjection\?\.attentionKey/);
+  assert.match(messages, /frozenExplanation:/);
+  assert.match(messages, /discardedExplanation:/);
 });
 
 test('STEP-09 preserves the exact five-tab team-standard shell and CRSniffer interaction grammar', async () => {
@@ -175,7 +178,7 @@ test('STEP-09 run and tab invalidations are separated so streaming tab updates d
 });
 
 test('STEP-09 direct-first Run ownership remains intact after later workspace domains land', async () => {
-  const app = await text('entrypoints/sidepanel/App.vue');
+  const [app, messages] = await Promise.all([text('entrypoints/sidepanel/App.vue'), text('src/ui/messages.ts')]);
   assert.match(app, /activeWorkspace = ref<WorkspaceId>\('run'\)/);
   assert.match(app, /noPresetDirect/);
   assert.match(app, /startNewRun/);

@@ -42,9 +42,9 @@ test('STEP-04 pause freezes the remaining delay and Resume creates a fresh due t
   assert.equal(run.lifecycleState,'waiting_delay');assert.equal(run.execution.remainingDelayMs,null);assert.equal(Date.parse(run.execution.nextDueAt)-resumeAt,4_000);
 });
 
-test('STEP-04 legacy v3 paused delay normalizes to v4 frozen remainder without consuming wall clock',()=>{
+test('STEP-04 legacy v3 paused delay normalizes to the current frozen-remainder schema without consuming wall clock',()=>{
   const old=requireRunSnapshot({schemaVersion:3,id:crypto.randomUUID(),generation:4,lifecycleState:'paused',targetTabId:1,targetWindowId:1,conversationBinding:{kind:'unbound',conversationId:null},resumeState:'waiting_delay',suspensionReason:'user',failure:null,execution:{...execution(),responseStartedAt:undefined,remainingDelayMs:undefined,nextDueAt:'2026-08-24T04:00:10.000Z'},createdAt:'2026-08-24T03:59:00.000Z',updatedAt:'2026-08-24T04:00:06.000Z'});
-  assert.equal(old.schemaVersion,4);assert.equal(old.execution.nextDueAt,null);assert.equal(old.execution.remainingDelayMs,4_000);
+  assert.equal(old.schemaVersion,RUN_STATE_SCHEMA_VERSION);assert.equal(old.execution.nextDueAt,null);assert.equal(old.execution.remainingDelayMs,4_000);
 });
 
 test('STEP-04 response timing is elapsed and explicitly indeterminate, never a fabricated ETA',()=>{
@@ -75,7 +75,7 @@ test('STEP-04 Side Panel current-run card consumes shared projection including t
 });
 
 test('STEP-04 schema evolution is logical-only and migration authority includes 3 -> 4',()=>{
-  assert.equal(RUN_STATE_SCHEMA_VERSION,4);assert.equal(LOGICAL_MODEL_VERSION,4);assert.equal(PHYSICAL_DB_VERSION,1);assert.equal(EXPORT_FORMAT_VERSION,1);assert.ok(LOGICAL_MIGRATIONS.some(m=>m.fromVersion===3&&m.toVersion===4));
+  assert.equal(RUN_STATE_SCHEMA_VERSION,LOGICAL_MODEL_VERSION);assert.ok(RUN_STATE_SCHEMA_VERSION>=4);assert.equal(PHYSICAL_DB_VERSION,1);assert.equal(EXPORT_FORMAT_VERSION,1);assert.ok(LOGICAL_MIGRATIONS.some(m=>m.fromVersion===3&&m.toVersion===4));
 });
 
 test('STEP-04 scope does not introduce toolbar popup/controller work or permission expansion', async()=>{

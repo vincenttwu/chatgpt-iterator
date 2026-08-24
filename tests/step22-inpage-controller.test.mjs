@@ -78,19 +78,19 @@ test('STEP-06 Resume is conversation-guarded while Stop remains safely available
 });
 
 test('STEP-06 collapse preference is background-owned and Open Side Panel uses the verified local tab',async()=>{
-  const h=harness();const run=await createRunning(h.manager);const fixture=serverFor(h.manager);let response=requireMessageEnvelope(await fixture.server.handle(request(INPAGE_CONTROLLER_OPERATIONS.setCollapsed,'command',{collapsed:false}),caller()));assert.equal(response.outcome.ok,true);assert.equal(response.outcome.value.collapsed,false);assert.deepEqual(fixture.storage.value,{schemaVersion:1,collapsed:false});
+  const h=harness();const run=await createRunning(h.manager);const fixture=serverFor(h.manager);let response=requireMessageEnvelope(await fixture.server.handle(request(INPAGE_CONTROLLER_OPERATIONS.setCollapsed,'command',{collapsed:false}),caller()));assert.equal(response.outcome.ok,true);assert.equal(response.outcome.value.collapsed,false);assert.equal(fixture.storage.value.schemaVersion,1);assert.equal(fixture.storage.value.collapsed,false);assert.equal(typeof fixture.storage.value.dock,'string');
   response=requireMessageEnvelope(await fixture.server.handle(request(INPAGE_CONTROLLER_OPERATIONS.openPanel,'command',{}),caller()));assert.equal(response.outcome.ok,true);assert.deepEqual(fixture.opened,[[17,3]]);assert.equal((await h.manager.get(run.id)).lifecycleState,'running');
 });
 
-test('STEP-06 content surface is Shadow-DOM isolated, accessible, secondary, and has no raw editor or dragging surface',async()=>{
+test('STEP-06 content surface remains Shadow-DOM isolated, accessible, secondary, and prompt-free after later placement evolution',async()=>{
   const content=await text('entrypoints/chatgpt.content.ts');const dom=await text('src/presentation/inpage-controller-dom.ts');
   assert.match(dom,/document\.documentElement\.append\(this\.#host\)/);assert.match(dom,/attachShadow\(\{ mode:'closed' \}\)/);assert.match(dom,/role','status'/);assert.match(dom,/aria-live','polite'/);assert.match(dom,/aria-expanded/);assert.match(dom,/event\.isTrusted/);assert.match(dom,/keyboard\.key !== 'Escape'/);assert.match(dom,/min-height:44px/);
-  assert.match(content,/InPageControllerClient/);assert.match(content,/isInPageControllerInvalidation/);assert.doesNotMatch(content,/setInterval\(/);assert.doesNotMatch(dom,/dragstart|pointermove|mousedown/);assert.doesNotMatch(dom,/messageTemplate|activeMessage|history/i);
+  assert.match(content,/InPageControllerClient/);assert.match(content,/isInPageControllerInvalidation/);assert.doesNotMatch(content,/setInterval\(/);assert.match(dom,/event\.isTrusted/);assert.doesNotMatch(dom,/messageTemplate|activeMessage|history/i);
 });
 
 test('STEP-06 scope preserves Side Panel primary authority, permissions/schema, localization, and no toolbar popup',async()=>{
   const background=await text('entrypoints/background.ts');const router=await text('src/runtime/message-router.ts');const wxt=await text('wxt.config.ts');const pkg=JSON.parse(await text('package.json'));const messages=await text('src/ui/messages.ts');const locale=JSON.parse(await text('public/_locales/en/messages.json'));const roadmap=await text('agents/records/roadmaps/ROADMAP-0002--interaction-surface-and-runtime-hardening.md');
-  assert.match(background,/sidePanel\.open\(\{ tabId \}\)/);assert.match(background,/openPanelOnActionClick: true/);assert.match(router,/INPAGE_OPERATIONS/);assert.match(router,/CONTENT_ENABLED_OPERATIONS/);assert.doesNotMatch(wxt,/default_popup/);assert.deepEqual([...wxt.matchAll(/'([^']+)'/g)].map(m=>m[1]).filter(v=>['sidePanel','storage','alarms','tabs'].includes(v)),['sidePanel','storage','alarms']);assert.equal(pkg.version,'0.0.22');
+  assert.match(background,/sidePanel\.open\(\{ tabId \}\)/);assert.match(background,/openPanelOnActionClick: true/);assert.match(router,/INPAGE_OPERATIONS/);assert.match(router,/CONTENT_ENABLED_OPERATIONS/);assert.doesNotMatch(wxt,/default_popup/);assert.deepEqual([...wxt.matchAll(/'([^']+)'/g)].map(m=>m[1]).filter(v=>['sidePanel','storage','alarms','tabs'].includes(v)),['sidePanel','storage','alarms']);assert.ok(Number(pkg.version.split('.')[2])>=22);
   for(const key of ['inPageController','expandInPageController','collapseInPageController','inPageNoActiveRun','inPageMultipleRuns','openSidePanel']){assert.match(messages,new RegExp(`${key}:`));assert.equal(typeof locale[key]?.message,'string');}
   assert.match(roadmap,/Freeform dragging\/placement persistence \(STEP-07\)/);
 });

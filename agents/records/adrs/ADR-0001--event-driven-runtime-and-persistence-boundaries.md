@@ -5,9 +5,9 @@ record_type: adr
 slug: event-driven-runtime-and-persistence-boundaries
 title: "Event-Driven Runtime and Persistence Boundaries"
 status: accepted
-revision: 6
+revision: 7
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T13:44:00+08:00
+updated_at: 2026-08-24T14:08:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -16,7 +16,7 @@ scope:
   packages: []
   paths: [entrypoints/, src/runtime/, src/chatgpt/, src/persistence/, src/tabs/, src/runs/, src/presentation/]
 relations:
-  related: [ROADMAP-0001, ROADMAP-0002, CONSTRAINT-0001, REFERENCE-0001, REFERENCE-0002, REFERENCE-0006]
+  related: [ROADMAP-0001, ROADMAP-0002, CONSTRAINT-0001, MATRIX-0002, REFERENCE-0001, REFERENCE-0002, REFERENCE-0006]
   depends_on: [REFERENCE-0001, CONSTRAINT-0001]
   blocks: []
   supersedes: []
@@ -132,3 +132,17 @@ At `v0.0.24`, production-facing ChatGPT drift handling and retained-content poli
 
 This decision strengthens drift/privacy/retention behavior inside the existing adapter, runtime and persistence zones. It does not authorize another execution engine, additional permissions/hosts, a conventional toolbar popup, or content-script ownership of durable state.
 
+## ROADMAP-0002 closure disposition
+
+At `v0.0.25`, this ADR remains **accepted** and the original four authority zones remain intact. ROADMAP-0002 hardens the boundaries rather than replacing them:
+
+- verified Chrome sender context classifies Side Panel and top-frame ChatGPT content callers;
+- durable execution authority is tab + conversation + generation aware;
+- the shared Repeat/Queue coordinator performs final conversation-safe send checks and remains the only workflow execution engine;
+- paused delays persist a frozen remainder while active delays persist an absolute deadline;
+- Side Panel, toolbar and the in-page mini controller consume one `RunPresentationProjection` rather than owning competing lifecycle state;
+- the mini controller is a closed-Shadow-DOM secondary projection with bounded same-tab controls and no durable datastore/configuration ownership;
+- ChatGPT DOM observation remains event-driven with bounded stream coalescing, not a 400ms polling engine;
+- logical/run state v5 compacts terminal message content while physical IndexedDB v1 and portable envelope v1 remain independent authorities.
+
+MATRIX-0002 verifies the integrated successor boundary. No closure finding requires a superseding ADR.

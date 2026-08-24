@@ -55,7 +55,7 @@ test('STEP-05 a fresh controller reconstructs toolbar state from durable runs af
 
 test('STEP-05 background owns action status while toolbar click remains Side Panel and no popup/permission appears',async()=>{
   const bg=await text('entrypoints/background.ts');const wxt=await text('wxt.config.ts');const pkg=JSON.parse(await text('package.json'));
-  assert.match(bg,/new ToolbarStatusController/);assert.match(bg,/toolbarStatusController\.refresh/);assert.match(bg,/openPanelOnActionClick: true/);assert.doesNotMatch(wxt,/default_popup/);assert.equal(pkg.version,'0.0.21');
+  assert.match(bg,/new ToolbarStatusController/);assert.match(bg,/toolbarStatusController\.refresh/);assert.match(bg,/openPanelOnActionClick: true/);assert.doesNotMatch(wxt,/default_popup/);assert.ok(Number(pkg.version.split('.')[2])>=21);
   assert.deepEqual([...wxt.matchAll(/'([^']+)'/g)].map(m=>m[1]).filter(v=>['sidePanel','storage','alarms','tabs'].includes(v)),['sidePanel','storage','alarms']);
 });
 

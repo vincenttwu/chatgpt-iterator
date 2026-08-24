@@ -1,76 +1,73 @@
-# ChatGPT Iterator — v0.0.24
+# ChatGPT Iterator — v0.0.25
 
 Chrome-native Manifest V3 Side Panel controller for durable ChatGPT Repeat and Queue workflows, with secondary toolbar and in-page runtime visibility/control surfaces.
 
 ## Product status
 
-**ROADMAP-0001 is closed at v0.0.16. ROADMAP-0002 is active at v0.0.24 with 8/9 steps complete. Phase P1 — Safety Authority and Phase P2 — Runtime Visibility and Secondary Control are closed. Phase P3 — Drift/Retention and Closure is active at 1/2.**
+**ROADMAP-0001 is closed at v0.0.16. ROADMAP-0002 is closed at v0.0.25 with 9/9 steps complete. P1 Safety Authority, P2 Runtime Visibility and Secondary Control, and P3 Drift/Retention and Closure are all complete.**
 
-`v0.0.24` completes **ROADMAP-0002 STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening**. The sole next authorized implementation is:
-
-**v0.0.25 / ROADMAP-0002 STEP-09 — Integrated Successor Hardening Closure**
+`v0.0.25` is the accepted **ROADMAP-0002 STEP-09 — Integrated Successor Hardening Closure**. It is a reconciliation/closure iteration: no new workflow, permission, host scope, popup, execution engine, physical storage format, portable format or automatic public-version promotion is introduced. There is **no next authorized version or roadmap**.
 
 The originally requested `chatgpt-iterator-v0.0.0` archive never became available. The accepted planning/implementation lineage remains the source of truth; no byte-for-byte ancestry claim is fabricated.
 
-## What v0.0.24 changes
+## Successor hardening now closed
 
-- Reclassifies ChatGPT DOM knowledge into **structural anchors**, **transient capabilities**, and **diagnostic signals**.
-- Makes the visible editable composer `#prompt-textarea[contenteditable="true"]` the structural send anchor. The hidden fallback textarea is never send authority.
-- Treats Send/Stop/Continue/Voice as state-dependent capabilities: normal absence while idle does not degrade an otherwise healthy adapter.
-- Adds structural preflight before composer write and again before the native send click, preserving the existing point-of-click conversation guard.
-- Advances the ChatGPT adapter to **schema v4** with machine-readable degradation reasons for unsupported route, missing/ambiguous composer, unavailable capability, conversation mismatch, likely rate limit/page alert, and adapter drift.
-- Keeps response observation MutationObserver/event-driven while coalescing busy-stream assistant-fingerprint-only changes to a bounded 250ms minimum publication interval. Completion/state changes remain immediate; no interval polling authority is introduced.
-- Advances durable run/logical state to **v5** so terminal Repeat/Queue executions compact prompt-bearing content and clear transient active-response/delay fields.
-- Preserves active/recovery prompt content until terminal transition, so worker/browser lifecycle recovery remains correct.
-- Adds explicit logical migration `4 -> 5`; accepted v1/v2/v3/v4 run snapshots normalize through compatibility code and old terminal snapshots are compacted rather than silently retained.
-- Keeps portable envelope **v1**. Current full backups contain compact terminal run state, and legacy embedded run states normalize on read. Configuration export continues to omit run history.
-- Keeps diagnostics, History, toolbar projection and in-page controller projection prompt/assistant-text minimal.
-- Introduces no new permission, host scope, popup, execution engine, dependency, physical IndexedDB version, or portable-envelope version.
+ROADMAP-0002 hardened the v0.0.16 product without multiplying workflow concepts:
+
+- **Caller authority:** Chrome `MessageSender` determines Side Panel vs top-frame ChatGPT content authority; forged envelope `source` metadata is not trusted.
+- **Wrong-conversation prevention:** runs bind to tab/window plus semantic conversation and generation; `/ -> /c/<id>` may bind once, later conversation drift suspends fail-closed, and the adapter rechecks conversation immediately before Send.
+- **Privacy-minimal adapter:** raw composer drafts and assistant-text suffixes no longer cross into durable/background snapshots; adapter v4 exposes opaque fingerprints and machine-readable degradation reasons.
+- **Truthful timing:** Pause freezes `remainingDelayMs`; Resume creates a fresh deadline; response activity reports elapsed/indeterminate time rather than a fabricated ETA.
+- **Shared presentation vocabulary:** one `RunPresentationProjection` drives the Side Panel, toolbar badge/title and mini controller.
+- **Toolbar status:** concise progress/paused/attention badge plus accessible title; toolbar click continues to open the Side Panel and no `default_popup` exists.
+- **In-page controller:** compact closed-Shadow-DOM secondary controller with Pause/Resume/Stop/Open Side Panel, prompt-free projection, trusted-event controls and no durable authority.
+- **Docking/accessibility:** six canonical docks, drag-to-snap plus non-drag/keyboard alternatives, reset, 44px-class targets, focus/reduced-motion/forced-colors behavior and transient composer/viewport collision recovery.
+- **DOM drift/observation:** structural anchors are separated from transient capabilities and diagnostics; streaming fingerprint-only observations are event-driven and bounded/coalesced rather than mutation-for-mutation.
+- **Terminal retention:** run/logical v5 compacts terminal Repeat/Queue prompt-bearing execution fields while retaining active/recovery content only as long as recovery requires.
 
 ## Schema and compatibility state
 
-- Physical IndexedDB remains **v1**.
-- Portable envelope remains **v1**.
-- Global logical persistence is **v5**.
-- Durable run state is **v5**, with explicit v1/v2/v3/v4 compatibility normalization.
-- ChatGPT adapter snapshot schema is **v4**.
-- Tab registry snapshot schema remains **v2**.
-- In-page controller presentation protocol remains **v1**.
-- Current terminal run content is compacted with an explicit sentinel; active/recovery state retains required message content until terminal transition.
+- Physical IndexedDB: **v1**.
+- Portable envelope/export format: **v1**.
+- Global logical persistence: **v5**.
+- Durable run state: **v5**, with accepted v1/v2/v3/v4 normalization.
+- ChatGPT adapter snapshot: **v4**.
+- Tab registry snapshot: **v2**.
+- In-page controller protocol: **v1**.
+
+Logical evolution deliberately does not force a physical IndexedDB or portable-envelope bump. Current terminal run state is compacted; legacy accepted run/full-backup state normalizes through explicit adapters. Full backups remain sensitive because configuration definitions, metadata and event payloads remain.
 
 ## Runtime and presentation boundaries
 
-The primary product remains the Side Panel with **Run · Queue · Presets · Templates · Settings**. Repeat and Queue share one durable coordinator. Sender, tab, conversation and generation authority remain fail-closed. Toolbar status and the mini controller consume the shared `RunPresentationProjection` and remain secondary presentation/control surfaces.
+The primary product remains the Side Panel with exactly **Run · Queue · Presets · Templates · Settings**. Repeat and Queue share one durable coordinator. Sender, tab, conversation and generation authority are fail-closed. Toolbar and mini controller are secondary projections and do not create another execution engine or durable state owner.
 
-The ChatGPT adapter now distinguishes stable structural facts from transient control availability. Structural preflight—not the incidental presence of a Send button—determines whether send authority can proceed. Current ChatGPT selector evidence remains centralized under `src/chatgpt/` and is treated as drift-prone evidence rather than a permanent API.
+The ChatGPT adapter treats the visible exact `#prompt-textarea[contenteditable="true"]` as the send structural anchor. Send/Stop/Continue/Voice are transient capabilities and may legitimately be absent. Current ChatGPT selectors are evidence, not a permanent API; all selector knowledge remains centralized under `src/chatgpt/`.
 
-## Data, privacy, and permissions
+## Data, privacy, permissions and code boundary
 
-Declared permissions remain only `sidePanel`, `storage`, and `alarms`. Content scope remains only `https://chatgpt.com/*` and `https://chat.openai.com/*`. No `activeTab`, `debugger`, `scripting`, `<all_urls>`, `unlimitedStorage`, remote executable code, `eval`, conventional toolbar popup, or arbitrary template scripting is introduced.
+Declared permissions remain exactly `sidePanel`, `storage`, and `alarms`. Content scope remains only `https://chatgpt.com/*` and `https://chat.openai.com/*`. The extension does not add `activeTab`, `debugger`, `scripting`, `<all_urls>`, `unlimitedStorage`, a conventional toolbar popup, remote executable code, `eval` or `new Function`. Extension CSP remains self-only.
 
-Terminal run snapshots no longer retain Repeat message templates or resolved Queue item content after completion/failure/stop. Current full backups therefore carry compact terminal execution state; imported legacy v1 backups normalize accepted old run schemas before use. Full backups remain sensitive because they still contain configuration definitions, terminal metadata and event payloads.
+Default adapter, diagnostics, History, toolbar and mini-controller projections are prompt/assistant-text minimal. Terminal run snapshots compact prompt-bearing execution fields; active runs retain only the content needed for correct recovery until terminal transition.
 
-## Validation
+## v0.0.25 closure evidence
 
-For v0.0.24:
+- Initial accumulated closure run: **185/203**. Classification found 18 stale retained historical package/schema/UI-shape assertions and no current runtime product defect.
+- Reconciled pre-closure accumulated suite: **203/203 PASS**.
+- Dedicated STEP-09 integrated closure suite: **11/11 PASS**.
+- Final accumulated repository suite: **214/214 PASS**.
+- Strict dependency-free TypeScript: **PASS across 110 source files**; final static closure consistency: **52/52 PASS**.
+- `MATRIX-0002` integrated hardening matrix: **ACCEPTED**.
+- `AUDIT-0003` records the retained-test reconciliation and environment evidence.
 
-- STEP-08 focused adapter/drift/retention suite: **11/11 PASS**;
-- focused STEP-04-adapter + STEP-02-caller/privacy compatibility lanes: **18/18 PASS**;
-- strict dependency-free TypeScript for changed source contracts: **PASS**;
-- single STEP-07 predecessor smoke: **11/12** — the only failure was the retained static assertion that logical model must remain v4; all 11 controller docking/drag/accessibility behavior checks passed, and that superseded version assertion was reconciled for future accumulated runs;
-- bounded streaming observation/coalescing: **PASS**;
-- Repeat + Queue terminal prompt compaction: **PASS**;
-- legacy v0.0.16-era run/full-backup normalization: **PASS**;
-- physical DB/export-format stability and no-new-permission/popup/polling boundaries: **PASS**.
-
-WXT/Vue hydrated build/package remains inherited **DEFERRED_ENVIRONMENT**. STEP-08 changes no dependencies and does not own package/install closure; STEP-09 owns the formal package/build/install closure lane.
+One fresh `npm install --ignore-scripts --no-audit --no-fund` attempt timed out after 120 seconds and left neither `node_modules` nor `package-lock.json`. Chromium is present at `/usr/bin/chromium`, but no hydrated WXT build exists to launch. WXT prepare/full Vue typecheck/build/package and packaged-Chrome/real-ChatGPT smoke are therefore **DEFERRED_ENVIRONMENT**, not passes and not blockers.
 
 ## Architecture authority
 
-- `ADR-0001` revision 6 preserves the four authority zones while recording the STEP-08 structural/capability and terminal-retention boundary.
-- `CONSTRAINT-0001` remains active: CRSniffer team Side Panel grammar governs the primary product UI.
-- `REFERENCE-0006` remains current evidence for the ChatGPT route/composer surface; selector evidence remains advisory, not API guarantee.
+- `ROADMAP-0002` revision **9** is closed at v0.0.25 and is the final successor/semi-handoff authority.
+- `ADR-0001` revision **7** records the final event-driven/runtime/persistence authority boundaries.
+- `CONSTRAINT-0001` revision **3** keeps the CRSniffer-derived Side Panel grammar authoritative for the primary UI while documenting the bounded accessible mini-controller deviation.
+- `MATRIX-0002` and `AUDIT-0003` contain integrated closure evidence.
+- `REFERENCE-0006` revision **2** records current Chrome/ChatGPT/environment evidence.
 - `ROADMAP-0001` remains immutable closed history.
-- `ROADMAP-0002` revision 8 is the active successor/semi-handoff authority and contains the exact STEP-09 closure continuation contract.
 
-`dumps/donors/` remains immutable reference material and is not runtime code.
+`dumps/donors/` remains immutable reference material and is not runtime code. Further development requires an explicitly authorized successor/superseding roadmap; **v0.0.26 and v0.1.0 are not automatically authorized**.

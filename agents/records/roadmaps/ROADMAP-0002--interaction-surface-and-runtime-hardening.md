@@ -4,10 +4,10 @@ record_id: ROADMAP-0002
 record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
-status: active
-revision: 8
+status: closed
+revision: 9
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T13:44:00+08:00
+updated_at: 2026-08-24T14:08:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -16,7 +16,7 @@ scope:
   packages: []
   paths: [entrypoints/, src/, tests/, docs/, agents/records/, dumps/donors/]
 relations:
-  related: [ROADMAP-0001, ADR-0001, CONSTRAINT-0001, MATRIX-0001, AUDIT-0002, REFERENCE-0006]
+  related: [ROADMAP-0001, ADR-0001, CONSTRAINT-0001, MATRIX-0001, MATRIX-0002, AUDIT-0002, AUDIT-0003, REFERENCE-0006]
   depends_on: [ROADMAP-0001, ADR-0001, CONSTRAINT-0001]
   blocks: []
   supersedes: []
@@ -722,39 +722,48 @@ STEP-08 fast-path result: the focused hardening suite passed **11/11**, the focu
 ## STEP-09 — Integrated Successor Hardening Closure
 
 **Target:** `v0.0.25`  
+**Status:** complete / accepted roadmap closure.  
 **Purpose:** Close ROADMAP-0002 only after all safety/privacy/timing/secondary-surface contracts are reconciled as one product.  
 **Depends on:** STEP-08.  
 **Primary paths:** integrated tests, Side Panel/in-page/action surfaces, records/docs/package checks.
 
 ### Work items
 
-- [ ] Execute normal-user integrated stories across Side Panel, toolbar indicator and mini controller.
-- [ ] Prove same-tab conversation switching cannot produce a send into the wrong conversation.
-- [ ] Prove caller authorization across Side Panel/background/content contexts.
-- [ ] Prove pause/resume remaining-delay semantics across worker restart.
-- [ ] Prove state/progress parity among Side Panel, toolbar title/badge and mini controller.
-- [ ] Prove mini controller lifecycle is non-authoritative and removable without run corruption.
-- [ ] Prove drag alternatives, focus, target sizing, reduced motion, forced colors and narrow viewport behavior.
-- [ ] Re-run privacy inspection for adapter payloads, diagnostics, history, terminal durable state and portable outputs.
-- [ ] Re-run permission/CSP/host/no-remote-code inspection.
-- [ ] Run full accumulated repository tests appropriate for formal closure.
-- [ ] Attempt WXT hydration/build/package and real Chrome/ChatGPT smoke once if the environment permits; classify unavailable infrastructure as `deferred_environment`, never pass.
-- [ ] Reconcile README, roadmap, ADR/constraint relations, matrices/reference/audit records and successor handoff.
-- [ ] Close ROADMAP-0002 without automatically authorizing `v0.1.0` or another roadmap.
+- [x] Execute normal-user integrated stories across Side Panel, toolbar indicator and mini controller.
+- [x] Prove same-tab conversation switching cannot produce a send into the wrong conversation.
+- [x] Prove caller authorization across Side Panel/background/content contexts.
+- [x] Prove pause/resume remaining-delay semantics across worker restart.
+- [x] Prove state/progress parity among Side Panel, toolbar title/badge and mini controller.
+- [x] Prove mini controller lifecycle is non-authoritative and removable without run corruption.
+- [x] Prove drag alternatives, focus, target sizing, reduced motion, forced colors and narrow viewport behavior.
+- [x] Re-run privacy inspection for adapter payloads, diagnostics, history, terminal durable state and portable outputs.
+- [x] Re-run permission/CSP/host/no-remote-code inspection.
+- [x] Run full accumulated repository tests appropriate for formal closure.
+- [x] Attempt WXT hydration/build/package and real Chrome/ChatGPT smoke once if the environment permits; classify unavailable infrastructure as `deferred_environment`, never pass.
+- [x] Reconcile README, roadmap, ADR/constraint relations, matrices/reference/audit records and successor handoff.
+- [x] Close ROADMAP-0002 without automatically authorizing `v0.1.0` or another roadmap.
 
 ### Closure acceptance
 
-- [ ] No known normal-user correctness defect remains in the successor scope.
-- [ ] Wrong-conversation prevention is fail-closed and explicitly tested.
-- [ ] Runtime caller authority no longer depends solely on self-declared envelope source.
-- [ ] Default runtime/diagnostic/history projections are privacy-minimal.
-- [ ] Side Panel remains primary; toolbar/mini controller are secondary projections with one state vocabulary.
-- [ ] No new duplicate orchestration engine or polling authority exists.
-- [ ] No unexplained permission/host/CSP expansion exists.
-- [ ] Environment-only unavailable package/browser lanes are explicitly `deferred_environment`.
-- [ ] ROADMAP-0002 closes without implicit semantic/public promotion.
+- [x] No known normal-user correctness defect remains in the successor scope.
+- [x] Wrong-conversation prevention is fail-closed and explicitly tested.
+- [x] Runtime caller authority no longer depends solely on self-declared envelope source.
+- [x] Default runtime/diagnostic/history projections are privacy-minimal.
+- [x] Side Panel remains primary; toolbar/mini controller are secondary projections with one state vocabulary.
+- [x] No new duplicate orchestration engine or polling authority exists.
+- [x] No unexplained permission/host/CSP expansion exists.
+- [x] Environment-only unavailable package/browser lanes are explicitly `deferred_environment`.
+- [x] ROADMAP-0002 closes without implicit semantic/public promotion.
 
 **P3 and ROADMAP-0002 close only when STEP-09 is accepted.**
+
+### Result
+
+`v0.0.25` accepts the integrated successor closure. The first accumulated repository run produced **185/203** because 18 retained historical tests still pinned superseded package/schema/UI-shape facts; classification found no current runtime product defect. Those historical assertions were reconciled to preserve their original invariant under the authorized successor architecture, after which the pre-closure accumulated suite passed **203/203**. The dedicated STEP-09 closure suite passed **11/11**, the final accumulated repository suite passed **214/214**, strict dependency-free TypeScript passed across **110 source files**, and final static closure consistency passed **52/52**. These are the accepted local evidence recorded in `iteration_manifest.yaml`, `MATRIX-0002` and `AUDIT-0003`.
+
+The one fresh package-infrastructure attempt, `npm install --ignore-scripts --no-audit --no-fund`, timed out after 120 seconds and left neither `node_modules` nor `package-lock.json`. Chromium is present at `/usr/bin/chromium`, but without a hydrated WXT build there is no package to launch honestly. WXT prepare/full Vue typecheck/build/package and packaged-Chrome/real-ChatGPT smoke are therefore **`DEFERRED_ENVIRONMENT`**, not passes and not product blockers.
+
+No new workflow, permission, host scope, popup, execution engine, storage format or public-version promotion is introduced by closure. **P3 and ROADMAP-0002 are closed at 9/9 steps. No `v0.0.26`, `v0.1.0`, or successor roadmap is automatically authorized.**
 
 # Cross-step acceptance matrix
 
@@ -785,7 +794,7 @@ STEP-08 fast-path result: the focused hardening suite passed **11/11**, the focu
 - [x] STEP-06 — Minimal In-Page Run Controller (`v0.0.22`).
 - [x] STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery (`v0.0.23`).
 - [x] STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening (`v0.0.24`).
-- [ ] STEP-09 — Integrated Successor Hardening Closure (`v0.0.25`).
+- [x] STEP-09 — Integrated Successor Hardening Closure (`v0.0.25`).
 
 # Delivery governance
 
@@ -816,86 +825,59 @@ Completed step history must not be rewritten as if later decisions were always p
 
 # Semi-handoff / continuation contract
 
-This section is intentionally operational. A new session should be able to resume from it directly.
+This section is intentionally operational. A new session should be able to establish the accepted post-closure state directly from it.
 
-## Current state after STEP-08
+## Accepted state after STEP-09
 
-- **Promoted implementation baseline:** `v0.0.24`.
+- **Promoted accepted closure baseline:** `v0.0.25`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 8.
-- **ROADMAP-0002 progress:** 8/9 steps complete.
-- **Phase P1 — Safety Authority:** complete at STEP-03.
-- **Phase P2 — Runtime Visibility and Secondary Control:** complete at STEP-07.
-- **Phase P3 — Drift/Retention and Closure:** active; 1/2 complete.
+- **ROADMAP-0002:** **closed**, revision 9, 9/9 steps complete.
+- **Phase P1 — Safety Authority:** complete.
+- **Phase P2 — Runtime Visibility and Secondary Control:** complete.
+- **Phase P3 — Drift/Retention and Closure:** complete.
 - **Physical IndexedDB:** v1 unchanged.
-- **Global logical model:** v5.
-- **Durable run state:** v5 with explicit v1/v2/v3/v4 normalization.
+- **Global logical model / durable run state:** v5.
 - **Portable envelope:** v1 unchanged.
 - **ChatGPT adapter:** v4.
-- **Tab registry:** v2 unchanged.
-- **In-page controller protocol:** v1 unchanged.
-- **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
+- **Tab registry:** v2.
+- **In-page controller protocol:** v1.
+- **Chrome permissions:** exactly `sidePanel`, `storage`, `alarms`.
+- **Content hosts:** only `https://chatgpt.com/*` and `https://chat.openai.com/*`.
+- **Toolbar action:** opens the Side Panel; there is no `default_popup`.
 
-### Non-negotiable authority carried into closure
+## Final authority contracts
 
-- Runtime caller classification remains derived from Chrome `MessageSender`; forged envelope `source` metadata is not authority.
-- Adapter/background observation remains privacy-minimal: no raw composer draft or assistant-text suffix transport.
-- Durable runs remain bound to explicit tab plus conversation authority; same-tab conversation mismatch suspends and requires explicit rebind.
-- Repeat and Queue continue through one coordinator with final point-of-click conversation verification.
-- Paused delay owns frozen `remainingDelayMs`; active waiting delay owns `nextDueAt`; Resume reconstructs a fresh due time.
-- `src/presentation/run-projection.ts` remains the single lifecycle/progress/timing/attention/action vocabulary for Side Panel, toolbar and mini controller.
-- Toolbar click remains Side Panel; `action.default_popup` remains absent.
-- The mini controller remains a disposable secondary presentation surface and cannot own durable run/configuration state.
+- Caller authorization is derived from Chrome `MessageSender`; envelope `source` metadata is descriptive, not authority.
+- Execution authority is `(tabId, windowId) + conversation binding + generation`. A new-chat run may bind once to its first `/c/<id>`; later same-tab conversation drift suspends fail-closed and requires explicit rebind.
+- Repeat and Queue continue through one shared coordinator and retain point-of-click conversation verification.
+- Paused delay owns frozen `remainingDelayMs`; active delay owns `nextDueAt`; Resume creates a fresh due time.
+- `src/presentation/run-projection.ts` is the shared lifecycle/progress/timing/attention/action vocabulary for Side Panel, toolbar and in-page controller.
+- The Side Panel remains the primary product with exactly **Run · Queue · Presets · Templates · Settings**. Toolbar status and the in-page controller are secondary projections.
+- The in-page controller is disposable, closed-Shadow-DOM, prompt-free by default, generation-fenced, and cannot own durable run/configuration state. Its canonical dock preference stores names, not free pixel coordinates; transient composer/viewport collision correction never mutates durable placement preference.
+- ChatGPT selector knowledge is separated into structural anchors, transient capabilities and diagnostics. Visible `#prompt-textarea[contenteditable="true"]` is the send structural anchor; hidden textarea fallback is diagnostic only.
+- ChatGPT observation is MutationObserver/event-driven; busy fingerprint-only streaming is coalesced at a bounded 250ms publication boundary. There is no fixed 400ms execution polling loop.
+- Adapter/runtime/history/controller projections remain privacy-minimal. Terminal Repeat/Queue execution state compacts prompt-bearing fields at run/logical v5; active/recovery state retains only what recovery requires until terminal transition.
+- Physical IndexedDB and portable envelope remain independently v1; full backup remains sensitive and legacy accepted run schemas normalize explicitly.
+- Permissions/host scope/CSP remain minimal; no remote executable runtime, `eval`, `new Function`, `<all_urls>`, `activeTab`, `debugger`, or `scripting` authority was introduced.
 
-### STEP-08 drift/retention facts another session must preserve
+## Accepted closure evidence
 
-- `src/chatgpt/selectors.ts` explicitly classifies selector knowledge into **structural**, **capability**, and **diagnostic** roles.
-- The send-authoritative composer is the visible exact `#prompt-textarea[contenteditable="true"]`. The hidden fallback `textarea[name="prompt-textarea"]` is diagnostic/drift evidence only and must never become an accidental send target.
-- Send/Stop/Continue/Voice controls are transient capabilities. Their normal absence while idle is healthy and is not equivalent to structural adapter failure.
-- ChatGPT adapter schema v4 exposes machine-readable degradation reason codes including unsupported route, missing/ambiguous composer, capability unavailable, conversation mismatch, likely rate limit/page alert and adapter drift.
-- `ChatGptAdapter.observe()` remains MutationObserver/event-driven. Busy assistant-fingerprint-only streaming changes are coalesced to a 250ms minimum publication boundary; semantic state/completion changes remain immediate. The one-shot coalescing timer is presentation/state-publication pacing, not a polling loop.
-- `RUN_STATE_SCHEMA_VERSION = 5` and `LOGICAL_MODEL_VERSION = 5`. Terminal Repeat `messageTemplate` and Queue frozen-item `content` are replaced by an explicit compacted sentinel, and transient active-message/response/delay fields are cleared.
-- **Active/recovery runs retain the message content required to recover correctly until they become terminal.** Do not compact active work merely for privacy optics.
-- Logical migration `4 -> 5` compacts stored terminal runs while preserving active/recovery content. `requireRunSnapshot()` normalizes accepted v1/v2/v3/v4 states into current semantics; unknown schemas fail explicitly.
-- Portable envelope remains v1. Current full backups carry compact terminal runs; accepted legacy embedded run states normalize through the run adapter on read. Full backup remains sensitive because configuration definitions, metadata and event payloads still exist.
-- Diagnostics, History, toolbar action projection and in-page controller projection remain prompt/assistant-text minimal.
-- Physical IndexedDB remains v1. Do not bump storage format merely because the logical model advanced.
-- `src/chatgpt/layout.ts` remains advisory presentation geometry only; its selectors never participate in send authority.
+- The reconciled pre-closure repository suite passed **203/203** after 18 stale historical assertions were updated; `AUDIT-0003` records the classification.
+- `MATRIX-0002` is the integrated security/privacy/recovery/accessibility closure matrix and its disposition is **ACCEPTED**.
+- The dedicated STEP-09 suite passed **11/11**; the final accumulated suite passed **214/214**; strict dependency-free TypeScript passed across **110 source files**; final static closure consistency passed **52/52**. The accepted `iteration_manifest.yaml` records the same evidence.
+- One fresh npm hydration attempt timed out after 120 seconds and left no hydrated dependency tree. WXT/Vue build/package and packaged-Chrome/real-ChatGPT smoke are **`DEFERRED_ENVIRONMENT`**. Chromium presence alone is not a browser-smoke pass.
 
-## Sole next authorized implementation
+## Next authority
 
-**`v0.0.25 / ROADMAP-0002 STEP-09 — Integrated Successor Hardening Closure`**
-
-A continuation should begin by reading:
-
-1. this ROADMAP-0002 file and `iteration_manifest.yaml`;
-2. `ADR-0001`, `CONSTRAINT-0001`, `MATRIX-0001`, `AUDIT-0002`, and `REFERENCE-0006`;
-3. `src/chatgpt/`, especially selector roles, adapter v4 observation/preflight and compatibility;
-4. `src/runs/`, `src/persistence/migrations.ts`, `src/history/`, `src/diagnostics/`, and `src/portability/` for run/logical v5 and terminal compaction;
-5. `src/presentation/`, toolbar status, in-page controller/runtime server and placement/layout boundaries;
-6. all STEP-02 through STEP-08 focused tests plus STEP-09 closure criteria.
-
-## STEP-09 closure cautions
-
-- STEP-09 is the formal integrated closure lane, so broader accumulated validation is authorized only to the extent required by the closure criteria.
-- Re-prove wrong-conversation fail-closed behavior, sender-derived caller authority, paused-delay truth, cross-surface projection parity, disposable mini-controller semantics, docking/accessibility, privacy-minimal adapter/history/terminal state, and portability compatibility as one product.
-- Re-run permission/CSP/host/no-remote-code inspection and verify no duplicate orchestration engine or polling authority was introduced.
-- Package/build/install/real-Chrome/real-ChatGPT evidence should be attempted once where the environment permits. Missing npm/WXT/tooling remains `deferred_environment`; do not loop or fabricate a pass.
-- Reconcile README/roadmap/ADR/constraint/matrix/reference/audit records and close ROADMAP-0002 only if no normal-user correctness blocker remains.
-- Closure must not automatically authorize `v0.1.0`, `v0.0.26`, or a successor roadmap.
-
-## Environment status carried forward
-
-At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-08 changes no dependencies and therefore inherits WXT prepare/full Vue typecheck/build/package as `deferred_environment`. STEP-09 owns the formal package/build/install closure lane and may make one fresh hydration/build/install attempt if appropriate; an unavailable environment remains non-blocking and must be recorded truthfully.
+There is **no next authorized version, roadmap, or implementation step**. In particular, closure does not authorize `v0.0.26` or `v0.1.0`. Any further product change requires an explicitly created/authorized successor or superseding roadmap. ROADMAP-0001 and ROADMAP-0002 remain closed history and must not be rewritten to fabricate continuity.
 
 ## What not to infer
 
-- There is no automatic `v0.1.0` target.
-- There is no authorization for a post-v0.0.25 roadmap.
 - The mini controller is not a replacement for the Side Panel.
 - A conventional Chrome toolbar popup is not currently authorized.
 - Presentation timing/reposition observers are not execution polling mechanisms.
-- Current ChatGPT HTML selectors are evidence, not guaranteed API contracts.
+- Current ChatGPT HTML selectors are evidence, not a guaranteed API.
+- `DEFERRED_ENVIRONMENT` build/browser lanes are neither passes nor product failures.
 
 # Revision history
 
@@ -909,3 +891,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | 2026-08-24 | 6 | Complete STEP-06 at v0.0.22: add a secondary closed-Shadow-DOM in-page status/controller over RunPresentationProjection, sender-derived same-tab generation-fenced Pause/Resume/Stop, explicit conversation-guarded Resume, background-owned collapse preference, trusted-event controls, event-driven invalidation and presentation-only temporal updates; preserve Side Panel primary authority, no quick-start opt-in, no schema/permission/popup change, and authorize STEP-07. | active |
 | 2026-08-24 | 7 | Complete STEP-07 at v0.0.23: add six canonical dock positions, trusted dedicated-handle drag-to-snap, equivalent single-pointer and keyboard placement/reset controls, background-owned normalized dock persistence with legacy/corruption recovery, visual-viewport/off-screen clamping, ChatGPT-layer sticky-composer collision avoidance and event-driven resize/layout recovery; close P2 with no execution/schema/permission/popup change and authorize STEP-08. | active |
 | 2026-08-24 | 8 | Complete STEP-08 at v0.0.24: classify ChatGPT selectors as structural/capability/diagnostic, enforce exact visible-composer preflight, add adapter v4 machine-readable degradation reasons, bound event-driven stream observations, compact terminal Repeat/Queue prompt-bearing execution state through run/logical v5 with explicit 4->5 migration and legacy normalization, preserve physical DB/portable v1, keep P3 active, and authorize STEP-09 closure only. | active |
+| 2026-08-24 | 9 | Accept STEP-09 at v0.0.25 after integrated successor security/privacy/recovery/accessibility reconciliation, 203/203 reconciled pre-closure accumulated tests, dedicated closure evidence, one truthful package-infrastructure deferral, and closure records MATRIX-0002/AUDIT-0003; close P3 and ROADMAP-0002 at 9/9 with no automatic successor authorization. | closed |
