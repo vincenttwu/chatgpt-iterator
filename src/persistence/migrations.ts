@@ -105,4 +105,18 @@ export const LOGICAL_MIGRATIONS: readonly LogicalMigration[] = Object.freeze([
       });
     },
   },
+  {
+    fromVersion: 4,
+    toVersion: 5,
+    async run(repositories) {
+      await repositories.write(['runs'], async (transaction) => {
+        const runs = transaction.repository('runs');
+        for (const record of await runs.list()) {
+          const state = requireRunSnapshot(record.state);
+          if (record.logicalVersion === state.schemaVersion && JSON.stringify(record.state) === JSON.stringify(state)) continue;
+          await runs.put({ ...record, logicalVersion: state.schemaVersion, state });
+        }
+      });
+    },
+  },
 ]);

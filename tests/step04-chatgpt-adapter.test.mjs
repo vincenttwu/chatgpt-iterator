@@ -45,6 +45,7 @@ class FakeDom {
   scrollToBottom() { this.scrolled = true; }
   now() { return this.clock; }
   isoNow() { return new Date(this.clock).toISOString(); }
+  currentUrl() { return 'https://chatgpt.com/c/A'; }
   trigger() { for (const observer of [...this.observers]) observer(); }
 }
 
@@ -52,7 +53,7 @@ function readyFixture() {
   const dom = new FakeDom();
   const composer = element();
   const send = element({ attrs: { 'data-testid': 'send-button' } });
-  dom.set('#prompt-textarea', composer);
+  dom.set('#prompt-textarea[contenteditable="true"]', composer);
   dom.set('button[data-testid="send-button"]', send);
   dom.set('button[aria-label]', []);
   dom.set('button', []);
@@ -66,7 +67,7 @@ function request(operation, payload = {}, intent = 'query') {
 }
 
 test('STEP-04 selector registry centralizes verified userscript selectors and conditional fallbacks', () => {
-  assert.deepEqual(CHATGPT_SELECTOR_REGISTRY.composer.candidates, ['#prompt-textarea']);
+  assert.deepEqual(CHATGPT_SELECTOR_REGISTRY.composer.candidates, ['#prompt-textarea[contenteditable="true"]']);
   assert.deepEqual(CHATGPT_SELECTOR_REGISTRY.send.candidates, ['button[data-testid="send-button"]']);
   assert.deepEqual(CHATGPT_SELECTOR_REGISTRY.stop.candidates, ['button[data-testid="stop-button"]']);
   assert.deepEqual(CHATGPT_SELECTOR_REGISTRY.assistantMessages.candidates, ['[data-message-author-role="assistant"]']);

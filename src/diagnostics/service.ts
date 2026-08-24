@@ -52,12 +52,12 @@ export class DiagnosticsService {
   }
 
   async #adapter(tabId: number | null): Promise<AdapterDiagnosticsProjection> {
-    if (tabId === null) return freezeJsonValue({ targetTabId: null, status: 'not_bound' as const, capabilities: [], pageAlert: null });
+    if (tabId === null) return freezeJsonValue({ targetTabId: null, status: 'not_bound' as const, capabilities: [], reasonCodes: [], pageAlert: null });
     try {
       const raw = await this.#context.adapterDiagnostics(tabId);
-      return freezeJsonValue({ targetTabId: tabId, status: raw.status, capabilities: raw.capabilities, pageAlert: raw.pageAlert });
+      return freezeJsonValue({ targetTabId: tabId, status: raw.status, capabilities: raw.capabilities, reasonCodes: raw.reasonCodes ?? [], pageAlert: raw.pageAlert });
     } catch {
-      return freezeJsonValue({ targetTabId: tabId, status: 'unreachable' as const, capabilities: [], pageAlert: null });
+      return freezeJsonValue({ targetTabId: tabId, status: 'unreachable' as const, capabilities: [], reasonCodes: [], pageAlert: null });
     }
   }
 

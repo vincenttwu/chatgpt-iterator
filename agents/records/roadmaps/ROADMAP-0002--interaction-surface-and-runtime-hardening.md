@@ -5,9 +5,9 @@ record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
 status: active
-revision: 7
+revision: 8
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T13:29:00+08:00
+updated_at: 2026-08-24T13:44:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -694,26 +694,28 @@ Focused STEP-07 validation passed 12/12; the strict presentation/layout TypeScri
 
 ### Work items
 
-- [ ] Reclassify ChatGPT DOM registry into **structural anchors** vs **transient capabilities**.
-- [ ] Prefer the visible `#prompt-textarea[contenteditable="true"]` composer and fail closed against hidden fallback textarea ambiguity.
-- [ ] Treat send/stop/Continue/voice controls as state-dependent capabilities; absence while idle is not automatically an adapter failure.
-- [ ] Add start-time structural preflight before a run receives send authority.
-- [ ] Add explicit degraded/reason codes for unsupported route, missing composer, capability unavailable, conversation mismatch, likely rate-limit/page alert and adapter drift.
-- [ ] Coalesce content observations so assistant text streaming does not publish a full semantically identical application-state update on every DOM mutation.
-- [ ] Keep response tracking event-driven and deadline-bounded; no fixed 400ms authority loop.
-- [ ] Compact terminal run state to remove unnecessary prompt-bearing/transient fields while retaining history/audit/recovery facts.
-- [ ] Reconcile full-backup portability with compacted/new run schemas; if the portable representation must break, introduce explicit format v2 while retaining v1 import adapters.
-- [ ] Audit diagnostics/history/controller/action projection for prompt/assistant leakage after compaction.
-- [ ] Add bounded retention/migration tests for old v0.0.16-era run snapshots and current successor snapshots.
+- [x] Reclassify ChatGPT DOM registry into **structural anchors** vs **transient capabilities**.
+- [x] Prefer the visible `#prompt-textarea[contenteditable="true"]` composer and fail closed against hidden fallback textarea ambiguity.
+- [x] Treat send/stop/Continue/voice controls as state-dependent capabilities; absence while idle is not automatically an adapter failure.
+- [x] Add start-time structural preflight before a run receives send authority.
+- [x] Add explicit degraded/reason codes for unsupported route, missing composer, capability unavailable, conversation mismatch, likely rate-limit/page alert and adapter drift.
+- [x] Coalesce content observations so assistant text streaming does not publish a full semantically identical application-state update on every DOM mutation.
+- [x] Keep response tracking event-driven and deadline-bounded; no fixed 400ms authority loop.
+- [x] Compact terminal run state to remove unnecessary prompt-bearing/transient fields while retaining history/audit/recovery facts.
+- [x] Reconcile full-backup portability with compacted/new run schemas; if the portable representation must break, introduce explicit format v2 while retaining v1 import adapters.
+- [x] Audit diagnostics/history/controller/action projection for prompt/assistant leakage after compaction.
+- [x] Add bounded retention/migration tests for old v0.0.16-era run snapshots and current successor snapshots.
 
 ### Acceptance
 
-- [ ] Idle ChatGPT with no send button remains healthy when structural composer/assistant requirements are satisfied.
-- [ ] Missing/ambiguous visible composer blocks send with explicit reason.
-- [ ] Streaming response fixture produces bounded semantic observations instead of update-per-text-mutation behavior.
-- [ ] Response completion/Continue behavior remains equivalent.
-- [ ] Terminal history and default configuration export do not retain/expose prompt bodies beyond explicitly documented sensitive full-backup compatibility needs.
-- [ ] Old accepted run/backup state remains readable or fails with explicit unsupported-schema semantics; never silently reinterpreted.
+- [x] Idle ChatGPT with no send button remains healthy when structural composer/assistant requirements are satisfied.
+- [x] Missing/ambiguous visible composer blocks send with explicit reason.
+- [x] Streaming response fixture produces bounded semantic observations instead of update-per-text-mutation behavior.
+- [x] Response completion/Continue behavior remains equivalent.
+- [x] Terminal history and default configuration export do not retain/expose prompt bodies beyond explicitly documented sensitive full-backup compatibility needs.
+- [x] Old accepted run/backup state remains readable or fails with explicit unsupported-schema semantics; never silently reinterpreted.
+
+STEP-08 fast-path result: the focused hardening suite passed **11/11**, the focused adapter/caller/privacy compatibility lanes passed **18/18**, and the changed-source strict TypeScript lane passed. Adapter snapshots advance to **v4** with structural/capability/diagnostic classification and machine-readable degradation reasons; busy-stream fingerprint-only observations are event-driven and bounded/coalesced rather than mutation-for-mutation. Durable run/global logical state advances to **v5** solely for terminal execution-content compaction and explicit legacy normalization, while active/recovery content remains available until terminal transition. Physical IndexedDB and portable envelope remain **v1**. The single STEP-07 predecessor smoke was **11/12**: all 11 controller behavior checks passed and only a superseded static assertion that logical model must remain v4 failed; that retained assertion was reconciled for future accumulated runs and the predecessor lane was not rerun. WXT/Vue hydration remains inherited `deferred_environment`. **P3 remains active pending STEP-09.**
 
 ---
 
@@ -782,7 +784,7 @@ Focused STEP-07 validation passed 12/12; the strict presentation/layout TypeScri
 - [x] STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator (`v0.0.21`).
 - [x] STEP-06 — Minimal In-Page Run Controller (`v0.0.22`).
 - [x] STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery (`v0.0.23`).
-- [ ] STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening (`v0.0.24`).
+- [x] STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening (`v0.0.24`).
 - [ ] STEP-09 — Integrated Successor Hardening Closure (`v0.0.25`).
 
 # Delivery governance
@@ -816,25 +818,25 @@ Completed step history must not be rewritten as if later decisions were always p
 
 This section is intentionally operational. A new session should be able to resume from it directly.
 
-## Current state after STEP-07
+## Current state after STEP-08
 
-- **Promoted implementation baseline:** `v0.0.23`.
+- **Promoted implementation baseline:** `v0.0.24`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 7.
-- **ROADMAP-0002 progress:** 7/9 steps complete.
+- **ROADMAP-0002:** active, revision 8.
+- **ROADMAP-0002 progress:** 8/9 steps complete.
 - **Phase P1 — Safety Authority:** complete at STEP-03.
-- **Phase P2 — Runtime Visibility and Secondary Control:** **complete at STEP-07**.
-- **Phase P3 — Drift/Retention and Closure:** next; 0/2 complete.
+- **Phase P2 — Runtime Visibility and Secondary Control:** complete at STEP-07.
+- **Phase P3 — Drift/Retention and Closure:** active; 1/2 complete.
 - **Physical IndexedDB:** v1 unchanged.
-- **Global logical model:** v4 unchanged.
-- **Durable run state:** v4 with explicit v1/v2/v3 normalization.
+- **Global logical model:** v5.
+- **Durable run state:** v5 with explicit v1/v2/v3/v4 normalization.
 - **Portable envelope:** v1 unchanged.
-- **ChatGPT adapter:** v3 unchanged.
+- **ChatGPT adapter:** v4.
 - **Tab registry:** v2 unchanged.
-- **In-page controller protocol:** v1 additive-compatible; normalized dock preference is part of the safe projection.
+- **In-page controller protocol:** v1 unchanged.
 - **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
 
-### Non-negotiable authority carried into P3
+### Non-negotiable authority carried into closure
 
 - Runtime caller classification remains derived from Chrome `MessageSender`; forged envelope `source` metadata is not authority.
 - Adapter/background observation remains privacy-minimal: no raw composer draft or assistant-text suffix transport.
@@ -845,52 +847,46 @@ This section is intentionally operational. A new session should be able to resum
 - Toolbar click remains Side Panel; `action.default_popup` remains absent.
 - The mini controller remains a disposable secondary presentation surface and cannot own durable run/configuration state.
 
-### STEP-06/STEP-07 mini-controller facts another session must preserve
+### STEP-08 drift/retention facts another session must preserve
 
-- `src/presentation/inpage-controller.ts` owns the privacy-safe projection/client contract. Content receives only controller state, active-run count, one unambiguous run ID/generation fence, `RunPresentationProjection`, collapse state and canonical dock; no prompt/history/configuration body data is exposed.
-- `src/runtime/inpage-controller-runtime-server.ts` owns in-page command and preference authority. Verified top-frame ChatGPT content may use only explicit `inpage.*` operations; another tab/window run cannot be operated.
-- `src/runtime/run-control.ts` remains the shared Pause/Resume/Stop manager/coordinator side-effect path. Do not fork execution semantics for the mini surface.
-- Resume remains conversation-guarded. Multiple nonterminal runs targeting one tab remain read-only ambiguity.
-- `src/presentation/inpage-controller-dom.ts` owns the **closed Shadow DOM** host under `document.documentElement`; user actions remain trusted-event gated.
-- Canonical durable docks are `top_left`, `middle_left`, `bottom_left`, `top_right`, `middle_right`, `bottom_right`. No arbitrary persisted `x/y`, `left/top`, or viewport-relative coordinates are authorized.
-- Dragging is optional input only: the dedicated handle snaps to canonical docks. All dock results plus reset are available with single-pointer buttons; Arrow keys/Home provide an additional keyboard path.
-- `src/presentation/inpage-placement.ts` is the pure normalized placement/collision/clamp authority. Temporary obstacle avoidance changes rendered geometry only, not the stored dock.
-- `src/chatgpt/layout.ts` centralizes the current advisory collision selectors (`#thread-bottom-container`, fallback `[data-composer-surface="true"]`). Presentation/content layers must not duplicate those selectors.
-- ResizeObserver plus normal/visual viewport events drive repositioning. There is no interval/status/ChatGPT polling loop.
-- Collapse + canonical dock preference remains background-owned in trusted local Chrome storage under `inpageController.v1`; legacy collapse-only records normalize to safe `top_right`; corrupted docks fall back safely.
-- Reduced-motion, forced-colors, visible focus, one polite live status region, 44px-class targets, non-color state cues and off-screen clamping are part of the accepted controller contract.
-- The optional Start-default-Preset control remains absent because no explicit quick-start opt-in exists.
-- Open Side Panel uses verified caller-tab `sidePanel.open({tabId})`; toolbar `openPanelOnActionClick` remains unchanged.
+- `src/chatgpt/selectors.ts` explicitly classifies selector knowledge into **structural**, **capability**, and **diagnostic** roles.
+- The send-authoritative composer is the visible exact `#prompt-textarea[contenteditable="true"]`. The hidden fallback `textarea[name="prompt-textarea"]` is diagnostic/drift evidence only and must never become an accidental send target.
+- Send/Stop/Continue/Voice controls are transient capabilities. Their normal absence while idle is healthy and is not equivalent to structural adapter failure.
+- ChatGPT adapter schema v4 exposes machine-readable degradation reason codes including unsupported route, missing/ambiguous composer, capability unavailable, conversation mismatch, likely rate limit/page alert and adapter drift.
+- `ChatGptAdapter.observe()` remains MutationObserver/event-driven. Busy assistant-fingerprint-only streaming changes are coalesced to a 250ms minimum publication boundary; semantic state/completion changes remain immediate. The one-shot coalescing timer is presentation/state-publication pacing, not a polling loop.
+- `RUN_STATE_SCHEMA_VERSION = 5` and `LOGICAL_MODEL_VERSION = 5`. Terminal Repeat `messageTemplate` and Queue frozen-item `content` are replaced by an explicit compacted sentinel, and transient active-message/response/delay fields are cleared.
+- **Active/recovery runs retain the message content required to recover correctly until they become terminal.** Do not compact active work merely for privacy optics.
+- Logical migration `4 -> 5` compacts stored terminal runs while preserving active/recovery content. `requireRunSnapshot()` normalizes accepted v1/v2/v3/v4 states into current semantics; unknown schemas fail explicitly.
+- Portable envelope remains v1. Current full backups carry compact terminal runs; accepted legacy embedded run states normalize through the run adapter on read. Full backup remains sensitive because configuration definitions, metadata and event payloads still exist.
+- Diagnostics, History, toolbar action projection and in-page controller projection remain prompt/assistant-text minimal.
+- Physical IndexedDB remains v1. Do not bump storage format merely because the logical model advanced.
+- `src/chatgpt/layout.ts` remains advisory presentation geometry only; its selectors never participate in send authority.
 
 ## Sole next authorized implementation
 
-**`v0.0.24 / ROADMAP-0002 STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening`**
+**`v0.0.25 / ROADMAP-0002 STEP-09 — Integrated Successor Hardening Closure`**
 
 A continuation should begin by reading:
 
 1. this ROADMAP-0002 file and `iteration_manifest.yaml`;
-2. `src/chatgpt/selectors.ts`, `src/chatgpt/adapter.ts`, `src/chatgpt/layout.ts`, `src/chatgpt/dom-environment.ts`, `src/chatgpt/types.ts`, and `src/chatgpt/compatibility.ts`;
-3. `src/runs/` run model/repository/coordinator and `src/history/`;
-4. `src/diagnostics/` and `src/portability/`;
-5. `entrypoints/chatgpt.content.ts` plus current adapter-state publication behavior;
-6. `REFERENCE-0006` and `AUDIT-0002` for the current ChatGPT evidence and retained-content/drift findings.
+2. `ADR-0001`, `CONSTRAINT-0001`, `MATRIX-0001`, `AUDIT-0002`, and `REFERENCE-0006`;
+3. `src/chatgpt/`, especially selector roles, adapter v4 observation/preflight and compatibility;
+4. `src/runs/`, `src/persistence/migrations.ts`, `src/history/`, `src/diagnostics/`, and `src/portability/` for run/logical v5 and terminal compaction;
+5. `src/presentation/`, toolbar status, in-page controller/runtime server and placement/layout boundaries;
+6. all STEP-02 through STEP-08 focused tests plus STEP-09 closure criteria.
 
-## STEP-08 implementation cautions
+## STEP-09 closure cautions
 
-- Reclassify ChatGPT DOM knowledge into structural anchors versus transient capabilities without weakening the currently working adapter semantics.
-- Prefer visible `#prompt-textarea[contenteditable="true"]`; the hidden fallback textarea must not become an accidental send target.
-- Send/Stop/Continue absence is state-dependent and should not automatically mean adapter failure.
-- Add structural preflight before send authority and explicit degradation/error classifications for SPA/capability drift.
-- Coalesce streaming observations semantically; do not return to 400ms polling or make toolbar/mini presentation timers execution authority.
-- Preserve conversation point-of-click checks and privacy-minimal adapter fingerprints.
-- Minimize terminal retained prompt-bearing state only after proving active/recovery semantics still have the data they need; portability/full-backup compatibility must remain explicit.
-- Keep the accepted STEP-07 layout advisor advisory: selector drift diagnostics may cover it, but layout geometry must never become send authority.
-- Keep physical IndexedDB v1 unless a genuinely necessary storage-shape change proves otherwise; do not bump versions ceremonially.
-- Do not retry unavailable WXT/npm infrastructure as ceremony.
+- STEP-09 is the formal integrated closure lane, so broader accumulated validation is authorized only to the extent required by the closure criteria.
+- Re-prove wrong-conversation fail-closed behavior, sender-derived caller authority, paused-delay truth, cross-surface projection parity, disposable mini-controller semantics, docking/accessibility, privacy-minimal adapter/history/terminal state, and portability compatibility as one product.
+- Re-run permission/CSP/host/no-remote-code inspection and verify no duplicate orchestration engine or polling authority was introduced.
+- Package/build/install/real-Chrome/real-ChatGPT evidence should be attempted once where the environment permits. Missing npm/WXT/tooling remains `deferred_environment`; do not loop or fabricate a pass.
+- Reconcile README/roadmap/ADR/constraint/matrix/reference/audit records and close ROADMAP-0002 only if no normal-user correctness blocker remains.
+- Closure must not automatically authorize `v0.1.0`, `v0.0.26`, or a successor roadmap.
 
 ## Environment status carried forward
 
-At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-07 changes no dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
+At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-08 changes no dependencies and therefore inherits WXT prepare/full Vue typecheck/build/package as `deferred_environment`. STEP-09 owns the formal package/build/install closure lane and may make one fresh hydration/build/install attempt if appropriate; an unavailable environment remains non-blocking and must be recorded truthfully.
 
 ## What not to infer
 
@@ -912,3 +908,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | 2026-08-24 | 5 | Complete STEP-05 at v0.0.21: add a background-owned toolbar badge/title adapter over RunPresentationProjection, deterministic global/per-tab multi-run aggregation, presentation-only countdown/elapsed boundary refresh, stale action cleanup and worker reconstruction from durable runs; preserve toolbar-click to Side Panel, no popup, no schema/permission change, and authorize STEP-06. | active |
 | 2026-08-24 | 6 | Complete STEP-06 at v0.0.22: add a secondary closed-Shadow-DOM in-page status/controller over RunPresentationProjection, sender-derived same-tab generation-fenced Pause/Resume/Stop, explicit conversation-guarded Resume, background-owned collapse preference, trusted-event controls, event-driven invalidation and presentation-only temporal updates; preserve Side Panel primary authority, no quick-start opt-in, no schema/permission/popup change, and authorize STEP-07. | active |
 | 2026-08-24 | 7 | Complete STEP-07 at v0.0.23: add six canonical dock positions, trusted dedicated-handle drag-to-snap, equivalent single-pointer and keyboard placement/reset controls, background-owned normalized dock persistence with legacy/corruption recovery, visual-viewport/off-screen clamping, ChatGPT-layer sticky-composer collision avoidance and event-driven resize/layout recovery; close P2 with no execution/schema/permission/popup change and authorize STEP-08. | active |
+| 2026-08-24 | 8 | Complete STEP-08 at v0.0.24: classify ChatGPT selectors as structural/capability/diagnostic, enforce exact visible-composer preflight, add adapter v4 machine-readable degradation reasons, bound event-driven stream observations, compact terminal Repeat/Queue prompt-bearing execution state through run/logical v5 with explicit 4->5 migration and legacy normalization, preserve physical DB/portable v1, keep P3 active, and authorize STEP-09 closure only. | active |

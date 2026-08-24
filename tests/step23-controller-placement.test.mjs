@@ -112,5 +112,5 @@ test('STEP-07 preserves product scope, localization, permission surface, no popu
   const wxt=await text('wxt.config.ts');const content=await text('entrypoints/chatgpt.content.ts');const messages=await text('src/ui/messages.ts');const locale=JSON.parse(await text('public/_locales/en/messages.json'));const versions=await text('src/persistence/versions.ts');
   assert.doesNotMatch(wxt,/default_popup/);assert.deepEqual([...wxt.matchAll(/'([^']+)'/g)].map(m=>m[1]).filter(v=>['sidePanel','storage','alarms','tabs'].includes(v)),['sidePanel','storage','alarms']);assert.doesNotMatch(content,/setInterval\(/);
   for(const key of ['inPagePosition','moveInPageController','resetInPageControllerPosition','dockTopLeft','dockMiddleLeft','dockBottomLeft','dockTopRight','dockMiddleRight','dockBottomRight']){assert.match(messages,new RegExp(`${key}:`));assert.equal(typeof locale[key]?.message,'string');}
-  assert.match(versions,/PHYSICAL_DB_VERSION = 1/);assert.match(versions,/LOGICAL_MODEL_VERSION = 4/);assert.match(versions,/EXPORT_FORMAT_VERSION = 1/);
+  assert.match(versions,/PHYSICAL_DB_VERSION = 1/);assert.match(versions,/LOGICAL_MODEL_VERSION = 5/);assert.match(versions,/EXPORT_FORMAT_VERSION = 1/);
 });

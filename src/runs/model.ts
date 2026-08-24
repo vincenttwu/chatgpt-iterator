@@ -26,6 +26,20 @@ export const DEFAULT_REPEAT_MESSAGE = 'Continue with the next iteration.';
 export const DEFAULT_REPEAT_ITERATIONS = 5;
 export const DEFAULT_REPEAT_DELAY_SECONDS = 7;
 
+export const TERMINAL_COMPACTED_MESSAGE = '[content compacted]';
+
+function clearedTransientExecutionFields() {
+  return {
+    activeIteration: null,
+    activeMessage: null,
+    activeDelayAfterSeconds: null,
+    assistantBaselineFingerprint: null,
+    responseStartedAt: null,
+    nextDueAt: null,
+    remainingDelayMs: null,
+  } as const;
+}
+
 function pos(value: unknown, label: string, max = Number.MAX_SAFE_INTEGER): number {
   if (!Number.isSafeInteger(value) || (value as number) < 1 || (value as number) > max) throw new ContractError(ERROR_CODES.invalidMessage, `${label} must be a positive safe integer <= ${max}`);
   return value as number;
@@ -151,6 +165,32 @@ export function requireRunExecutionState(value: unknown): RunExecutionState {
   return (value as Record<string, unknown>).mode === 'queue' ? requireQueueRunState(value) : requireRepeatRunState(value);
 }
 
+
+export function compactRunExecution(execution: RunExecutionState): RunExecutionState {
+  if (execution.mode === 'repeat') {
+    return requireRepeatRunState({ ...execution, ...clearedTransientExecutionFields(), messageTemplate: TERMINAL_COMPACTED_MESSAGE });
+  }
+  return requireQueueRunState({
+    ...execution,
+    ...clearedTransientExecutionFields(),
+    items: execution.items.map((item) => ({ ...item, content: TERMINAL_COMPACTED_MESSAGE })),
+  });
+}
+
+export function isRunExecutionCompacted(execution: RunExecutionState): boolean {
+  const transientClear = execution.activeIteration === null
+    && execution.activeMessage === null
+    && execution.activeDelayAfterSeconds === null
+    && execution.assistantBaselineFingerprint === null
+    && execution.responseStartedAt === null
+    && execution.nextDueAt === null
+    && execution.remainingDelayMs === null;
+  if (!transientClear) return false;
+  return execution.mode === 'repeat'
+    ? execution.messageTemplate === TERMINAL_COMPACTED_MESSAGE
+    : execution.items.every((item) => item.content === TERMINAL_COMPACTED_MESSAGE);
+}
+
 export function createRepeatRunState(input: { messageTemplate?:unknown; totalIterations?:unknown; delaySeconds?:unknown; autoContinue?:unknown; autoScroll?:unknown; preventDiscard?:unknown } = {}): RepeatRunState {
   return requireRepeatRunState({ mode:'repeat', messageTemplate:input.messageTemplate ?? DEFAULT_REPEAT_MESSAGE, totalIterations:input.totalIterations ?? DEFAULT_REPEAT_ITERATIONS, completedIterations:0, activeIteration:null, activeMessage:null, activeDelayAfterSeconds:null, delaySeconds:input.delaySeconds ?? DEFAULT_REPEAT_DELAY_SECONDS, autoContinue:input.autoContinue ?? true, autoScroll:input.autoScroll ?? true, preventDiscard:input.preventDiscard ?? true, assistantBaselineFingerprint:null, responseStartedAt:null, nextDueAt:null, remainingDelayMs:null });
 }
@@ -163,7 +203,7 @@ export function createQueueRunState(input: { queueId:unknown; queueRevision:unkn
 export function requireRunSnapshot(value: unknown): DurableRunSnapshot {
   if (value === null || Array.isArray(value) || typeof value !== 'object') throw new ContractError(ERROR_CODES.invalidMessage, 'run state must be an object');
   const raw = value as Record<string, unknown>;
-  if (raw.schemaVersion !== 1 && raw.schemaVersion !== 2 && raw.schemaVersion !== 3 && raw.schemaVersion !== RUN_STATE_SCHEMA_VERSION) throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported run state schema');
+  if (raw.schemaVersion !== 1 && raw.schemaVersion !== 2 && raw.schemaVersion !== 3 && raw.schemaVersion !== 4 && raw.schemaVersion !== RUN_STATE_SCHEMA_VERSION) throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported run state schema');
   const lifecycleState = raw.lifecycleState;
   if (typeof lifecycleState !== 'string' || !LIFECYCLE.has(lifecycleState as RunLifecycleState)) throw new ContractError(ERROR_CODES.invalidMessage, 'invalid run lifecycle state');
   const resumeState = raw.resumeState === null ? null : raw.resumeState;
@@ -171,7 +211,7 @@ export function requireRunSnapshot(value: unknown): DurableRunSnapshot {
   const parsedFailure = failure(raw.failure);
   if (lifecycleState === 'failed' && parsedFailure === null) throw new ContractError(ERROR_CODES.invalidMessage, 'failed run requires failure detail');
   if (lifecycleState !== 'failed' && parsedFailure !== null) throw new ContractError(ERROR_CODES.invalidMessage, 'only failed run may carry failure detail');
-  const conversationBinding: RunConversationBinding = raw.schemaVersion === RUN_STATE_SCHEMA_VERSION || raw.schemaVersion === 3
+  const conversationBinding: RunConversationBinding = typeof raw.schemaVersion === 'number' && raw.schemaVersion >= 3
     ? requireRunConversationBinding(raw.conversationBinding)
     : freezeJsonValue({ kind: 'unbound' as const, conversationId: null });
   const updatedAt = timestamp(raw.updatedAt, 'updatedAt');
@@ -184,6 +224,10 @@ export function requireRunSnapshot(value: unknown): DurableRunSnapshot {
       patch.nextDueAt = null;
     }
     if (Object.keys(patch).length > 0) execution = requireRunExecutionState({ ...execution, ...patch });
+  }
+  if (isRunTerminal(lifecycleState as RunLifecycleState)) {
+    if (raw.schemaVersion === RUN_STATE_SCHEMA_VERSION && !isRunExecutionCompacted(execution)) throw new ContractError(ERROR_CODES.invalidMessage, 'current terminal run state must be content-compacted');
+    if (raw.schemaVersion !== RUN_STATE_SCHEMA_VERSION) execution = compactRunExecution(execution);
   }
   if (lifecycleState === 'waiting_delay' && (execution.nextDueAt === null || execution.remainingDelayMs !== null)) throw new ContractError(ERROR_CODES.invalidMessage, 'waiting_delay requires an absolute due time and no frozen remainder');
   if (lifecycleState === 'paused' && resumeState === 'waiting_delay' && (execution.nextDueAt !== null || execution.remainingDelayMs === null)) throw new ContractError(ERROR_CODES.invalidMessage, 'paused waiting_delay requires a frozen remainder and no absolute due time');
@@ -210,5 +254,7 @@ export function createReadyRun(input: { id:string; targetTabId:number; targetWin
 
 export function nextRunState(current: DurableRunSnapshot, input: { lifecycleState:RunLifecycleState; now:string; resumeState?:RunActiveState|null; suspensionReason?:RunSuspensionReason; failure?:RunFailure|null; execution?:RunExecutionState; targetTabId?:number; targetWindowId?:number; conversationBinding?:RunConversationBinding }): DurableRunSnapshot {
   if (isRunTerminal(current.lifecycleState)) throw new ContractError(ERROR_CODES.staleRequest, `run is terminal: ${current.lifecycleState}`);
-  return requireRunSnapshot({ ...current, generation:current.generation + 1, lifecycleState:input.lifecycleState, targetTabId:input.targetTabId ?? current.targetTabId, targetWindowId:input.targetWindowId ?? current.targetWindowId, conversationBinding:input.conversationBinding ?? current.conversationBinding, resumeState:input.resumeState ?? null, suspensionReason:input.suspensionReason ?? null, failure:input.failure ?? null, execution:input.execution ?? current.execution, updatedAt:input.now } as JsonObject);
+  const requestedExecution = input.execution ?? current.execution;
+  const execution = isRunTerminal(input.lifecycleState) ? compactRunExecution(requestedExecution) : requestedExecution;
+  return requireRunSnapshot({ ...current, generation:current.generation + 1, lifecycleState:input.lifecycleState, targetTabId:input.targetTabId ?? current.targetTabId, targetWindowId:input.targetWindowId ?? current.targetWindowId, conversationBinding:input.conversationBinding ?? current.conversationBinding, resumeState:input.resumeState ?? null, suspensionReason:input.suspensionReason ?? null, failure:input.failure ?? null, execution, updatedAt:input.now } as JsonObject);
 }

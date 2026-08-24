@@ -5,9 +5,9 @@ record_type: adr
 slug: event-driven-runtime-and-persistence-boundaries
 title: "Event-Driven Runtime and Persistence Boundaries"
 status: accepted
-revision: 5
+revision: 6
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T12:41:00+08:00
+updated_at: 2026-08-24T13:44:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -116,3 +116,19 @@ At `v0.0.20`, runtime timing truth and presentation vocabulary are hardened with
 - the Side Panel's local display clock exists only to redraw countdown/elapsed text. It is not scheduler, response-observation or durable execution authority.
 
 This preserves the four original authority zones and the single Repeat/Queue coordinator. Toolbar status and the in-page controller remain separately owned by later roadmap steps.
+
+## ROADMAP-0002 STEP-08 drift and terminal-retention boundary
+
+At `v0.0.24`, production-facing ChatGPT drift handling and retained-content policy are hardened without moving any of the four authority zones:
+
+- ChatGPT selector knowledge is explicitly classified as **structural anchors**, **transient capabilities**, or **diagnostic signals**. Structural readiness is not inferred from the incidental presence of a Send/Stop/Continue/Voice control.
+- The visible exact `#prompt-textarea[contenteditable="true"]` composer is the only composer eligible for send authority. The hidden fallback textarea may support drift diagnosis but must never become a send target. Structural preflight runs before composer write and again before the native send click; existing expected-conversation point-of-click verification remains mandatory.
+- Adapter schema v4 publishes machine-readable degradation reasons so unsupported route, missing/ambiguous composer, capability absence, conversation mismatch, rate-limit/page alerts and adapter drift can be distinguished rather than collapsed into generic unavailability.
+- DOM observation remains `MutationObserver`/event-driven. Busy assistant-fingerprint-only streaming updates may be coalesced behind one-shot bounded timers; this pacing is not an authority loop and must never be replaced by fixed-interval polling. Semantic state/completion transitions remain immediate.
+- Terminal execution content is compacted at the authoritative terminal transition. Repeat message templates and resolved Queue-item content are removed/replaced by an explicit compacted sentinel, and transient active-message/response/delay fields are cleared. Active/recovery runs retain exactly the message content needed to preserve recovery correctness until terminal transition.
+- Durable run state and global logical persistence advance to v5, with explicit v1/v2/v3/v4 normalization and a logical `4 -> 5` migration that compacts accepted old terminal state while preserving active state. Unknown schemas fail explicitly.
+- Physical IndexedDB remains v1 and portable envelope remains v1. Current full backups contain compact current terminal runs; accepted legacy embedded run states normalize through compatibility adapters on read. Full backups remain sensitive because configuration definitions, metadata and event payloads remain part of that product surface.
+- Diagnostics, History, toolbar projection and in-page controller projection remain prompt/assistant-text minimal. Layout-advisor selectors remain presentation-only and never become send authority.
+
+This decision strengthens drift/privacy/retention behavior inside the existing adapter, runtime and persistence zones. It does not authorize another execution engine, additional permissions/hosts, a conventional toolbar popup, or content-script ownership of durable state.
+

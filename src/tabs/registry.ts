@@ -40,7 +40,7 @@ function browserLifecycle(tab: BrowserTabLike): ChatGptTabLifecycleState | null 
 function targetFrom(tab: BrowserTabLike, adapter: ChatGptAdapterSnapshot | null, connected: boolean): ChatGptTabTarget {
   if (tab.id === undefined) throw new ContractError(ERROR_CODES.unavailable, 'browser tab has no tabId');
   const lifecycle = browserLifecycle(tab) ?? (
-    !connected || adapter === null ? 'unavailable' : adapter.pageAlert !== null ? 'degraded' : adapter.ready ? 'ready' : 'unavailable'
+    !connected || adapter === null ? 'unavailable' : !adapter.ready ? 'unavailable' : adapter.degradationCodes.length > 0 ? 'degraded' : 'ready'
   );
   return freezeJsonValue({
     schemaVersion: TAB_REGISTRY_SCHEMA_VERSION,

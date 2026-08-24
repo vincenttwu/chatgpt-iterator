@@ -9,6 +9,7 @@ export interface AdapterDiagnosticsProjection extends JsonObject {
   readonly targetTabId: number | null;
   readonly status: ChatGptAdapterStatus | 'not_bound' | 'unreachable';
   readonly capabilities: SelectorHealth[];
+  readonly reasonCodes: string[];
   readonly pageAlert: string | null;
 }
 

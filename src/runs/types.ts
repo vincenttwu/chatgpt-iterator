@@ -1,6 +1,6 @@
 import type { JsonObject } from '../core/types.ts';
 
-export const RUN_STATE_SCHEMA_VERSION = 4 as const;
+export const RUN_STATE_SCHEMA_VERSION = 5 as const;
 export const RUN_EVENT_SCHEMA_VERSION = 1 as const;
 export const RUN_EVENT_HISTORY_LIMIT = 256 as const;
 export const RUN_RESPONSE_START_TIMEOUT_MS = 120_000 as const;

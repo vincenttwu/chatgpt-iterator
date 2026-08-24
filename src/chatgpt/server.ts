@@ -1,6 +1,6 @@
 import { ContractError, ERROR_CODES, createFailureResponse, createSuccessResponse, requireMessageEnvelope, type RequestEnvelope, type ResponseEnvelope } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
-import { CHATGPT_ADAPTER_ERROR_CODES, ChatGptAdapterError } from './errors.ts';
+import { CHATGPT_ADAPTER_ERROR_CODES, ChatGptAdapterError, degradationCodeForAdapterError } from './errors.ts';
 import { CHATGPT_ADAPTER_OPERATIONS } from './types.ts';
 import type { ChatGptAdapterSnapshot } from './types.ts';
 import { requireConversationContext } from './conversation.ts';
@@ -40,7 +40,8 @@ function normalizeAdapterError(error: unknown): ContractError {
   if (error instanceof ChatGptAdapterError) {
     const stale = error.code === CHATGPT_ADAPTER_ERROR_CODES.draftNotEmpty || error.code === CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged || error.code === CHATGPT_ADAPTER_ERROR_CODES.conversationChanged;
     const code = stale ? ERROR_CODES.staleRequest : ERROR_CODES.unavailable;
-    return new ContractError(code, error.message, { adapterCode: error.code });
+    const reasonCode = degradationCodeForAdapterError(error.code);
+    return new ContractError(code, error.message, { adapterCode: error.code, ...(reasonCode === null ? {} : { reasonCode }) });
   }
   return new ContractError(ERROR_CODES.internal, error instanceof Error ? error.message : 'ChatGPT adapter failure');
 }

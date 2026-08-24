@@ -163,7 +163,7 @@ test('STEP-03 Queue mode inherits the same coordinator conversation guard with z
 
 test('STEP-03 content adapter rejects a route change between preparation and native send click', async () => {
   const dom=new RouteChangingDom(); const composer=element(); const send=element({attrs:{'data-testid':'send-button'}});
-  dom.set('#prompt-textarea',composer); dom.set('button[data-testid="send-button"]',send); dom.set('button[data-testid="stop-button"]',[]); dom.set('button[aria-label]',[]); dom.set('button',[]); dom.set('[role="alert"]',[]); dom.set('[data-message-author-role="assistant"]',[element({text:'answer'})]);
+  dom.set('#prompt-textarea[contenteditable="true"]',composer); dom.set('button[data-testid="send-button"]',send); dom.set('button[data-testid="stop-button"]',[]); dom.set('button[aria-label]',[]); dom.set('button',[]); dom.set('[role="alert"]',[]); dom.set('[data-message-author-role="assistant"]',[element({text:'answer'})]);
   const adapter=new ChatGptAdapter(dom); const baseline=adapter.snapshot();
   await assert.rejects(()=>adapter.send('message',50,baseline.assistantFingerprint,baseline.conversation),/conversation changed/i);
   assert.equal(send.clicks,0);
@@ -174,16 +174,16 @@ test('STEP-03 v2 durable runs migrate fail-closed through current logical conver
   const legacy={schemaVersion:2,id:'33333333-3333-4333-8333-333333333333',generation:1,lifecycleState:'running',targetTabId:10,targetWindowId:2,resumeState:null,suspensionReason:null,failure:null,execution:{mode:'repeat',messageTemplate:'Continue',totalIterations:1,completedIterations:0,activeIteration:null,activeMessage:null,activeDelayAfterSeconds:null,delaySeconds:5,autoContinue:true,autoScroll:false,preventDiscard:false,assistantBaselineFingerprint:null,nextDueAt:null},createdAt:'2026-08-24T04:00:00Z',updatedAt:'2026-08-24T04:00:00Z'};
   await repositories.write(['metadata','runs'],async tx=>{await tx.repository('metadata').put({key:'logicalModelVersion',value:2,updatedAt:legacy.updatedAt});await tx.repository('runs').put({schemaVersion:1,id:legacy.id,logicalVersion:2,state:legacy,createdAt:legacy.createdAt,updatedAt:legacy.updatedAt});});
   const result=await migrateLogicalModel(repositories,LOGICAL_MIGRATIONS,()=> '2026-08-24T04:01:00Z');
-  assert.deepEqual(result,{fromVersion:2,toVersion:4,applied:2});
+  assert.deepEqual(result,{fromVersion:2,toVersion:5,applied:3});
   const stored=await repositories.readonly(['runs'],async tx=>tx.repository('runs').get(legacy.id));
   assert.equal(stored.state.schemaVersion,RUN_STATE_SCHEMA_VERSION);
   assert.deepEqual(stored.state.conversationBinding,{kind:'unbound',conversationId:null});
-  assert.equal(stored.logicalVersion,4);
+  assert.equal(stored.logicalVersion,5);
 });
 
 test('STEP-03 remains permission/physical-format neutral and exposes explicit Side Panel conversation rebind UX', async () => {
   const [config,app,messages,manager,coordinator]=await Promise.all([text('wxt.config.ts'),text('entrypoints/sidepanel/App.vue'),text('src/ui/messages.ts'),text('src/runs/manager.ts'),text('src/runs/repeat-coordinator.ts')]);
-  assert.equal(PHYSICAL_DB_VERSION,1); assert.equal(EXPORT_FORMAT_VERSION,1); assert.equal(LOGICAL_MODEL_VERSION,4); assert.equal(RUN_STATE_SCHEMA_VERSION,4);
+  assert.equal(PHYSICAL_DB_VERSION,1); assert.equal(EXPORT_FORMAT_VERSION,1); assert.equal(LOGICAL_MODEL_VERSION,5); assert.equal(RUN_STATE_SCHEMA_VERSION,5);
   for(const permission of ['sidePanel','storage','alarms']) assert.match(config,new RegExp(`['\"]${permission}['\"]`));
   assert.doesNotMatch(config,/['\"]tabs['\"]/);
   assert.match(app,/conversation_changed/); assert.match(messages,/different ChatGPT conversation/); assert.match(manager,/conversation_suspended/); assert.match(coordinator,/expectedConversation|idle\.conversation/);
