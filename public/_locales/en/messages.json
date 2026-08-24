@@ -888,9 +888,12 @@
     "message": "The target page is loading or its content adapter has not reconnected yet. Progress is suspended until the same tab is ready again."
   },
   "browserSessionResetExplanation": {
-    "message": "The browser or extension session restarted. The run is paused to avoid duplicate sends because tab IDs are session-scoped. Select the intended ready ChatGPT tab, rebind it, then resume."
+    "message": "The browser or extension session restarted. The run is paused to avoid duplicate sends because tab IDs are session-scoped. Select the intended ready ChatGPT tab on the previously bound conversation, rebind it, then resume."
   },
   "rebindTarget": {
     "message": "Rebind selected target"
+  },
+  "conversationChangedExplanation": {
+    "message": "The target tab moved to a different ChatGPT conversation. The run is paused before another send. Return to the intended conversation or explicitly rebind the selected ready target, then resume."
   }
 }

@@ -49,6 +49,10 @@ const runServer = new RunRuntimeServer(
   async () => { if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized'); return (await runRuntimePromise).manager; },
   async () => { if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run execution is not initialized'); return (await runRuntimePromise).coordinator; },
   async () => { if (queueServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'queue persistence is not initialized'); return await queueServicePromise; },
+  async (tabId, windowId) => {
+    const snapshot = await tabs.refresh();
+    return snapshot.targets.find((target) => target.tabId === tabId && target.windowId === windowId);
+  },
 );
 const templateServer = new TemplateRuntimeServer(
   async () => { if (templateServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'template persistence is not initialized'); return await templateServicePromise; },
@@ -106,7 +110,7 @@ tabs.subscribe((snapshot) => {
       const runs = await manager.list();
       for (const run of runs) {
         if (isRunTerminal(run.lifecycleState)) await coordinator.cancel(run.id);
-        else if (run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded' || run.lifecycleState === 'reconnecting') await coordinator.suspend(run.id);
+        else if (run.lifecycleState === 'frozen' || run.lifecycleState === 'discarded' || run.lifecycleState === 'reconnecting' || (run.lifecycleState === 'paused' && run.suspensionReason === 'conversation_changed')) await coordinator.suspend(run.id);
       }
       coordinator.recover(runs);
     }).catch(reportRunError);

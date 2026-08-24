@@ -3,6 +3,7 @@ import type { JsonObject } from '../core/types.ts';
 import { CHATGPT_ADAPTER_ERROR_CODES, ChatGptAdapterError } from './errors.ts';
 import { CHATGPT_ADAPTER_OPERATIONS } from './types.ts';
 import type { ChatGptAdapterSnapshot } from './types.ts';
+import { requireConversationContext } from './conversation.ts';
 import type { ChatGptAdapter } from './adapter.ts';
 import { assistantFingerprintFromLegacySignature, isAssistantFingerprint } from './fingerprint.ts';
 
@@ -10,9 +11,9 @@ function requireEmptyPayload(payload: JsonObject): void {
   if (Object.keys(payload).length !== 0) throw new ContractError(ERROR_CODES.invalidMessage, 'operation payload must be empty');
 }
 
-function requireSendPayload(payload: JsonObject): { message: string; expectedAssistantBaselineFingerprint?: string } {
+function requireSendPayload(payload: JsonObject): { message: string; expectedAssistantBaselineFingerprint?: string; expectedConversation?: ReturnType<typeof requireConversationContext> } {
   const keys = Object.keys(payload);
-  if (!keys.every((key) => key === 'message' || key === 'expectedAssistantBaselineFingerprint' || key === 'expectedAssistantBaselineSignature') || typeof payload.message !== 'string') {
+  if (!keys.every((key) => key === 'message' || key === 'expectedAssistantBaselineFingerprint' || key === 'expectedAssistantBaselineSignature' || key === 'expectedConversation') || typeof payload.message !== 'string') {
     throw new ContractError(ERROR_CODES.invalidMessage, 'chatgpt.send payload must contain message and optional expected assistant baseline');
   }
   if (payload.expectedAssistantBaselineFingerprint !== undefined && payload.expectedAssistantBaselineSignature !== undefined) {
@@ -20,23 +21,24 @@ function requireSendPayload(payload: JsonObject): { message: string; expectedAss
   }
   const message = payload.message;
   if (message.trim().length === 0 || message.length > 65_536) throw new ContractError(ERROR_CODES.invalidMessage, 'message must be 1..65536 characters');
+  const expectedConversation = payload.expectedConversation === undefined ? undefined : requireConversationContext(payload.expectedConversation);
   const fingerprint = payload.expectedAssistantBaselineFingerprint;
   if (fingerprint !== undefined) {
     if (!isAssistantFingerprint(fingerprint)) throw new ContractError(ERROR_CODES.invalidMessage, 'expectedAssistantBaselineFingerprint must be an opaque adapter v2 fingerprint');
-    return { message, expectedAssistantBaselineFingerprint: fingerprint };
+    return { message, expectedAssistantBaselineFingerprint: fingerprint, ...(expectedConversation === undefined ? {} : { expectedConversation }) };
   }
   const legacy = payload.expectedAssistantBaselineSignature;
   if (legacy !== undefined) {
     if (typeof legacy !== 'string' || legacy.length > 4_096) throw new ContractError(ERROR_CODES.invalidMessage, 'legacy assistant baseline must be a bounded string');
-    return { message, expectedAssistantBaselineFingerprint: assistantFingerprintFromLegacySignature(legacy) };
+    return { message, expectedAssistantBaselineFingerprint: assistantFingerprintFromLegacySignature(legacy), ...(expectedConversation === undefined ? {} : { expectedConversation }) };
   }
-  return { message };
+  return { message, ...(expectedConversation === undefined ? {} : { expectedConversation }) };
 }
 
 function normalizeAdapterError(error: unknown): ContractError {
   if (error instanceof ContractError) return error;
   if (error instanceof ChatGptAdapterError) {
-    const stale = error.code === CHATGPT_ADAPTER_ERROR_CODES.draftNotEmpty || error.code === CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged;
+    const stale = error.code === CHATGPT_ADAPTER_ERROR_CODES.draftNotEmpty || error.code === CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged || error.code === CHATGPT_ADAPTER_ERROR_CODES.conversationChanged;
     const code = stale ? ERROR_CODES.staleRequest : ERROR_CODES.unavailable;
     return new ContractError(code, error.message, { adapterCode: error.code });
   }
@@ -69,7 +71,7 @@ export class ChatGptAdapterServer {
           return createSuccessResponse(request, this.#adapter.diagnostics());
         case CHATGPT_ADAPTER_OPERATIONS.send: {
           const input = requireSendPayload(request.payload);
-          return createSuccessResponse(request, await this.#adapter.send(input.message, 5_000, input.expectedAssistantBaselineFingerprint));
+          return createSuccessResponse(request, await this.#adapter.send(input.message, 5_000, input.expectedAssistantBaselineFingerprint, input.expectedConversation));
         }
         case CHATGPT_ADAPTER_OPERATIONS.continueResponse:
           requireEmptyPayload(request.payload);

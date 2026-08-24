@@ -7,6 +7,7 @@ import type { ChatGptObservationHub } from './observation-hub.ts';
 export interface ResponseWaitOptions {
   readonly autoContinue: boolean;
   readonly cancelled: () => boolean;
+  readonly validateSnapshot?: (snapshot: ChatGptAdapterSnapshot) => void;
 }
 
 export class EventDrivenChatGptWaiter {
@@ -85,6 +86,7 @@ export class EventDrivenChatGptWaiter {
       const inspect = (snapshot: ChatGptAdapterSnapshot) => {
         latest = snapshot;
         if (options.cancelled()) return finish(new ContractError(ERROR_CODES.staleRequest, 'run execution cancelled'));
+        try { options.validateSnapshot?.(snapshot); } catch (error) { return finish(error); }
         const progress = tracker.observe(snapshot, this.#now());
         if (progress.state === 'timed_out') return finish(new ContractError(ERROR_CODES.unavailable, 'ChatGPT response did not start before timeout'));
         if (progress.state === 'stable') return finish(null, snapshot);

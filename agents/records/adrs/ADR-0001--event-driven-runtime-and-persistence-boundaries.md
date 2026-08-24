@@ -5,9 +5,9 @@ record_type: adr
 slug: event-driven-runtime-and-persistence-boundaries
 title: "Event-Driven Runtime and Persistence Boundaries"
 status: accepted
-revision: 3
+revision: 4
 created_at: 2026-08-23T18:34:00Z
-updated_at: 2026-08-24T11:35:00+08:00
+updated_at: 2026-08-24T12:25:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -83,3 +83,21 @@ At `v0.0.18`, cross-context authorization is tightened without changing the four
 - run state schema v2 stores `assistantBaselineFingerprint`; logical persistence advances to v2 with an explicit v1->v2 run migration while physical IndexedDB remains v1 and portable format v1 remains readable through compatibility normalization.
 
 These changes strengthen the existing background/application and content-adapter boundary; they do not authorize a popup, second execution engine, conversation binding, or new host permission.
+
+## ROADMAP-0002 STEP-03 tab-plus-conversation execution authority
+
+At `v0.0.19`, explicit tab targeting is strengthened into **tab-plus-conversation** authority without creating a second runtime or persistence owner:
+
+- the ChatGPT adapter derives a semantic conversation context from the current eligible ChatGPT URL/location: `/` is `new_chat`, `/c/<id>` is a concrete conversation, and unrelated/unsupported routes fail closed;
+- the tab registry projects that semantic adapter context, but sidebar titles/active-item DOM are never canonical identity;
+- durable run state schema v3 stores an independent conversation binding in addition to `(tabId, windowId)`;
+- a run that starts on `/` may move from `pending_new_chat` to the first concrete `/c/<id>` exactly once; after a concrete binding exists, later same-tab conversation/new-chat/unsupported changes are mismatches;
+- mismatch is a generation-fenced durable `conversation_changed` suspension. Resume is blocked until an explicit Side Panel rebind verifies the selected ready tab and its current conversation;
+- browser-session-reset rebind continues to be explicit and, when a prior concrete conversation is known, must re-establish that conversation authority rather than merely accepting the recycled/new tab ID;
+- an ambiguous `waiting_response` mismatch may not be rebound to another conversation because the preceding send may already have occurred; returning to the original conversation is required before continuing;
+- the shared Repeat/Queue coordinator reconciles this same binding around execution and response observation; Queue does not gain separate conversation semantics;
+- `chatgpt.send` carries the expected conversation context to the content adapter, which verifies it immediately before the native send click. This closes the SPA navigation race between background preparation and page-side side effect;
+- legacy run schemas without reliable conversation provenance normalize to an `unbound` v3 binding rather than fabricating identity.
+
+This is a logical authority evolution only: global logical model and run state advance to v3, ChatGPT adapter snapshots advance to v3, and tab-registry snapshots advance to v2. Physical IndexedDB remains v1 and portable envelope format remains v1.
+

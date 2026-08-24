@@ -1,6 +1,6 @@
 import type { JsonObject } from '../core/types.ts';
 
-export const RUN_STATE_SCHEMA_VERSION = 2 as const;
+export const RUN_STATE_SCHEMA_VERSION = 3 as const;
 export const RUN_EVENT_SCHEMA_VERSION = 1 as const;
 export const RUN_EVENT_HISTORY_LIMIT = 256 as const;
 export const RUN_RESPONSE_START_TIMEOUT_MS = 120_000 as const;
@@ -14,9 +14,15 @@ export const RUN_RUNTIME_OPERATIONS = Object.freeze({
 export type RunLifecycleState = 'ready'|'running'|'waiting_response'|'waiting_delay'|'paused'|'frozen'|'discarded'|'reconnecting'|'completed'|'failed'|'stopped';
 export type RunActiveState = 'running'|'waiting_response'|'waiting_delay';
 export type RunSuspendedState = 'paused'|'frozen'|'discarded'|'reconnecting';
-export type RunSuspensionReason = 'user'|'tab_frozen'|'tab_discarded'|'tab_reconnecting'|'browser_session_reset'|'worker_recovery_policy'|null;
+export type RunSuspensionReason = 'user'|'tab_frozen'|'tab_discarded'|'tab_reconnecting'|'browser_session_reset'|'worker_recovery_policy'|'conversation_changed'|null;
 export type RunTerminalState = 'completed'|'failed'|'stopped';
 export type RunMode = 'repeat'|'queue';
+export type RunConversationBindingKind = 'unbound'|'pending_new_chat'|'conversation';
+
+export interface RunConversationBinding extends JsonObject {
+  readonly kind: RunConversationBindingKind;
+  readonly conversationId: string|null;
+}
 
 export interface RunFailure extends JsonObject { readonly code: string; readonly message: string; }
 
@@ -66,6 +72,7 @@ export interface DurableRunSnapshot extends JsonObject {
   readonly lifecycleState: RunLifecycleState;
   readonly targetTabId: number;
   readonly targetWindowId: number;
+  readonly conversationBinding: RunConversationBinding;
   readonly resumeState: RunActiveState|null;
   readonly suspensionReason: RunSuspensionReason;
   readonly failure: RunFailure|null;
@@ -74,7 +81,7 @@ export interface DurableRunSnapshot extends JsonObject {
   readonly updatedAt: string;
 }
 
-export type RunEventType = 'created'|'started'|'state_changed'|'iteration_prepared'|'iteration_completed'|'delay_elapsed'|'paused'|'resumed'|'stopped'|'completed'|'failed'|'tab_suspended'|'tab_recovered'|'worker_recovered'|'browser_session_recovered'|'target_rebound';
+export type RunEventType = 'created'|'started'|'state_changed'|'iteration_prepared'|'iteration_completed'|'delay_elapsed'|'paused'|'resumed'|'stopped'|'completed'|'failed'|'tab_suspended'|'tab_recovered'|'worker_recovered'|'browser_session_recovered'|'target_rebound'|'conversation_bound'|'conversation_suspended';
 export interface RunTransitionCommand { readonly runId:string; readonly expectedGeneration:number; readonly commandId:string; }
 export function isRunTerminal(state: RunLifecycleState): state is RunTerminalState { return state==='completed'||state==='failed'||state==='stopped'; }
 export function isRunActive(state: RunLifecycleState): state is RunActiveState { return state==='running'||state==='waiting_response'||state==='waiting_delay'; }

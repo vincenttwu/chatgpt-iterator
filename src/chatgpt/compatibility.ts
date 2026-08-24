@@ -2,8 +2,10 @@ import { ContractError, ERROR_CODES, freezeJsonValue } from '../core/index.ts';
 import type { ChatGptAdapterSnapshot } from './types.ts';
 import { CHATGPT_ADAPTER_SCHEMA_VERSION } from './types.ts';
 import { assistantFingerprintFromLegacySignature, isAssistantFingerprint } from './fingerprint.ts';
+import { requireConversationContext } from './conversation.ts';
 
 const BOOLEAN_FIELDS = ['ready', 'busy', 'composerPresent', 'sendAvailable', 'continueAvailable', 'stopAvailable'] as const;
+const UNKNOWN_CONVERSATION = Object.freeze({ schemaVersion: 1, kind: 'unsupported' as const, conversationId: null, pathname: '' });
 
 function requireCommon(candidate: Record<string, unknown>): void {
   for (const key of BOOLEAN_FIELDS) if (typeof candidate[key] !== 'boolean') throw new ContractError(ERROR_CODES.invalidMessage, `adapter snapshot ${key} must be boolean`);
@@ -35,10 +37,17 @@ export function requireChatGptAdapterSnapshot(value: unknown): ChatGptAdapterSna
       assistantFingerprint: assistantFingerprintFromLegacySignature(candidate.assistantSignature),
       assistantMessageCount: candidate.assistantMessageCount as number,
       pageAlert: candidate.pageAlert as string | null,
+      conversation: UNKNOWN_CONVERSATION,
     });
   }
+  if (candidate.schemaVersion === 2) {
+    requireOnly(candidate, ['schemaVersion','ready','busy','composerPresent','composerHasDraft','sendAvailable','continueAvailable','stopAvailable','assistantFingerprint','assistantMessageCount','pageAlert']);
+    if (typeof candidate.composerHasDraft !== 'boolean' || !isAssistantFingerprint(candidate.assistantFingerprint)) throw new ContractError(ERROR_CODES.invalidMessage, 'adapter snapshot privacy fields are invalid');
+    return freezeJsonValue({ ...candidate, schemaVersion: CHATGPT_ADAPTER_SCHEMA_VERSION, conversation: UNKNOWN_CONVERSATION } as unknown as ChatGptAdapterSnapshot);
+  }
   if (candidate.schemaVersion !== CHATGPT_ADAPTER_SCHEMA_VERSION) throw new ContractError(ERROR_CODES.unsupportedSchema, 'unsupported ChatGPT adapter snapshot schema');
-  requireOnly(candidate, ['schemaVersion','ready','busy','composerPresent','composerHasDraft','sendAvailable','continueAvailable','stopAvailable','assistantFingerprint','assistantMessageCount','pageAlert']);
+  requireOnly(candidate, ['schemaVersion','ready','busy','composerPresent','composerHasDraft','sendAvailable','continueAvailable','stopAvailable','assistantFingerprint','assistantMessageCount','pageAlert','conversation']);
   if (typeof candidate.composerHasDraft !== 'boolean' || !isAssistantFingerprint(candidate.assistantFingerprint)) throw new ContractError(ERROR_CODES.invalidMessage, 'adapter snapshot privacy fields are invalid');
-  return freezeJsonValue(candidate as unknown as ChatGptAdapterSnapshot);
+  const conversation = requireConversationContext(candidate.conversation);
+  return freezeJsonValue({ ...candidate, conversation } as unknown as ChatGptAdapterSnapshot);
 }

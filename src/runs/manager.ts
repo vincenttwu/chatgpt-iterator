@@ -1,7 +1,9 @@
 import { ContractError, ERROR_CODES } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
+import type { ChatGptConversationContext } from '../chatgpt/types.ts';
 import type { ChatGptTabRegistrySnapshot, ChatGptTabLifecycleState } from '../tabs/types.ts';
 import { createQueueRunState, createReadyRun, createRepeatRunState, nextRunState, requireRunExecutionState } from './model.ts';
+import { conversationBindingFromContext, conversationDisposition } from './conversation.ts';
 import { DurableRunRepository, type RunMutationResult } from './repository.ts';
 import { isRunActive, isRunTerminal, type DurableRunSnapshot, type RunActiveState, type RunExecutionState } from './types.ts';
 
@@ -59,6 +61,7 @@ export class DurableRunManager {
     queueId?: unknown;
     queueRevision?: unknown;
     queueItems?: unknown;
+    conversationContext?: ChatGptConversationContext;
   }): Promise<RunMutationResult> {
     const now = this.#repository.now();
     const execution = input.mode === 'queue'
@@ -70,6 +73,7 @@ export class DurableRunManager {
       targetWindowId: requireTabId(input.targetWindowId, 'targetWindowId'),
       now,
       execution,
+      conversationContext: input.conversationContext,
     });
     const result = await this.#repository.create(snapshot, input.commandId);
     this.#publish(result.snapshot);
@@ -155,15 +159,27 @@ export class DurableRunManager {
   async resume(runId: string, expectedGeneration: unknown, commandId: string): Promise<RunMutationResult> {
     return await this.#transition(runId, expectedGeneration, commandId, 'resumed', (current, now) => {
       if (current.lifecycleState !== 'paused') throw new ContractError(ERROR_CODES.staleRequest, `cannot resume run from ${current.lifecycleState}`);
-      if (current.suspensionReason === 'browser_session_reset') throw new ContractError(ERROR_CODES.staleRequest, 'rebind the intended ChatGPT tab before resuming after a browser-session reset');
+      if (current.suspensionReason === 'browser_session_reset' || current.suspensionReason === 'conversation_changed') throw new ContractError(ERROR_CODES.staleRequest, 'rebind the intended ChatGPT tab and conversation before resuming');
       return nextRunState(current, { lifecycleState: current.resumeState ?? 'running', suspensionReason: null, now });
     });
   }
 
-  async rebind(runId: string, expectedGeneration: unknown, commandId: string, targetTabId: unknown, targetWindowId: unknown): Promise<RunMutationResult> {
+  async rebind(runId: string, expectedGeneration: unknown, commandId: string, targetTabId: unknown, targetWindowId: unknown, conversationContext?: ChatGptConversationContext): Promise<RunMutationResult> {
     return await this.#transition(runId, expectedGeneration, commandId, 'target_rebound', (current, now) => {
-      if (current.lifecycleState !== 'paused' || current.suspensionReason !== 'browser_session_reset') {
-        throw new ContractError(ERROR_CODES.staleRequest, 'run target can only be rebound after a browser-session reset');
+      if (current.lifecycleState !== 'paused' || (current.suspensionReason !== 'browser_session_reset' && current.suspensionReason !== 'conversation_changed')) {
+        throw new ContractError(ERROR_CODES.staleRequest, 'run target can only be rebound after a browser-session reset or conversation change');
+      }
+      if (conversationContext?.kind === 'unsupported') throw new ContractError(ERROR_CODES.staleRequest, 'selected target is not on a supported ChatGPT conversation route');
+      const nextBinding = conversationContext === undefined ? current.conversationBinding : conversationBindingFromContext(conversationContext);
+      if (current.suspensionReason === 'browser_session_reset' && current.conversationBinding.kind === 'conversation') {
+        if (nextBinding.kind !== 'conversation' || nextBinding.conversationId !== current.conversationBinding.conversationId) {
+          throw new ContractError(ERROR_CODES.staleRequest, 'browser-session rebind must return to the previously bound ChatGPT conversation');
+        }
+      }
+      if (current.suspensionReason === 'conversation_changed' && current.resumeState === 'waiting_response' && current.conversationBinding.kind === 'conversation') {
+        if (nextBinding.kind !== 'conversation' || nextBinding.conversationId !== current.conversationBinding.conversationId) {
+          throw new ContractError(ERROR_CODES.staleRequest, 'a run waiting for a response must rebind to its previously bound conversation');
+        }
       }
       return nextRunState(current, {
         lifecycleState: 'paused',
@@ -171,9 +187,48 @@ export class DurableRunManager {
         suspensionReason: null,
         targetTabId: requireTabId(targetTabId, 'targetTabId'),
         targetWindowId: requireTabId(targetWindowId, 'targetWindowId'),
+        conversationBinding: nextBinding,
         now,
       });
-    }, { recovery: 'browser_session_reset' });
+    }, { recovery: 'explicit_rebind' });
+  }
+
+  async reconcileConversation(runId: string, expectedGeneration: unknown, commandId: string, context?: ChatGptConversationContext): Promise<RunMutationResult> {
+    const expectedGenerationNumber = requireGeneration(expectedGeneration);
+    const current = await this.#repository.get(runId);
+    if (current === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run not found');
+    if (current.generation !== expectedGenerationNumber) throw new ContractError(ERROR_CODES.staleRequest, `run generation is ${current.generation}, expected ${expectedGenerationNumber}`);
+    if (context === undefined) return { snapshot: current, idempotent: true };
+    const disposition = conversationDisposition(current.conversationBinding, context);
+    if (disposition === 'match') return { snapshot: current, idempotent: true };
+    if (disposition === 'adopt') {
+      return await this.#transition(runId, expectedGenerationNumber, commandId, 'conversation_bound', (state, now) => nextRunState(state, {
+        lifecycleState: state.lifecycleState,
+        resumeState: state.resumeState,
+        suspensionReason: state.suspensionReason,
+        conversationBinding: conversationBindingFromContext(context),
+        now,
+      }), { conversation: 'pending_to_bound' });
+    }
+    return await this.suspendConversationChange(runId, expectedGenerationNumber, commandId, false);
+  }
+
+  async suspendConversationChange(runId: string, expectedGeneration: unknown, commandId: string, safeToRetryPreparedIteration: boolean): Promise<RunMutationResult> {
+    return await this.#transition(runId, expectedGeneration, commandId, 'conversation_suspended', (current, now) => {
+      let resumeState = resumeBase(current);
+      let execution = current.execution;
+      if (safeToRetryPreparedIteration && current.lifecycleState === 'waiting_response' && current.execution.activeIteration !== null) {
+        resumeState = 'running';
+        execution = executionWith(current, {
+          activeIteration: null,
+          activeMessage: null,
+          activeDelayAfterSeconds: null,
+          assistantBaselineFingerprint: null,
+          nextDueAt: null,
+        });
+      }
+      return nextRunState(current, { lifecycleState: 'paused', resumeState, suspensionReason: 'conversation_changed', execution, now });
+    }, { reason: 'conversation_changed', safeToRetryPreparedIteration });
   }
 
   async stop(runId: string, expectedGeneration: unknown, commandId: string): Promise<RunMutationResult> {
@@ -225,11 +280,14 @@ export class DurableRunManager {
 
   async reconcileTabs(snapshot: ChatGptTabRegistrySnapshot, commandIdFactory: () => string = () => this.#repository.createId()): Promise<void> {
     const runs = await this.#repository.list();
-    for (const run of runs) {
-      if (isRunTerminal(run.lifecycleState) || run.lifecycleState === 'ready' || run.lifecycleState === 'paused') continue;
+    for (const initialRun of runs) {
+      if (isRunTerminal(initialRun.lifecycleState)) continue;
+      let run = initialRun;
       const target = snapshot.targets.find((candidate) => candidate.tabId === run.targetTabId && candidate.windowId === run.targetWindowId);
       try {
+        if (run.lifecycleState === 'paused' && run.suspensionReason === 'browser_session_reset') continue;
         if (target === undefined) {
+          if (run.lifecycleState === 'ready' || run.lifecycleState === 'paused') continue;
           const termination = snapshot.lastTermination;
           if (termination?.tabId === run.targetTabId && termination.windowId === run.targetWindowId) {
             await this.fail(run.id, run.generation, commandIdFactory(), { code: termination.reason, message: 'Target ChatGPT tab is no longer available.' });
@@ -238,6 +296,10 @@ export class DurableRunManager {
           }
           continue;
         }
+        const conversationResult = await this.reconcileConversation(run.id, run.generation, commandIdFactory(), target.conversation);
+        run = conversationResult.snapshot;
+        if (run.lifecycleState === 'paused' && run.suspensionReason === 'conversation_changed') continue;
+        if (run.lifecycleState === 'ready' || run.lifecycleState === 'paused') continue;
         await this.#applyTabLifecycle(run, target.lifecycleState, commandIdFactory);
       } catch (error) {
         if (error instanceof ContractError && error.code === ERROR_CODES.staleRequest) continue;

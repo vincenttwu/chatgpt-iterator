@@ -1,6 +1,6 @@
 import { ContractError, ERROR_CODES, createRequest, freezeJsonValue, requireMessageEnvelope } from '../core/index.ts';
 import type { JsonObject } from '../core/types.ts';
-import { CHATGPT_ADAPTER_OPERATIONS, requireChatGptAdapterSnapshot, type ChatGptAdapterSnapshot } from '../chatgpt/index.ts';
+import { CHATGPT_ADAPTER_OPERATIONS, conversationContextFromUrl, requireChatGptAdapterSnapshot, type ChatGptAdapterSnapshot } from '../chatgpt/index.ts';
 import type { BrowserTabChangeInfoLike, BrowserTabLike, TabBrowserLike } from './browser.ts';
 import {
   CHATGPT_TAB_URL_PATTERNS,
@@ -56,6 +56,7 @@ function targetFrom(tab: BrowserTabLike, adapter: ChatGptAdapterSnapshot | null,
     adapterReady: adapter?.ready ?? false,
     adapterBusy: adapter?.busy ?? false,
     pageAlert: adapter?.pageAlert === undefined ? null : bounded(adapter.pageAlert ?? undefined, 512),
+    conversation: adapter?.conversation ?? conversationContextFromUrl(tab.url ?? ''),
   });
 }
 

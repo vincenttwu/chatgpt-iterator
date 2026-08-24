@@ -3,7 +3,7 @@ import { browser } from 'wxt/browser';
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref } from 'vue';
 import { SidePanelControlClient, type ControlPlaneInvalidationReason, type ControlPlaneSnapshot } from '../../src/control-plane/index.ts';
 import { DEFAULT_REPEAT_DELAY_SECONDS, DEFAULT_REPEAT_ITERATIONS, DEFAULT_REPEAT_MESSAGE, isRunTerminal, type DurableRunSnapshot, type RunLifecycleState } from '../../src/runs/index.ts';
-import type { ChatGptTabLifecycleState, ChatGptTabRegistrySnapshot, ChatGptTabTarget } from '../../src/tabs/index.ts';
+import { TAB_REGISTRY_SCHEMA_VERSION, type ChatGptTabLifecycleState, type ChatGptTabRegistrySnapshot, type ChatGptTabTarget } from '../../src/tabs/index.ts';
 import type { TemplateSnapshot } from '../../src/templates/index.ts';
 import type { PresetReferenceCatalog, PresetSnapshot } from '../../src/presets/index.ts';
 import type { QueueHydration, QueueReferenceCatalog, QueueSnapshot } from '../../src/queues/index.ts';
@@ -193,6 +193,7 @@ const liveStatusMessage = computed(() => {
     else if (run.lifecycleState === 'discarded') parts.push(ui('discardedExplanation'));
     else if (run.lifecycleState === 'reconnecting') parts.push(ui('targetReconnectExplanation'));
     else if (run.lifecycleState === 'paused' && run.suspensionReason === 'browser_session_reset') parts.push(ui('browserSessionResetExplanation'));
+    else if (run.lifecycleState === 'paused' && run.suspensionReason === 'conversation_changed') parts.push(ui('conversationChangedExplanation'));
   }
   if (activeWorkspace.value === 'queue' && queueStale.value) parts.push(ui('queueStaleGuard'));
   if (activeWorkspace.value === 'presets' && presetStale.value) parts.push(ui('presetStaleGuard'));
@@ -254,7 +255,7 @@ function applyTabs(nextTabs: ChatGptTabRegistrySnapshot): void {
   syncTargetSelection(nextTabs);
 }
 
-function syncTargetSelection(tabsSnapshot: ChatGptTabRegistrySnapshot = snapshot.value?.tabs ?? { schemaVersion: 1, revision: 0, targets: [], binding: null, lastTermination: null }): void {
+function syncTargetSelection(tabsSnapshot: ChatGptTabRegistrySnapshot = snapshot.value?.tabs ?? { schemaVersion: TAB_REGISTRY_SCHEMA_VERSION, revision: 0, targets: [], binding: null, lastTermination: null }): void {
   const available = tabsSnapshot.targets;
   if (tabsSnapshot.binding !== null && available.some((target) => target.tabId === tabsSnapshot.binding?.tabId)) {
     selectedTabId.value = tabsSnapshot.binding.tabId;
@@ -599,7 +600,7 @@ async function mutateCurrent(kind: 'start' | 'pause' | 'resume' | 'stop'): Promi
 async function rebindCurrent(): Promise<void> {
   const run = currentRun.value;
   const target = selectedTarget.value;
-  if (run === undefined || run.suspensionReason !== 'browser_session_reset' || target?.lifecycleState !== 'ready') return;
+  if (run === undefined || (run.suspensionReason !== 'browser_session_reset' && run.suspensionReason !== 'conversation_changed') || target?.lifecycleState !== 'ready') return;
   await executeRunMutation(() => operationalClient.rebind(run, target.tabId, target.windowId));
 }
 
@@ -992,6 +993,7 @@ onUnmounted(() => connection?.stop());
             <div v-else-if="currentRun.lifecycleState === 'discarded'" class="inline-warning">{{ ui('discardedExplanation') }}</div>
             <div v-else-if="currentRun.lifecycleState === 'reconnecting'" class="inline-warning">{{ ui('targetReconnectExplanation') }}</div>
             <div v-else-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'browser_session_reset'" class="inline-warning">{{ ui('browserSessionResetExplanation') }}</div>
+            <div v-else-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'conversation_changed'" class="inline-warning">{{ ui('conversationChangedExplanation') }}</div>
             <div v-else-if="connectionState === 'reconnecting'" class="inline-warning">{{ ui('reconnectExplanation') }}</div>
             <div v-else-if="currentRun.lifecycleState === 'failed'" class="inline-error" role="alert">
               {{ ui('failedExplanation') }}<template v-if="currentRun.failure"> {{ currentRun.failure.message }}</template>
@@ -999,8 +1001,8 @@ onUnmounted(() => connection?.stop());
             <div class="actions">
               <button v-if="canStartExistingRun(currentRun.lifecycleState)" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('start')">{{ ui('startExisting') }}</button>
               <button v-if="canPauseRun(currentRun.lifecycleState)" type="button" class="secondary-action" :disabled="operationBusy" @click="mutateCurrent('pause')">{{ ui('pause') }}</button>
-              <button v-if="currentRun.lifecycleState === 'paused' && currentRun.suspensionReason === 'browser_session_reset'" type="button" class="primary-action" :disabled="operationBusy || selectedTarget?.lifecycleState !== 'ready'" @click="rebindCurrent">{{ ui('rebindTarget') }}</button>
-              <button v-if="canResumeRun(currentRun.lifecycleState) && currentRun.suspensionReason !== 'browser_session_reset'" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('resume')">{{ ui('resume') }}</button>
+              <button v-if="currentRun.lifecycleState === 'paused' && (currentRun.suspensionReason === 'browser_session_reset' || currentRun.suspensionReason === 'conversation_changed')" type="button" class="primary-action" :disabled="operationBusy || selectedTarget?.lifecycleState !== 'ready'" @click="rebindCurrent">{{ ui('rebindTarget') }}</button>
+              <button v-if="canResumeRun(currentRun.lifecycleState) && currentRun.suspensionReason !== 'browser_session_reset' && currentRun.suspensionReason !== 'conversation_changed'" type="button" class="primary-action" :disabled="operationBusy" @click="mutateCurrent('resume')">{{ ui('resume') }}</button>
               <button v-if="canStopRun(currentRun.lifecycleState)" type="button" class="danger-action" :disabled="operationBusy" @click="mutateCurrent('stop')">{{ ui('stop') }}</button>
             </div>
           </template>

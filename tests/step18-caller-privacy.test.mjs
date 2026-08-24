@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createRequest, requireMessageEnvelope } from '../src/core/index.ts';
-import { ApplicationRepositories, LOGICAL_MIGRATIONS, PERSISTENCE_STORES, migrateLogicalModel } from '../src/persistence/index.ts';
+import { ApplicationRepositories, LOGICAL_MIGRATIONS, LOGICAL_MODEL_VERSION, PERSISTENCE_STORES, migrateLogicalModel } from '../src/persistence/index.ts';
 import { BackgroundMessageRouter, FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS, TabRuntimeServer, resolveRuntimeCaller } from '../src/runtime/index.ts';
 import { RUN_RUNTIME_OPERATIONS } from '../src/runs/types.ts';
 import { TAB_RUNTIME_OPERATIONS } from '../src/tabs/types.ts';
@@ -68,7 +68,7 @@ function adapterFixture(){const dom=new FakeDom();const composer=element({draft:
 test('STEP-02 adapter v2 exports only draft presence and opaque deterministic assistant fingerprint', () => {
   const { adapter } = adapterFixture();
   const first = adapter.snapshot(); const second = adapter.snapshot();
-  assert.equal(first.schemaVersion, 2);
+  assert.equal(first.schemaVersion, 3);
   assert.equal(first.composerHasDraft, true);
   assert.equal(isAssistantFingerprint(first.assistantFingerprint), true);
   assert.equal(first.assistantFingerprint, second.assistantFingerprint);
@@ -81,7 +81,7 @@ test('STEP-02 adapter v2 exports only draft presence and opaque deterministic as
 
 test('STEP-02 legacy adapter snapshot is explicitly normalized without forwarding raw text', () => {
   const normalized = requireChatGptAdapterSnapshot({ schemaVersion:1, ready:true, busy:false, composerPresent:true, composerDraft:'SECRET DRAFT', sendAvailable:true, continueAvailable:false, stopAvailable:false, assistantSignature:'1:16:SECRET ASSISTANT', assistantMessageCount:1, pageAlert:null });
-  assert.equal(normalized.schemaVersion, 2);
+  assert.equal(normalized.schemaVersion, 3);
   assert.equal(normalized.composerHasDraft, true);
   assert.equal(isAssistantFingerprint(normalized.assistantFingerprint), true);
   assert.equal(JSON.stringify(normalized).includes('SECRET'), false);
@@ -109,12 +109,12 @@ const legacyRunState = { schemaVersion:1, id:'11111111-1111-4111-8111-1111111111
 
 test('STEP-02 run-state v1 compatibility and logical migration scrub text-bearing assistant baselines to v2', async () => {
   const normalized=requireRunSnapshot(legacyRunState);
-  assert.equal(normalized.schemaVersion,2); assert.equal(isAssistantFingerprint(normalized.execution.assistantBaselineFingerprint),true); assert.equal(JSON.stringify(normalized).includes('PRIVATE ASSISTANT RESPONSE'),false);
+  assert.equal(normalized.schemaVersion,3); assert.equal(isAssistantFingerprint(normalized.execution.assistantBaselineFingerprint),true); assert.equal(JSON.stringify(normalized).includes('PRIVATE ASSISTANT RESPONSE'),false);
   const driver=new MemoryDriver(); const repositories=new ApplicationRepositories(driver);
   await repositories.write(['metadata','runs'],async tx=>{await tx.repository('metadata').put({key:'logicalModelVersion',value:1,updatedAt:'2026-08-24T03:00:00Z'});await tx.repository('runs').put({schemaVersion:1,id:legacyRunState.id,logicalVersion:1,state:legacyRunState,createdAt:legacyRunState.createdAt,updatedAt:legacyRunState.updatedAt});});
-  const result=await migrateLogicalModel(repositories,LOGICAL_MIGRATIONS,()=> '2026-08-24T03:02:00Z'); assert.deepEqual(result,{fromVersion:1,toVersion:2,applied:1});
+  const result=await migrateLogicalModel(repositories,LOGICAL_MIGRATIONS,()=> '2026-08-24T03:02:00Z'); assert.deepEqual(result,{fromVersion:1,toVersion:LOGICAL_MODEL_VERSION,applied:2});
   const stored=await repositories.readonly(['runs'],async tx=>await tx.repository('runs').get(legacyRunState.id));
-  assert.equal(stored.logicalVersion,2); assert.equal(stored.state.schemaVersion,2); assert.equal(JSON.stringify(stored).includes('PRIVATE ASSISTANT RESPONSE'),false);
+  assert.equal(stored.logicalVersion,LOGICAL_MODEL_VERSION); assert.equal(stored.state.schemaVersion,3); assert.equal(JSON.stringify(stored).includes('PRIVATE ASSISTANT RESPONSE'),false);
   assert.equal(stored.state.execution.assistantBaselineFingerprint,assistantFingerprintFromLegacySignature('1:26:PRIVATE ASSISTANT RESPONSE'));
 });
 
@@ -128,7 +128,7 @@ test('STEP-02 portable format v1 remains readable while normalizing legacy run b
     data:{ templates:[], presets:[], queues:[], settings:{defaultPresetId:null,defaultDelaySeconds:7,defaultAutoContinue:true,defaultAutoScroll:true,defaultPreventDiscard:true,recoveryPolicy:'resume',historyLimit:100}, history:[{run:terminalLegacy,events:[{id:'22222222-2222-4222-8222-222222222222',sequence:0,eventType:'created',payload:{},occurredAt:'2026-08-24T03:00:00Z'}]}] }
   });
   const run=envelope.data.history[0].run;
-  assert.equal(run.schemaVersion,2);
+  assert.equal(run.schemaVersion,3);
   assert.equal(isAssistantFingerprint(run.execution.assistantBaselineFingerprint),true);
   assert.equal(JSON.stringify(envelope).includes('PRIVATE ASSISTANT RESPONSE'),false);
 });

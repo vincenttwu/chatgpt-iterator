@@ -5,9 +5,9 @@ record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
 status: active
-revision: 2
+revision: 3
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T11:35:00+08:00
+updated_at: 2026-08-24T12:25:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -491,31 +491,32 @@ Forbidden examples:
 ## STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention
 
 **Target:** `v0.0.19`  
+**Status:** complete.  
 **Purpose:** Ensure a run cannot silently follow the same ChatGPT tab into a different conversation.  
 **Depends on:** STEP-02.  
 **Primary paths:** `src/chatgpt/`, `src/tabs/`, `src/runs/`, `src/runtime/`, Run workspace/rebind UI, tests.
 
 ### Work items
 
-- [ ] Add semantic ChatGPT `ConversationContext` extraction behind the adapter boundary.
-- [ ] Recognize at minimum current contexts: new chat `/`, conversation `/c/<id>`, and non-conversation/unsupported ChatGPT route.
-- [ ] Add durable run conversation binding independently from `(tabId, windowId)`.
-- [ ] Support exactly one safe **pending new-chat → concrete `/c/<id>`** adoption when the run starts before ChatGPT assigns an ID.
-- [ ] Detect `/c/A → /c/B`, conversation→new-chat, or supported→unsupported route changes while a run is nonterminal.
-- [ ] Add a durable suspension reason such as `conversation_changed`; invalidate in-flight async work through generation fencing before any further external command.
-- [ ] Require explicit user rebind from the Side Panel before Resume after conversation mismatch.
-- [ ] Rebind must verify selected tab **and** current conversation context before clearing suspension.
-- [ ] Do not use active sidebar item as canonical identity; it may appear only as diagnostic corroboration.
-- [ ] Ensure reload/reconnect of the same conversation remains recoverable without false mismatch.
+- [x] Add semantic ChatGPT `ConversationContext` extraction behind the adapter boundary.
+- [x] Recognize at minimum current contexts: new chat `/`, conversation `/c/<id>`, and non-conversation/unsupported ChatGPT route.
+- [x] Add durable run conversation binding independently from `(tabId, windowId)`.
+- [x] Support exactly one safe **pending new-chat → concrete `/c/<id>`** adoption when the run starts before ChatGPT assigns an ID.
+- [x] Detect `/c/A → /c/B`, conversation→new-chat, or supported→unsupported route changes while a run is nonterminal.
+- [x] Add a durable suspension reason such as `conversation_changed`; invalidate in-flight async work through generation fencing before any further external command.
+- [x] Require explicit user rebind from the Side Panel before Resume after conversation mismatch.
+- [x] Rebind must verify selected tab **and** current conversation context before clearing suspension.
+- [x] Do not use active sidebar item as canonical identity; it may appear only as diagnostic corroboration.
+- [x] Ensure reload/reconnect of the same conversation remains recoverable without false mismatch.
 
 ### Acceptance
 
-- [ ] Same-tab `/c/A → /c/B` test proves no second send occurs and run suspends.
-- [ ] New-chat `/ → /c/A` first-binding test succeeds without false suspension.
-- [ ] A later `/c/A → /c/B` after first binding suspends and requires explicit rebind.
-- [ ] Reload/reconnect of `/c/A` keeps the same binding.
-- [ ] Browser-session reset still requires explicit tab rebind and now also establishes/validates conversation authority.
-- [ ] Queue and Repeat both inherit the same conversation guard through the shared coordinator.
+- [x] Same-tab `/c/A → /c/B` test proves no second send occurs and run suspends.
+- [x] New-chat `/ → /c/A` first-binding test succeeds without false suspension.
+- [x] A later `/c/A → /c/B` after first binding suspends and requires explicit rebind.
+- [x] Reload/reconnect of `/c/A` keeps the same binding.
+- [x] Browser-session reset still requires explicit tab rebind and now also establishes/validates conversation authority.
+- [x] Queue and Repeat both inherit the same conversation guard through the shared coordinator.
 
 ### Explicitly out of scope
 
@@ -747,7 +748,7 @@ Forbidden examples:
 
 - [x] STEP-01 — Successor Hardening Evaluation, Evidence Freeze, and Roadmap Opening (`v0.0.17`).
 - [x] STEP-02 — Runtime Caller Authority and Privacy-Minimal Adapter Contract (`v0.0.18`).
-- [ ] STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention (`v0.0.19`).
+- [x] STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention (`v0.0.19`).
 - [ ] STEP-04 — Timing Semantics and Unified Run Presentation Projection (`v0.0.20`).
 - [ ] STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator (`v0.0.21`).
 - [ ] STEP-06 — Minimal In-Page Run Controller (`v0.0.22`).
@@ -786,56 +787,70 @@ Completed step history must not be rewritten as if later decisions were always p
 
 This section is intentionally operational. A new session should be able to resume from it directly.
 
-## Current state after STEP-02
+## Current state after STEP-03
 
-- **Promoted implementation baseline:** `v0.0.18`.
+- **Promoted implementation baseline:** `v0.0.19`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 2.
-- **ROADMAP-0002 progress:** 2/9 steps complete.
-- **Phase:** P1 — Safety Authority, active; STEP-03 is the remaining P1 step.
+- **ROADMAP-0002:** active, revision 3.
+- **ROADMAP-0002 progress:** 3/9 steps complete.
+- **Phase P1 — Safety Authority:** complete at STEP-03.
+- **Phase P2 — Runtime Visibility and Secondary Control:** next; STEP-04 is its only authorized entry.
 - **Physical IndexedDB:** v1 unchanged.
-- **Global logical model:** v2.
-- **Durable run state:** v2 with explicit v1 compatibility/migration.
-- **Portable envelope:** v1 unchanged; legacy run payloads normalize through the run-state compatibility reader.
-- **ChatGPT adapter:** v2.
+- **Global logical model:** v3.
+- **Durable run state:** v3 with explicit v1/v2 normalization.
+- **Portable envelope:** v1 unchanged.
+- **ChatGPT adapter:** v3.
+- **Tab registry:** v2.
 - **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
 
-### STEP-02 implementation facts another session should preserve
+### STEP-02 safety facts that remain non-negotiable
 
-- `src/runtime/caller-context.ts` owns actual runtime caller classification.
-- Background routing verifies the own extension ID plus Side Panel document context or top-frame ChatGPT content context before dispatching to domain servers.
-- A forged envelope `source: sidepanel` from content cannot reach Side Panel-only operations.
-- Content-origin background authority is currently enabled only for `tabs.adapterstate`, and the tab runtime consumes the actual `sender.tab` identity.
-- `FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS` is deliberately limited to `pause | resume | stop`; it is a future policy boundary, not an enabled content command surface yet.
-- Adapter v2 external snapshots use `composerHasDraft` and `assistantFingerprint`; no raw composer draft or assistant-text suffix is serialized to background state/observations.
-- Fingerprints use the `af2:<32 hex>` form. The compatibility helper can deterministically transform the old text-bearing signature string into the v2 fingerprint, allowing safe v1 run migration without rereading historical assistant text.
-- Run state v2 uses `assistantBaselineFingerprint`. Logical migration `1 -> 2` rewrites stored run records through the current run parser and removes legacy text-bearing assistant baselines.
-- Repeat and Queue continue to share the same coordinator and generation/idempotency fences. STEP-08 predecessor execution smoke remains green after this contract evolution.
+- `src/runtime/caller-context.ts` owns actual runtime caller classification from Chrome `MessageSender`.
+- Background routing verifies own-extension Side Panel callers versus top-frame ChatGPT content callers; envelope `source` remains descriptive/correlation data rather than standalone authorization.
+- A forged `source: sidepanel` from content cannot reach Side Panel-only operations.
+- Adapter/background observation remains privacy-minimal: `composerHasDraft` and opaque assistant fingerprints replace raw composer/assistant-text transport.
+- `FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS` remains a policy boundary only; the in-page controller is not enabled before STEP-06.
+
+### STEP-03 implementation facts another session should preserve
+
+- `src/chatgpt/conversation.ts` is the semantic URL/location authority for ChatGPT conversation context. It recognizes eligible-host `/` as `new_chat`, `/c/<id>` as a concrete `conversation`, and other/foreign/malformed locations as `unsupported`.
+- `ChatGptAdapterSnapshot` schema v3 carries this semantic context. The tab registry v2 also projects it so runtime reconciliation does not inspect sidebar DOM.
+- Durable run state v3 carries `conversationBinding` independently from `(tabId, windowId)`. Binding kinds are `unbound`, `pending_new_chat`, and concrete `conversation`.
+- A run created on `/` may adopt the first concrete `/c/<id>` exactly once. That adoption is durable and generation-fenced.
+- Once concrete, a same-tab `/c/A -> /c/B`, conversation -> new-chat, or supported -> unsupported context becomes a mismatch and suspends the run with `conversation_changed` before later external work.
+- `RunExecutionCoordinator`/`RepeatRunCoordinator` is still the one orchestration loop for both Repeat and Queue. It reconciles conversation state before prepare/send, while waiting for response, and after response completion.
+- `chatgpt.send` receives `expectedConversation`; the content adapter re-checks it immediately before clicking Send. A navigation race between preparation and click therefore fails closed without a click.
+- When the adapter proves the prepared send was rejected before click, the manager may clear that safely-unsent prepared unit before suspending. It does not make the same assumption for an already waiting response.
+- Side Panel Resume stays blocked after `conversation_changed` until explicit **Rebind selected target**. Rebind verifies the current ready target and current conversation.
+- A run suspended after browser-session reset must rebind to its previously established conversation when one exists. A run that was already `waiting_response` when conversation mismatch occurred must also return to its original conversation because the prior send may already have happened.
+- After a successful explicit conversation-change rebind outside that ambiguous waiting-response case, the run remains ordinarily `paused` with the existing user-pause convention until the user separately presses Resume.
+- Legacy v1/v2 runs without reliable conversation provenance normalize to v3 `unbound` rather than inventing a binding.
+- Physical IndexedDB and portable envelope remain v1; only logical/run/adapter/tab-registry schemas advanced.
 
 ## Sole next authorized implementation
 
-**`v0.0.19 / ROADMAP-0002 STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention`**
+**`v0.0.20 / ROADMAP-0002 STEP-04 — Timing Semantics and Unified Run Presentation Projection`**
 
 A continuation should begin by reading:
 
 1. this ROADMAP-0002 file;
 2. `iteration_manifest.yaml`;
-3. `ADR-0001--event-driven-runtime-and-persistence-boundaries.md` revision 3;
-4. `AUDIT-0002--v0-0-16-successor-hardening-evaluation.md`;
-5. `REFERENCE-0006--successor-hardening-current-authority.md`;
-6. `src/runtime/caller-context.ts` and `src/runtime/message-router.ts`;
-7. `src/chatgpt/types.ts`, `src/chatgpt/compatibility.ts`, `src/chatgpt/fingerprint.ts`, and `src/chatgpt/adapter.ts`;
-8. `src/runs/types.ts`, `src/runs/model.ts`, `src/runs/repeat-coordinator.ts`, and the tab lifecycle/registry code before editing.
+3. `ADR-0001--event-driven-runtime-and-persistence-boundaries.md` revision 4;
+4. `src/runs/types.ts`, `src/runs/model.ts`, `src/runs/manager.ts`, `src/runs/repeat-coordinator.ts`, and `src/runs/scheduler.ts`;
+5. `src/chatgpt/conversation.ts`, `src/chatgpt/types.ts`, and `src/chatgpt/adapter.ts`;
+6. `src/runtime/run-runtime-server.ts` and `entrypoints/background.ts`;
+7. Run workspace presentation code before creating the shared projection.
 
-## STEP-03 implementation cautions
+## STEP-04 implementation cautions
 
-- Do not weaken STEP-02 sender-derived authorization or reintroduce raw composer/assistant text to simplify conversation detection.
-- Conversation identity should derive primarily from current ChatGPT URL/location context; sidebar active-state DOM may be diagnostic corroboration only.
-- Treat `/` as a pending/new-chat context. A run may adopt the first safe `/ -> /c/<id>` transition once, then lock to that conversation identity.
-- A later `/c/A -> /c/B` change on the same tab must suspend/fail closed and require explicit user rebind/resume; do not silently follow the tab.
-- Preserve existing browser-session-reset rebind semantics and generation/idempotency fences.
-- Do not build toolbar badge, mini-controller, docking, or drag behavior early; those remain STEP-05 through STEP-07.
-- Keep physical IndexedDB v1 unless conversation identity truly requires a new store/index topology; prefer logical run-state evolution if necessary.
+- Do not change conversation binding while fixing timing. `conversation_changed` and `browser_session_reset` remain explicit rebind gates.
+- Preserve the single Repeat/Queue coordinator; STEP-04 is timing/projection hardening, not an orchestration rewrite.
+- Pause during `waiting_delay` must freeze a durable remaining duration instead of letting wall-clock pause time consume the delay.
+- Worker restart while paused must preserve that remainder without introducing duplicate scheduling or sends.
+- The new `RunPresentationProjection` must be pure/reusable and must become the Side Panel's state vocabulary before toolbar or in-page surfaces consume it.
+- Countdown may be exact for a known delay deadline/remainder. Waiting for ChatGPT response remains elapsed/indeterminate; do not fabricate ETA.
+- Do not build toolbar badge or mini-controller early; those remain STEP-05 and STEP-06.
+- Keep physical IndexedDB v1 unless a structural store/index change is genuinely unavoidable. Prefer additive/logical run-state evolution.
 - Do not retry unavailable WXT/npm infrastructure as ceremony; focused dependency-free checks remain valid and environment-only gaps remain non-blocking.
 
 ## Environment status carried forward
@@ -856,3 +871,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | --- | ---: | --- | --- |
 | 2026-08-24 | 1 | Open successor hardening roadmap at v0.0.17 after v0.0.16 evaluation; freeze sender/privacy, conversation identity, truthful timing/projection, toolbar status, secondary in-page controller, docking/accessibility, adapter drift/retention and integrated closure ownership through v0.0.25. | active |
 | 2026-08-24 | 2 | Complete STEP-02 at v0.0.18: enforce sender-derived runtime caller authority, introduce privacy-minimal ChatGPT adapter v2 and run-state/logical-model v2 compatibility migration, preserve physical DB/export v1, and authorize STEP-03 only. | active |
+| 2026-08-24 | 3 | Complete STEP-03 at v0.0.19: add semantic conversation context, durable independent conversation binding, one-time new-chat adoption, fail-closed same-tab mismatch suspension/rebind, point-of-click conversation verification, and shared Repeat/Queue guarding; close P1 and authorize STEP-04 only. | active |

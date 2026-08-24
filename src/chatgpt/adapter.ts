@@ -1,7 +1,8 @@
 import { freezeJsonValue } from '../core/json.ts';
-import type { ChatGptAdapterDiagnostics, ChatGptAdapterSnapshot, ChatGptClickResult, ChatGptObservation, ChatGptSendResult, SelectorHealth } from './types.ts';
+import type { ChatGptAdapterDiagnostics, ChatGptAdapterSnapshot, ChatGptClickResult, ChatGptConversationContext, ChatGptObservation, ChatGptSendResult, SelectorHealth } from './types.ts';
 import { CHATGPT_ADAPTER_SCHEMA_VERSION } from './types.ts';
 import { createAssistantFingerprint } from './fingerprint.ts';
+import { conversationContextFromUrl, sameConversationContext } from './conversation.ts';
 import { CHATGPT_ADAPTER_ERROR_CODES, ChatGptAdapterError } from './errors.ts';
 import type { ChatGptDomEnvironment, DomHandle } from './dom-environment.ts';
 import { CHATGPT_SELECTOR_REGISTRY, CONTINUE_TEXT_PATTERN, SEND_ARIA_PATTERN, STOP_ARIA_PATTERN, type SelectorDefinition } from './selectors.ts';
@@ -28,6 +29,7 @@ export class ChatGptAdapter {
     const latest = assistantMessages.at(-1);
     const latestText = latest === undefined ? '' : normalizeText(this.#dom.readText(latest));
     const pageAlert = this.#pageAlert();
+    const conversation = conversationContextFromUrl(this.#dom.currentUrl?.() ?? '');
     const assistantFingerprint = createAssistantFingerprint(assistantMessages.length, latestText);
 
     return freezeJsonValue({
@@ -42,6 +44,7 @@ export class ChatGptAdapter {
       assistantFingerprint,
       assistantMessageCount: assistantMessages.length,
       pageAlert,
+      conversation,
     });
   }
 
@@ -71,7 +74,10 @@ export class ChatGptAdapter {
     });
   }
 
-  async send(message: string, timeoutMs = 5_000, expectedAssistantBaselineFingerprint?: string): Promise<ChatGptSendResult> {
+  async send(message: string, timeoutMs = 5_000, expectedAssistantBaselineFingerprint?: string, expectedConversation?: ChatGptConversationContext): Promise<ChatGptSendResult> {
+    if (expectedConversation !== undefined && !sameConversationContext(conversationContextFromUrl(this.#dom.currentUrl?.() ?? ''), expectedConversation)) {
+      throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.conversationChanged, 'ChatGPT conversation changed before send');
+    }
     if (typeof message !== 'string' || message.trim().length === 0) {
       throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.invalidCommand, 'Message must be non-empty');
     }
@@ -89,6 +95,9 @@ export class ChatGptAdapter {
     const send = await this.#waitForEnabled(() => this.#findSend(), timeoutMs);
     if (send === null) throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.sendUnavailable, 'Enabled ChatGPT send button was not found');
     const beforeClick = this.snapshot();
+    if (expectedConversation !== undefined && !sameConversationContext(beforeClick.conversation, expectedConversation)) {
+      throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.conversationChanged, 'ChatGPT conversation changed before send click');
+    }
     if (beforeClick.assistantFingerprint !== assistantBaselineFingerprint || beforeClick.busy) {
       throw new ChatGptAdapterError(CHATGPT_ADAPTER_ERROR_CODES.responseBaselineChanged, 'Conversation changed before send click');
     }

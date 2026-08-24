@@ -14,6 +14,7 @@ export interface ChatGptDomEnvironment {
   scrollToBottom(): void;
   now(): number;
   isoNow(): string;
+  currentUrl?(): string;
 }
 
 function requireElement(handle: DomHandle): Element {
@@ -105,4 +106,5 @@ export class BrowserChatGptDomEnvironment implements ChatGptDomEnvironment {
 
   now(): number { return Date.now(); }
   isoNow(): string { return new Date().toISOString(); }
+  currentUrl(): string { return this.#window.location.href; }
 }

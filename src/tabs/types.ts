@@ -1,6 +1,7 @@
 import type { JsonObject } from '../core/types.ts';
+import type { ChatGptConversationContext } from '../chatgpt/types.ts';
 
-export const TAB_REGISTRY_SCHEMA_VERSION = 1 as const;
+export const TAB_REGISTRY_SCHEMA_VERSION = 2 as const;
 export const CHATGPT_TAB_URL_PATTERNS = Object.freeze([
   'https://chatgpt.com/*',
   'https://chat.openai.com/*',
@@ -30,6 +31,7 @@ export interface ChatGptTabTarget extends JsonObject {
   readonly adapterReady: boolean;
   readonly adapterBusy: boolean;
   readonly pageAlert: string | null;
+  readonly conversation: ChatGptConversationContext;
 }
 
 export interface ChatGptTabBinding extends JsonObject {

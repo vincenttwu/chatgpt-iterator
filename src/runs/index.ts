@@ -1,3 +1,4 @@
+export * from './conversation.ts';
 export * from './chatgpt-client.ts';
 export * from './manager.ts';
 export * from './model.ts';

@@ -1,3 +1,4 @@
+export * from './conversation.ts';
 export * from './fingerprint.ts';
 export * from './compatibility.ts';
 export * from './adapter.ts';
