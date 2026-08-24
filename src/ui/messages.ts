@@ -246,6 +246,7 @@ const FALLBACK_MESSAGES = Object.freeze({
   runtimeVersion: 'Extension version',
   connectedPanels: 'Connected panels',
   activeRuns: 'Active runs',
+  toolbarNeedsAttention: 'need attention',
   eligibleTabs: 'Eligible tabs',
   boundTab: 'Bound tab',
   none: 'None',

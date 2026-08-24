@@ -19,6 +19,7 @@ import { PresetService } from '../src/presets/index.ts';
 import { QueueService } from '../src/queues/index.ts';
 import { SettingsService } from '../src/settings/index.ts';
 import { RunHistoryService } from '../src/history/index.ts';
+import { createToolbarStatusCopy, ToolbarStatusController, type ToolbarActionApiLike } from '../src/presentation/index.ts';
 import { DiagnosticsService } from '../src/diagnostics/index.ts';
 import { PortabilityService } from '../src/portability/index.ts';
 import { ContractError, ERROR_CODES } from '../src/core/index.ts';
@@ -44,6 +45,7 @@ let queueServicePromise: Promise<QueueService> | undefined;
 let historyServicePromise: Promise<RunHistoryService> | undefined;
 let diagnosticsServicePromise: Promise<DiagnosticsService> | undefined;
 let portabilityServicePromise: Promise<PortabilityService> | undefined;
+let toolbarStatusController: ToolbarStatusController | undefined;
 
 const runServer = new RunRuntimeServer(
   async () => { if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized'); return (await runRuntimePromise).manager; },
@@ -104,6 +106,7 @@ async function pruneHistoryIfNeeded(): Promise<void> {
 tabs.subscribe((snapshot) => {
   authority.setTabs(snapshot);
   ports.broadcast('tab_changed');
+  if (toolbarStatusController !== undefined) void toolbarStatusController.refresh().catch(reportRunError);
   if (runRuntimePromise !== undefined) {
     void runRuntimePromise.then(async ({ manager, coordinator }) => {
       await manager.reconcileTabs(snapshot);
@@ -132,8 +135,17 @@ export default defineBackground(() => {
   portabilityServicePromise = persistence.then((runtime) => new PortabilityService(runtime.repositories, settingsService, browser.runtime.getManifest().version));
   runRuntimePromise = Promise.all([persistence, tabReadyPromise, browserSessionPromise, discardGuardReadyPromise]).then(async ([runtime, _tabSnapshot, browserSession]) => {
     const manager = new DurableRunManager(new DurableRunRepository(runtime.repositories));
+    toolbarStatusController = new ToolbarStatusController(
+      browser.action as unknown as ToolbarActionApiLike,
+      { runs: async () => await manager.list(), targets: () => tabs.snapshot().targets },
+      {
+        copy: createToolbarStatusCopy((key, fallback) => browser.i18n.getMessage(key) || fallback),
+        onError: (error) => { console.error('chatgpt-iterator: toolbar status error', error); },
+      },
+    );
     manager.subscribe((snapshot) => {
       ports.broadcast('run_changed');
+      if (toolbarStatusController !== undefined) void toolbarStatusController.refresh().catch(reportRunError);
       if (isRunTerminal(snapshot.lifecycleState)) { ports.broadcast('history_changed'); void pruneHistoryIfNeeded().catch(reportRunError); }
     });
     const client = new ChatGptRunClient(tabBrowser);
@@ -158,6 +170,7 @@ export default defineBackground(() => {
       else if (snapshot.lifecycleState === 'frozen' || snapshot.lifecycleState === 'discarded' || snapshot.lifecycleState === 'reconnecting') await coordinator.suspend(snapshot.id);
     }
     coordinator.recover(startupRuns);
+    if (toolbarStatusController !== undefined) await toolbarStatusController.refresh();
     return { manager, coordinator };
   });
   diagnosticsServicePromise = persistence.then(async (runtime) => {

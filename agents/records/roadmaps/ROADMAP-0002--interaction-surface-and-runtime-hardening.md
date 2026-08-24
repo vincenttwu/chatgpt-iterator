@@ -5,9 +5,9 @@ record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
 status: active
-revision: 4
+revision: 5
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T12:41:00+08:00
+updated_at: 2026-08-24T12:53:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -565,28 +565,34 @@ Forbidden examples:
 ## STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator
 
 **Target:** `v0.0.21`  
+**Status:** complete.  
 **Purpose:** Preserve operational visibility when the Side Panel is closed without creating a competing toolbar popup.  
 **Depends on:** STEP-04.  
 **Primary paths:** `entrypoints/background.ts`, `src/presentation/` or equivalent shared projection adapter, action/status tests.
 
 ### Work items
 
-- [ ] Keep `openPanelOnActionClick: true` as the toolbar click behavior.
-- [ ] Do **not** add `action.default_popup`.
-- [ ] Drive toolbar badge text/title exclusively from the shared run projection.
-- [ ] Use concise badge values suitable for Chrome space constraints, e.g. `3/5`, `P`, `!`, or active-run count when multiple runs exist.
-- [ ] Use `action.setTitle()` for richer accessible status such as `Waiting 6s before iteration 4 of 5`.
-- [ ] Define deterministic multi-run aggregation: selected/active tab may use per-tab status; global state should not misleadingly show one run as the only run when several are active.
-- [ ] Clear/reset badge/title when no relevant run remains.
-- [ ] Avoid visually encoding state only through badge background color; text/title remain authoritative.
+- [x] Keep `openPanelOnActionClick: true` as the toolbar click behavior.
+- [x] Do **not** add `action.default_popup`.
+- [x] Drive toolbar badge text/title exclusively from the shared run projection.
+- [x] Use concise badge values suitable for Chrome space constraints, e.g. `3/5`, `P`, `!`, or active-run count when multiple runs exist.
+- [x] Use `action.setTitle()` for richer accessible status such as `Waiting 6s before iteration 4 of 5`.
+- [x] Define deterministic multi-run aggregation: selected/active tab may use per-tab status; global state should not misleadingly show one run as the only run when several are active.
+- [x] Clear/reset badge/title when no relevant run remains.
+- [x] Avoid visually encoding state only through badge background color; text/title remain authoritative.
 
 ### Acceptance
 
-- [ ] Toolbar click still opens/toggles the Side Panel.
-- [ ] No popup entrypoint or new permission is introduced.
-- [ ] Badge/title update on start, delay countdown boundary changes, pause, attention/rebind, completion/failure and clear.
-- [ ] Multi-run status is deterministic and documented.
-- [ ] Worker restart reconstructs action state from durable authority rather than stale globals.
+- [x] Toolbar click still opens/toggles the Side Panel.
+- [x] No popup entrypoint or new permission is introduced.
+- [x] Badge/title update on start, delay countdown boundary changes, pause, attention/rebind, completion/failure and clear.
+- [x] Multi-run status is deterministic and documented.
+- [x] Worker restart reconstructs action state from durable authority rather than stale globals.
+
+
+### Result
+
+`v0.0.21` adds a background-owned toolbar status adapter over the STEP-04 `RunPresentationProjection`. A single nonterminal run projects concise progress/paused/attention badge text plus a richer localized title; multiple runs aggregate to a deterministic count globally and per target tab rather than selecting an arbitrary winner. Presentation-only second-boundary timers refresh countdown/elapsed titles while the worker is alive, but they never drive ChatGPT observation or run execution. Terminal completion/failure clears stale action state, worker restart rebuilds from durable runs, toolbar click continues to open the Side Panel, and no popup, permission, schema, host-scope, or badge-color-only contract was introduced.
 
 ---
 
@@ -750,8 +756,8 @@ Forbidden examples:
 - [x] STEP-01 — Successor Hardening Evaluation, Evidence Freeze, and Roadmap Opening (`v0.0.17`).
 - [x] STEP-02 — Runtime Caller Authority and Privacy-Minimal Adapter Contract (`v0.0.18`).
 - [x] STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention (`v0.0.19`).
-- [ ] STEP-04 — Timing Semantics and Unified Run Presentation Projection (`v0.0.20`).
-- [ ] STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator (`v0.0.21`).
+- [x] STEP-04 — Timing Semantics and Unified Run Presentation Projection (`v0.0.20`).
+- [x] STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator (`v0.0.21`).
 - [ ] STEP-06 — Minimal In-Page Run Controller (`v0.0.22`).
 - [ ] STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery (`v0.0.23`).
 - [ ] STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening (`v0.0.24`).
@@ -788,69 +794,73 @@ Completed step history must not be rewritten as if later decisions were always p
 
 This section is intentionally operational. A new session should be able to resume from it directly.
 
-## Current state after STEP-04
+## Current state after STEP-05
 
-- **Promoted implementation baseline:** `v0.0.20`.
+- **Promoted implementation baseline:** `v0.0.21`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 4.
-- **ROADMAP-0002 progress:** 4/9 steps complete.
+- **ROADMAP-0002:** active, revision 5.
+- **ROADMAP-0002 progress:** 5/9 steps complete.
 - **Phase P1 — Safety Authority:** complete at STEP-03.
-- **Phase P2 — Runtime Visibility and Secondary Control:** active at 1/4 after STEP-04.
+- **Phase P2 — Runtime Visibility and Secondary Control:** active at 2/4 after STEP-05.
 - **Physical IndexedDB:** v1 unchanged.
-- **Global logical model:** v4.
+- **Global logical model:** v4 unchanged.
 - **Durable run state:** v4 with explicit v1/v2/v3 normalization.
 - **Portable envelope:** v1 unchanged.
 - **ChatGPT adapter:** v3 unchanged.
 - **Tab registry:** v2 unchanged.
 - **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
 
-### Safety facts from P1 that remain non-negotiable
+### Safety/timing facts from STEP-02 through STEP-04 that remain non-negotiable
 
 - Runtime caller classification remains derived from Chrome `MessageSender`; a forged envelope source is not authority.
 - Adapter/background observation remains privacy-minimal: no raw composer draft or assistant-text suffix transport.
 - Durable runs remain bound to explicit tab plus conversation authority; same-tab conversation mismatch suspends and requires explicit rebind.
 - Repeat and Queue continue through one coordinator with final point-of-click conversation verification.
+- Paused delay owns frozen `remainingDelayMs`; active waiting delay owns `nextDueAt`; Resume reconstructs a fresh due time.
+- `src/presentation/run-projection.ts` remains the single lifecycle/progress/timing/attention/action vocabulary.
 - The future mini-controller policy remains bounded and is still not enabled before STEP-06.
 
-### STEP-04 implementation facts another session should preserve
+### STEP-05 implementation facts another session should preserve
 
-- Durable run state schema v4 adds common `responseStartedAt` and `remainingDelayMs` timing fields; logical persistence advances to v4 through an explicit 3->4 run rewrite while physical IndexedDB remains v1.
-- Active `waiting_delay` owns an absolute `nextDueAt` and must have no frozen remainder. A paused run whose `resumeState` is `waiting_delay` owns only `remainingDelayMs` and clears `nextDueAt`.
-- Pause computes the bounded remainder from the current durable due time. Resume constructs a fresh due timestamp from that remainder, so time spent paused never consumes the requested delay.
-- Worker recovery of an already paused delay preserves the same frozen remainder and does not schedule it. Browser-session or conversation-change transitions into a paused waiting-delay state also preserve/freeze the remainder rather than leaving stale due authority.
-- `responseStartedAt` is persisted when an iteration enters `waiting_response` and cleared on normal iteration completion; presentation may show elapsed time but never a completion ETA.
-- `src/presentation/run-projection.ts` is the pure shared presentation authority. `RunPresentationProjection` includes lifecycle label key, semantic tone, progress/current iteration, delay countdown or frozen remainder, response elapsed/indeterminate state, attention/rebind semantics and available actions.
-- The Side Panel current-run card now consumes that projector. Its 250ms display clock is presentation-only; it does not drive execution, response observation or scheduling.
-- Semantic run tones are centralized as `neutral|active|waiting|paused|attention|success|error`, while text labels/warnings remain authoritative so state is never color-only.
-- Legacy v3 paused-delay snapshots normalize to v4 by deriving the frozen remainder from their old due time and pause/update timestamp. Legacy response waits receive an explicit compatibility start timestamp rather than becoming unreadable.
-- No toolbar badge, action popup, in-page controller or new permission was introduced in STEP-04.
+- `src/presentation/toolbar-status.ts` is a secondary projection adapter only. It consumes `projectRunPresentation()` for every run and must not reimplement run lifecycle semantics.
+- For one relevant nonterminal run, badge text is concise: exact progress when it fits Chrome's compact badge space, `P` for paused, and `!` for attention/rebind states. Rich `action.setTitle()` text carries the authoritative state, countdown/elapsed timing, iteration, and attention explanation.
+- For multiple nonterminal runs, the global action and any tab with multiple runs show a deterministic run count rather than choosing one run as canonical. Per-tab overrides show the single local run when exactly one run targets that tab.
+- The toolbar controller tracks tab IDs it has written and clears stale per-tab badge/title overrides after terminal completion, failure, target removal, or other changes that leave no relevant run for that tab. Global badge/title likewise reset to empty badge + application title when no nonterminal run remains.
+- Manager mutations and tab-registry changes request toolbar refresh. Worker startup/recovery creates a fresh controller and rebuilds status from `manager.list()` plus current tab targets; service-worker globals are cache/control objects, not state authority.
+- Countdown and response-elapsed title changes use a presentation-only next-boundary `setTimeout` while the worker is alive. The timer reads durable run snapshots and recomputes pure projections; it never queries ChatGPT, advances a run, completes a delay, or acts as execution authority. If the worker terminates, correctness is unaffected and the next worker reconstruction refreshes the action from durable truth.
+- Toolbar writes are serialized so overlapping run/tab refresh notifications cannot leave an older projection as the final action state. Individual action-write errors (for example a tab disappearing during a per-tab write) are reported but do not affect run authority.
+- Toolbar click remains `sidePanel.setPanelBehavior({ openPanelOnActionClick: true })`; `action.default_popup` does not exist. No popup entrypoint was added.
+- Badge background color is not used as state authority; badge text and accessible title are always sufficient.
+- STEP-05 introduces no schema, DB, portable-format, permission, host-scope, dependency, or execution-engine change.
 
 ## Sole next authorized implementation
 
-**`v0.0.21 / ROADMAP-0002 STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator`**
+**`v0.0.22 / ROADMAP-0002 STEP-06 — Minimal In-Page Run Controller`**
 
 A continuation should begin by reading:
 
 1. this ROADMAP-0002 file and `iteration_manifest.yaml`;
-2. `src/presentation/run-projection.ts`;
-3. `src/runs/types.ts`, `src/runs/model.ts`, `src/runs/manager.ts`, `src/runs/repeat-coordinator.ts`, and `src/runs/scheduler.ts`;
-4. `entrypoints/sidepanel/App.vue` for the accepted presentation consumer;
-5. `entrypoints/background.ts` and current Side Panel/action behavior before wiring toolbar status.
+2. `src/presentation/run-projection.ts` and `src/presentation/toolbar-status.ts`;
+3. `entrypoints/background.ts` for current action/status wiring and sender-derived authority;
+4. `entrypoints/content.ts` plus `src/chatgpt/` for the centralized DOM adapter boundary;
+5. `src/runtime/message-router.ts`, `src/runtime/run-runtime-server.ts`, and `src/runs/manager.ts` before exposing narrow content-origin commands;
+6. the original immutable userscript donor under `dumps/donors/userscript/` for interaction shape only.
 
-## STEP-05 implementation cautions
+## STEP-06 implementation cautions
 
-- Keep toolbar click -> Side Panel behavior; do not add `action.default_popup`.
-- Toolbar badge/title must consume the STEP-04 projection rather than re-deriving lifecycle/progress/timing.
-- Badge text is concise and supplemental; accessible title/text remains authoritative and no state is color-only.
-- Multiple simultaneous runs require deterministic aggregation instead of pretending one run is globally unique.
-- Reconstruct action state from durable runs on worker restart; do not make service-worker globals canonical.
-- Do not build the in-page controller early; that remains STEP-06.
+- Build a **secondary in-page Shadow DOM controller**, not a conventional Chrome toolbar popup and not a replacement for the Side Panel.
+- The controller must consume the STEP-04 shared projection vocabulary; do not introduce a third lifecycle/status mapping.
+- Content-origin command authority remains sender-derived and same-tab bounded. Only the explicitly authorized narrow controls (Pause/Resume/Stop/Open Side Panel, plus any roadmap-bounded optional default-preset path) may be exposed.
+- Do not move durable run/configuration state, timers, scheduler authority, IndexedDB ownership, or direct send orchestration into the page.
+- Do not add freeform drag/placement persistence early; that remains STEP-07.
+- Keep raw prompt/history content out of the collapsed/normal mini-controller surface.
+- Preserve toolbar-click -> Side Panel and current toolbar status behavior.
 - Keep physical IndexedDB v1 and current permissions unless a genuine owning-step need proves otherwise.
 - Do not retry unavailable WXT/npm infrastructure as ceremony.
 
 ## Environment status carried forward
 
-At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-02 did not change dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
+At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-05 changes no dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
 
 ## What not to infer
 
@@ -858,6 +868,7 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 - There is no authorization for a post-v0.0.25 roadmap.
 - The mini controller is not a replacement for the Side Panel.
 - A conventional Chrome toolbar popup is not currently authorized.
+- Toolbar boundary timers are presentation refresh only, not an execution polling mechanism.
 - Current ChatGPT HTML selectors are evidence, not guaranteed API contracts.
 
 # Revision history
@@ -868,3 +879,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | 2026-08-24 | 2 | Complete STEP-02 at v0.0.18: enforce sender-derived runtime caller authority, introduce privacy-minimal ChatGPT adapter v2 and run-state/logical-model v2 compatibility migration, preserve physical DB/export v1, and authorize STEP-03 only. | active |
 | 2026-08-24 | 3 | Complete STEP-03 at v0.0.19: add semantic conversation context, durable independent conversation binding, one-time new-chat adoption, fail-closed same-tab mismatch suspension/rebind, point-of-click conversation verification, and shared Repeat/Queue guarding; close P1 and authorize STEP-04 only. | active |
 | 2026-08-24 | 4 | Complete STEP-04 at v0.0.20: freeze paused delay as durable remaining duration, resume from a fresh due time, add response elapsed authority, introduce the pure shared RunPresentationProjection and centralized semantic tones, move the Side Panel run card to that projection, advance logical/run schema to v4 only, and authorize STEP-05. | active |
+| 2026-08-24 | 5 | Complete STEP-05 at v0.0.21: add a background-owned toolbar badge/title adapter over RunPresentationProjection, deterministic global/per-tab multi-run aggregation, presentation-only countdown/elapsed boundary refresh, stale action cleanup and worker reconstruction from durable runs; preserve toolbar-click to Side Panel, no popup, no schema/permission change, and authorize STEP-06. | active |

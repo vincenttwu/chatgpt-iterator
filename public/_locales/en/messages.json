@@ -707,6 +707,9 @@
   "activeRuns": {
     "message": "Active runs"
   },
+  "toolbarNeedsAttention": {
+    "message": "need attention"
+  },
   "eligibleTabs": {
     "message": "Eligible tabs"
   },

@@ -80,5 +80,5 @@ test('STEP-04 schema evolution is logical-only and migration authority includes 
 
 test('STEP-04 scope does not introduce toolbar popup/controller work or permission expansion', async()=>{
   const wxt=await text('wxt.config.ts');const pkg=JSON.parse(await text('package.json'));const roadmap=await text('agents/records/roadmaps/ROADMAP-0002--interaction-surface-and-runtime-hardening.md');
-  assert.deepEqual([...wxt.matchAll(/'([^']+)'/g)].map(m=>m[1]).filter(v=>['sidePanel','storage','alarms','tabs'].includes(v)),['sidePanel','storage','alarms']);assert.equal(pkg.version,'0.0.20');assert.match(roadmap,/Toolbar badge rendering \(STEP-05\)/);assert.match(roadmap,/In-page controller \(STEP-06\/07\)/);
+  assert.deepEqual([...wxt.matchAll(/'([^']+)'/g)].map(m=>m[1]).filter(v=>['sidePanel','storage','alarms','tabs'].includes(v)),['sidePanel','storage','alarms']);assert.ok(/^0\.0\.(?:2[0-9]|[3-9][0-9]|[1-9][0-9]{2,})$/.test(pkg.version));assert.match(roadmap,/Toolbar badge rendering \(STEP-05\)/);assert.match(roadmap,/In-page controller \(STEP-06\/07\)/);
 });
