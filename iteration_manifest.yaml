@@ -1,17 +1,17 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.21
+version: v0.0.22
 status: accepted_implementation
 iteration:
   kind: implementation
   roadmap: ROADMAP-0002
   roadmap_status: active
-  step: STEP-05
+  step: STEP-06
   step_status: complete
   phase: P2
   phase_status: active
 baseline:
-  working_parent: v0.0.20
+  working_parent: v0.0.21
   prior_roadmap: ROADMAP-0001
   prior_roadmap_status: closed
   originally_requested: chatgpt-iterator-v0.0.0
@@ -24,20 +24,23 @@ schemas:
   run_state_schema_version: 4
   chatgpt_adapter_schema_version: 3
   tab_registry_schema_version: 2
+  inpage_controller_schema_version: 1
 validation:
-  focused_step05: "9/9 pass"
+  focused_step06: "10/10 pass"
   strict_dependency_free_typescript: pass
-  predecessor_step04_timing_projection_smoke: "9/9 pass"
-  toolbar_shared_projection: pass
-  toolbar_global_per_tab_aggregation: pass
-  toolbar_boundary_refresh: pass
-  toolbar_worker_reconstruction: pass
-  toolbar_sidepanel_click_no_popup: pass
+  predecessor_step05_toolbar_smoke: "9/9 pass"
+  inpage_shared_projection: pass
+  inpage_sender_tab_generation_authority: pass
+  inpage_conversation_guarded_resume: pass
+  inpage_closed_shadow_dom_trusted_events: pass
+  inpage_event_driven_temporal_projection: pass
+  inpage_background_owned_collapse_preference: pass
+  sidepanel_open_user_action_authority: "confirmed against Chrome sidePanel API; repository-controlled invocation covered"
   package_hydration: inherited_deferred_environment
   wxt_prepare_typecheck_build_package: inherited_deferred_environment
 next:
   status: authorized
-  version: v0.0.22
+  version: v0.0.23
   roadmap: ROADMAP-0002
-  step: STEP-06
-  title: Minimal In-Page Run Controller
+  step: STEP-07
+  title: Mini Controller Docking, Dragging, Accessibility, and Position Recovery

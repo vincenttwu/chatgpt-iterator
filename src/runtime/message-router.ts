@@ -9,8 +9,10 @@ import { SETTINGS_RUNTIME_OPERATIONS } from '../settings/types.ts';
 import { DIAGNOSTICS_RUNTIME_OPERATIONS } from '../diagnostics/types.ts';
 import { HISTORY_RUNTIME_OPERATIONS } from '../history/types.ts';
 import { PORTABILITY_RUNTIME_OPERATIONS } from '../portability/types.ts';
+import { INPAGE_CONTROLLER_OPERATIONS } from '../presentation/inpage-controller.ts';
 import type { DiagnosticsRuntimeServer } from './diagnostics-runtime-server.ts';
 import type { HistoryRuntimeServer } from './history-runtime-server.ts';
+import type { InPageControllerRuntimeServer } from './inpage-controller-runtime-server.ts';
 import type { PortabilityRuntimeServer } from './portability-runtime-server.ts';
 import type { RunRuntimeServer } from './run-runtime-server.ts';
 import type { SettingsRuntimeServer } from './settings-runtime-server.ts';
@@ -29,18 +31,20 @@ const SETTINGS_OPERATIONS = new Set<string>(Object.values(SETTINGS_RUNTIME_OPERA
 const DIAGNOSTICS_OPERATIONS = new Set<string>(Object.values(DIAGNOSTICS_RUNTIME_OPERATIONS));
 const HISTORY_OPERATIONS = new Set<string>(Object.values(HISTORY_RUNTIME_OPERATIONS));
 const PORTABILITY_OPERATIONS = new Set<string>(Object.values(PORTABILITY_RUNTIME_OPERATIONS));
-const CONTENT_ENABLED_OPERATIONS = new Set<string>([TAB_RUNTIME_OPERATIONS.adapterState]);
+const INPAGE_OPERATIONS = new Set<string>(Object.values(INPAGE_CONTROLLER_OPERATIONS));
+const CONTENT_ENABLED_OPERATIONS = new Set<string>([TAB_RUNTIME_OPERATIONS.adapterState, ...INPAGE_OPERATIONS]);
 
-function requireAuthorizedCaller(request: RequestEnvelope, sender: RuntimeMessageSenderLike, extensionId: string): void {
+function requireAuthorizedCaller(request: RequestEnvelope, sender: RuntimeMessageSenderLike, extensionId: string) {
   if (request.target !== 'background') throw new ContractError(ERROR_CODES.invalidMessage, 'background router accepts background-targeted requests only');
   const caller = resolveRuntimeCaller(sender, extensionId);
   if (caller.kind === 'sidepanel') {
     if (request.source !== 'sidepanel') throw new ContractError(ERROR_CODES.invalidMessage, 'Side Panel caller source metadata does not match verified sender context');
     if (request.operation === TAB_RUNTIME_OPERATIONS.adapterState) throw new ContractError(ERROR_CODES.invalidMessage, 'Side Panel cannot publish content adapter state');
-    return;
+    return caller;
   }
   if (request.source !== 'content') throw new ContractError(ERROR_CODES.invalidMessage, 'ChatGPT content caller source metadata does not match verified sender context');
   if (!CONTENT_ENABLED_OPERATIONS.has(request.operation)) throw new ContractError(ERROR_CODES.invalidMessage, 'ChatGPT content caller is not authorized for this operation');
+  return caller;
 }
 
 export class BackgroundMessageRouter {
@@ -54,6 +58,7 @@ export class BackgroundMessageRouter {
   readonly #diagnostics: DiagnosticsRuntimeServer | undefined;
   readonly #history: HistoryRuntimeServer | undefined;
   readonly #portability: PortabilityRuntimeServer | undefined;
+  readonly #inpage: InPageControllerRuntimeServer | undefined;
   readonly #extensionId: string;
 
   constructor(
@@ -68,6 +73,7 @@ export class BackgroundMessageRouter {
     history?: HistoryRuntimeServer,
     portability?: PortabilityRuntimeServer,
     extensionId = 'chatgpt-iterator-test-extension',
+    inpage?: InPageControllerRuntimeServer,
   ) {
     this.#control = control;
     this.#tabs = tabs;
@@ -80,13 +86,14 @@ export class BackgroundMessageRouter {
     this.#history = history;
     this.#portability = portability;
     this.#extensionId = extensionId;
+    this.#inpage = inpage;
   }
 
   async handle(raw: unknown, sender: RuntimeMessageSenderLike = {}): Promise<unknown> {
     const message = requireMessageEnvelope(raw);
     if (message.kind !== 'request') throw new ContractError(ERROR_CODES.invalidMessage, 'background router accepts request envelopes only');
     try {
-      requireAuthorizedCaller(message, sender, this.#extensionId);
+      const caller = requireAuthorizedCaller(message, sender, this.#extensionId);
       if (TAB_OPERATIONS.has(message.operation)) return await this.#tabs.handle(message, sender);
       if (RUN_OPERATIONS.has(message.operation)) return this.#runs === undefined ? await this.#control.handle(message) : await this.#runs.handle(message);
       if (TEMPLATE_OPERATIONS.has(message.operation)) return this.#templates === undefined ? await this.#control.handle(message) : await this.#templates.handle(message);
@@ -96,6 +103,10 @@ export class BackgroundMessageRouter {
       if (DIAGNOSTICS_OPERATIONS.has(message.operation)) return this.#diagnostics === undefined ? await this.#control.handle(message) : await this.#diagnostics.handle(message);
       if (HISTORY_OPERATIONS.has(message.operation)) return this.#history === undefined ? await this.#control.handle(message) : await this.#history.handle(message);
       if (PORTABILITY_OPERATIONS.has(message.operation)) return this.#portability === undefined ? await this.#control.handle(message) : await this.#portability.handle(message);
+      if (INPAGE_OPERATIONS.has(message.operation)) {
+        if (this.#inpage === undefined) throw new ContractError(ERROR_CODES.unavailable, 'in-page controller runtime is not initialized');
+        return await this.#inpage.handle(message, caller);
+      }
       return await this.#control.handle(message);
     } catch (error) {
       return createFailureResponse(message, error);

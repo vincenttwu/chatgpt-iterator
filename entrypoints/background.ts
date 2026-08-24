@@ -1,6 +1,6 @@
 import { browser } from 'wxt/browser';
 import { ControlPlaneAuthority, ControlPlanePortHub, ControlPlaneServer } from '../src/control-plane/index.ts';
-import { BackgroundMessageRouter, BrowserSessionTracker, DiagnosticsRuntimeServer, HistoryRuntimeServer, PortabilityRuntimeServer, PresetRuntimeServer, QueueRuntimeServer, RunRuntimeServer, SettingsRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
+import { BackgroundMessageRouter, BrowserSessionTracker, DiagnosticsRuntimeServer, HistoryRuntimeServer, InPageControllerRuntimeServer, PortabilityRuntimeServer, PresetRuntimeServer, QueueRuntimeServer, RunRuntimeServer, SettingsRuntimeServer, TabLifecycleCoordinator, TabRuntimeServer, TemplateRuntimeServer } from '../src/runtime/index.ts';
 import { AutoDiscardGuardManager, ChatGptTabRegistry, type TabBrowserLike } from '../src/tabs/index.ts';
 import { bootstrapApplicationPersistence, createChromeStorageTiers, restrictChromeStorageToTrustedContexts, type ChromeStorageLike, type PersistenceRuntime } from '../src/persistence/index.ts';
 import {
@@ -19,7 +19,7 @@ import { PresetService } from '../src/presets/index.ts';
 import { QueueService } from '../src/queues/index.ts';
 import { SettingsService } from '../src/settings/index.ts';
 import { RunHistoryService } from '../src/history/index.ts';
-import { createToolbarStatusCopy, ToolbarStatusController, type ToolbarActionApiLike } from '../src/presentation/index.ts';
+import { createToolbarStatusCopy, INPAGE_CONTROLLER_INVALIDATION, ToolbarStatusController, type ToolbarActionApiLike } from '../src/presentation/index.ts';
 import { DiagnosticsService } from '../src/diagnostics/index.ts';
 import { PortabilityService } from '../src/portability/index.ts';
 import { ContractError, ERROR_CODES } from '../src/core/index.ts';
@@ -91,10 +91,26 @@ const portabilityServer = new PortabilityRuntimeServer(
   async () => { if (portabilityServicePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'portability runtime is not initialized'); return await portabilityServicePromise; },
   () => { for (const reason of ['template_changed','preset_changed','queue_changed','settings_changed','history_changed'] as const) ports.broadcast(reason); },
 );
-const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer, queueServer, settingsServer, diagnosticsServer, historyServer, portabilityServer, browser.runtime.id);
+const inPageServer = new InPageControllerRuntimeServer(
+  async () => { if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run persistence is not initialized'); return (await runRuntimePromise).manager; },
+  async () => { if (runRuntimePromise === undefined) throw new ContractError(ERROR_CODES.unavailable, 'run execution is not initialized'); return (await runRuntimePromise).coordinator; },
+  async (tabId, windowId) => {
+    const snapshot = await tabs.refresh();
+    return snapshot.targets.find((target) => target.tabId === tabId && target.windowId === windowId);
+  },
+  async (tabId) => { await browser.sidePanel.open({ tabId }); },
+  storageTiers.local,
+);
+const router = new BackgroundMessageRouter(controlServer, tabServer, runServer, templateServer, presetServer, queueServer, settingsServer, diagnosticsServer, historyServer, portabilityServer, browser.runtime.id, inPageServer);
 const lifecycle = new TabLifecycleCoordinator(tabBrowser, tabs, discardGuards, (error) => { console.error('chatgpt-iterator: tab lifecycle error', error); });
 
 function reportRunError(error: unknown): void { console.error('chatgpt-iterator: run runtime error', error); }
+
+function notifyInPageControllers(): void {
+  for (const target of tabs.snapshot().targets) {
+    void browser.tabs.sendMessage(target.tabId, INPAGE_CONTROLLER_INVALIDATION).catch(() => undefined);
+  }
+}
 
 async function pruneHistoryIfNeeded(): Promise<void> {
   if (historyServicePromise === undefined) return;
@@ -145,6 +161,7 @@ export default defineBackground(() => {
     );
     manager.subscribe((snapshot) => {
       ports.broadcast('run_changed');
+      notifyInPageControllers();
       if (toolbarStatusController !== undefined) void toolbarStatusController.refresh().catch(reportRunError);
       if (isRunTerminal(snapshot.lifecycleState)) { ports.broadcast('history_changed'); void pruneHistoryIfNeeded().catch(reportRunError); }
     });

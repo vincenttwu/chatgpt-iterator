@@ -3,12 +3,12 @@ import type { RequestEnvelope } from '../core/envelope.ts';
 import type { DurableRunManager } from '../runs/manager.ts';
 import { RUN_RUNTIME_OPERATIONS } from '../runs/types.ts';
 import type { DurableRunSnapshot } from '../runs/types.ts';
+import { executeRunControl, type RunExecutionController } from './run-control.ts';
 import type { QueueService } from '../queues/service.ts';
 import type { ChatGptTabTarget } from '../tabs/types.ts';
 
 export type RunManagerProvider = () => Promise<DurableRunManager>;
 export type RunQueueServiceProvider = () => Promise<QueueService>;
-export interface RunExecutionController { activate(snapshot: DurableRunSnapshot): void; cancel(runId: string): Promise<void>; }
 export type RunExecutionProvider = () => Promise<RunExecutionController>;
 export type RunTargetProvider = (tabId: number, windowId: number) => Promise<ChatGptTabTarget | undefined>;
 
@@ -111,18 +111,11 @@ export class RunRuntimeServer {
               expectedGeneration = guarded.snapshot.generation;
             }
           }
+          const execution = this.#execution === undefined ? undefined : await this.#execution();
           const result = request.operation === RUN_RUNTIME_OPERATIONS.start
             ? await manager.start(runId, expectedGeneration, request.requestId)
-            : request.operation === RUN_RUNTIME_OPERATIONS.pause
-              ? await manager.pause(runId, expectedGeneration, request.requestId)
-              : request.operation === RUN_RUNTIME_OPERATIONS.resume
-                ? await manager.resume(runId, expectedGeneration, request.requestId)
-                : await manager.stop(runId, expectedGeneration, request.requestId);
-          if (this.#execution !== undefined) {
-            const execution = await this.#execution();
-            if (request.operation === RUN_RUNTIME_OPERATIONS.pause || request.operation === RUN_RUNTIME_OPERATIONS.stop) await execution.cancel(runId);
-            else if (!result.idempotent) execution.activate(result.snapshot);
-          }
+            : await executeRunControl(manager, execution, request.operation === RUN_RUNTIME_OPERATIONS.pause ? 'pause' : request.operation === RUN_RUNTIME_OPERATIONS.resume ? 'resume' : 'stop', runId, expectedGeneration, request.requestId);
+          if (request.operation === RUN_RUNTIME_OPERATIONS.start && execution !== undefined && !result.idempotent) execution.activate(result.snapshot);
           return createSuccessResponse(request, { run:result.snapshot, idempotent:result.idempotent });
         }
         default:

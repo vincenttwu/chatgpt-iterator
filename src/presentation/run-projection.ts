@@ -1,3 +1,4 @@
+import type { JsonObject } from '../core/types.ts';
 import type { ChatGptTabTarget } from '../tabs/types.ts';
 import { isConversationCompatible } from '../runs/conversation.ts';
 import { isRunTerminal, type DurableRunSnapshot, type RunLifecycleState } from '../runs/types.ts';
@@ -8,7 +9,7 @@ export type RunPresentationLabelKey =
 export type RunPresentationAttentionKey =
   'frozenExplanation'|'discardedExplanation'|'targetReconnectExplanation'|'browserSessionResetExplanation'|'conversationChangedExplanation'|'failedExplanation'|null;
 
-export interface RunPresentationActions {
+export interface RunPresentationActions extends JsonObject {
   readonly start: boolean;
   readonly pause: boolean;
   readonly resume: boolean;
@@ -16,7 +17,7 @@ export interface RunPresentationActions {
   readonly stop: boolean;
 }
 
-export interface RunPresentationProjection {
+export interface RunPresentationProjection extends JsonObject {
   readonly lifecycleState: RunLifecycleState;
   readonly labelKey: RunPresentationLabelKey;
   readonly tone: RunPresentationTone;

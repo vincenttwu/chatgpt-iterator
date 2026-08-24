@@ -5,9 +5,9 @@ record_type: roadmap
 slug: interaction-surface-and-runtime-hardening
 title: "ChatGPT Iterator Interaction Surface and Runtime Hardening"
 status: active
-revision: 5
+revision: 6
 created_at: 2026-08-24T11:26:00+08:00
-updated_at: 2026-08-24T12:53:00+08:00
+updated_at: 2026-08-24T13:19:00+08:00
 created_by: agent
 updated_by: agent
 owners: []
@@ -599,36 +599,48 @@ Forbidden examples:
 ## STEP-06 — Minimal In-Page Run Controller
 
 **Target:** `v0.0.22`  
+**Status:** complete.  
 **Purpose:** Recover the original Tampermonkey script's high-value local controls without recreating page-local execution authority.  
 **Depends on:** STEP-05.  
 **Primary paths:** ChatGPT content entrypoint, new in-page presentation module, sender-authorized runtime operations, localization/tests.
 
 ### Work items
 
-- [ ] Create a content-script-owned host attached outside ChatGPT's application component tree where practical and render the controller in Shadow DOM for CSS isolation.
-- [ ] Default to a compact launcher/status pill; expand to a small operational card.
-- [ ] Show state, `completed/total`, current iteration and exact delay countdown/response activity from `RunPresentationProjection` only.
-- [ ] Expose narrow **Pause / Resume / Stop / Open Side Panel** controls for the run associated with this verified local ChatGPT tab/conversation.
-- [ ] Optionally support **Start default Preset** only if explicitly enabled in Settings and current target/conversation preconditions pass; no arbitrary target picker in the mini surface.
-- [ ] Do not display raw prompt text/history by default.
-- [ ] Do not provide Templates/Presets/Queue editing, Data import/export, diagnostics management or full Settings.
-- [ ] Commands must route through background application authority and generation fencing; the mini controller may not click ChatGPT send/stop directly except through existing authorized adapter pathways.
-- [ ] Controller close/collapse state is a small preference, not durable run authority.
-- [ ] Ensure the controller never becomes required for execution correctness; removing/reloading it must not stop or corrupt an active run.
+- [x] Create a content-script-owned host attached outside ChatGPT's application component tree where practical and render the controller in Shadow DOM for CSS isolation.
+- [x] Default to a compact launcher/status pill; expand to a small operational card.
+- [x] Show state, `completed/total`, current iteration and exact delay countdown/response activity from `RunPresentationProjection` only.
+- [x] Expose narrow **Pause / Resume / Stop / Open Side Panel** controls for the run associated with this verified local ChatGPT tab/conversation.
+- [x] Optionally support **Start default Preset** only if explicitly enabled in Settings and current target/conversation preconditions pass; no arbitrary target picker in the mini surface.
+- [x] Do not display raw prompt text/history by default.
+- [x] Do not provide Templates/Presets/Queue editing, Data import/export, diagnostics management or full Settings.
+- [x] Commands must route through background application authority and generation fencing; the mini controller may not click ChatGPT send/stop directly except through existing authorized adapter pathways.
+- [x] Controller close/collapse state is a small preference, not durable run authority.
+- [x] Ensure the controller never becomes required for execution correctness; removing/reloading it must not stop or corrupt an active run.
 
 ### Acceptance
 
-- [ ] Side Panel and mini controller show the same lifecycle/progress for the same run.
-- [ ] Forged/foreign content contexts cannot operate another tab's run.
-- [ ] Closing/reloading the page controller does not terminate background run authority.
-- [ ] Pause/Resume/Stop from the mini controller exercise the same manager/coordinator paths as Side Panel commands.
-- [ ] No new execution loop, polling loop or durable content storage is introduced.
-- [ ] Keyboard/focus/status semantics work in both collapsed and expanded modes.
+- [x] Side Panel and mini controller show the same lifecycle/progress for the same run.
+- [x] Forged/foreign content contexts cannot operate another tab's run.
+- [x] Closing/reloading the page controller does not terminate background run authority.
+- [x] Pause/Resume/Stop from the mini controller exercise the same manager/coordinator paths as Side Panel commands.
+- [x] No new execution loop, polling loop or durable content storage is introduced.
+- [x] Keyboard/focus/status semantics work in both collapsed and expanded modes.
 
 ### Explicitly out of scope
 
 - Freeform dragging/placement persistence (STEP-07).
 - Full configuration editor in page.
+
+
+### Result
+
+`v0.0.22` restores the original userscript's high-value local interaction as a **secondary, content-script-rendered mini controller** without restoring page-local execution authority. The controller host is attached directly under `document.documentElement`, outside ChatGPT's application component tree, and uses a **closed Shadow DOM** for CSS/DOM isolation. It defaults to a compact status launcher and expands to a small operational card showing the same `RunPresentationProjection` lifecycle, progress, current iteration, exact delay countdown or response-elapsed state used by the Side Panel and toolbar. It displays no prompt/history body content.
+
+The content surface can issue only `inpage.status`, `inpage.pause`, `inpage.resume`, `inpage.stop`, `inpage.openpanel`, and `inpage.setcollapsed`. Background routing still derives caller identity from Chrome `MessageSender`; in-page run commands are same-tab/window bounded and generation fenced. Resume additionally reconciles the current conversation and refuses wrong-conversation continuation. Pause/Resume/Stop share the same `executeRunControl()` manager/coordinator path now used by Side Panel run commands. Multiple nonterminal runs targeting the same tab fail closed to a read-only count and require the Side Panel rather than selecting an arbitrary run.
+
+Run mutations send lightweight invalidation hints to ChatGPT tabs, while countdown/response seconds advance locally from the safe projection using presentation-only second-boundary `setTimeout` calculations. No ChatGPT polling, scheduler, IndexedDB ownership, or execution loop is introduced in content. Collapse preference is stored by background in the existing trusted local Chrome-storage tier; content cannot access extension storage directly. Button actions require trusted user events, Escape collapses the expanded card, one atomic polite status region announces state, and controls retain 44px-class minimum height. `sidePanel.open({tabId})` is used only from the user-initiated Open Side Panel action; toolbar-click -> Side Panel remains unchanged.
+
+The roadmap-bounded optional **Start default Preset** action is not exposed because current Settings contains no explicit mini-controller quick-start opt-in. Freeform dragging, docking, composer-collision recovery, and normalized placement persistence remain exclusively STEP-07. No schema, DB, portable-format, permission, host-scope, dependency, popup, or execution-engine change is introduced.
 
 ---
 
@@ -758,7 +770,7 @@ Forbidden examples:
 - [x] STEP-03 — Conversation Identity and Wrong-Conversation Send Prevention (`v0.0.19`).
 - [x] STEP-04 — Timing Semantics and Unified Run Presentation Projection (`v0.0.20`).
 - [x] STEP-05 — Toolbar Status and At-a-Glance Runtime Indicator (`v0.0.21`).
-- [ ] STEP-06 — Minimal In-Page Run Controller (`v0.0.22`).
+- [x] STEP-06 — Minimal In-Page Run Controller (`v0.0.22`).
 - [ ] STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery (`v0.0.23`).
 - [ ] STEP-08 — Adapter Drift, Observation, Error Classification, and Data-Retention Hardening (`v0.0.24`).
 - [ ] STEP-09 — Integrated Successor Hardening Closure (`v0.0.25`).
@@ -794,14 +806,14 @@ Completed step history must not be rewritten as if later decisions were always p
 
 This section is intentionally operational. A new session should be able to resume from it directly.
 
-## Current state after STEP-05
+## Current state after STEP-06
 
-- **Promoted implementation baseline:** `v0.0.21`.
+- **Promoted implementation baseline:** `v0.0.22`.
 - **ROADMAP-0001:** closed historical authority at `v0.0.16`.
-- **ROADMAP-0002:** active, revision 5.
-- **ROADMAP-0002 progress:** 5/9 steps complete.
+- **ROADMAP-0002:** active, revision 6.
+- **ROADMAP-0002 progress:** 6/9 steps complete.
 - **Phase P1 — Safety Authority:** complete at STEP-03.
-- **Phase P2 — Runtime Visibility and Secondary Control:** active at 2/4 after STEP-05.
+- **Phase P2 — Runtime Visibility and Secondary Control:** active at 3/4 after STEP-06.
 - **Physical IndexedDB:** v1 unchanged.
 - **Global logical model:** v4 unchanged.
 - **Durable run state:** v4 with explicit v1/v2/v3 normalization.
@@ -810,57 +822,60 @@ This section is intentionally operational. A new session should be able to resum
 - **Tab registry:** v2 unchanged.
 - **Chrome permissions/host scope:** unchanged (`sidePanel`, `storage`, `alarms`; ChatGPT hosts only).
 
-### Safety/timing facts from STEP-02 through STEP-04 that remain non-negotiable
+### Safety/timing facts from STEP-02 through STEP-05 that remain non-negotiable
 
 - Runtime caller classification remains derived from Chrome `MessageSender`; a forged envelope source is not authority.
 - Adapter/background observation remains privacy-minimal: no raw composer draft or assistant-text suffix transport.
 - Durable runs remain bound to explicit tab plus conversation authority; same-tab conversation mismatch suspends and requires explicit rebind.
 - Repeat and Queue continue through one coordinator with final point-of-click conversation verification.
 - Paused delay owns frozen `remainingDelayMs`; active waiting delay owns `nextDueAt`; Resume reconstructs a fresh due time.
-- `src/presentation/run-projection.ts` remains the single lifecycle/progress/timing/attention/action vocabulary.
-- The future mini-controller policy remains bounded and is still not enabled before STEP-06.
+- `src/presentation/run-projection.ts` remains the single lifecycle/progress/timing/attention/action vocabulary for Side Panel, toolbar, and mini controller.
+- Toolbar click remains Side Panel; `action.default_popup` remains absent.
 
-### STEP-05 implementation facts another session should preserve
+### STEP-06 implementation facts another session should preserve
 
-- `src/presentation/toolbar-status.ts` is a secondary projection adapter only. It consumes `projectRunPresentation()` for every run and must not reimplement run lifecycle semantics.
-- For one relevant nonterminal run, badge text is concise: exact progress when it fits Chrome's compact badge space, `P` for paused, and `!` for attention/rebind states. Rich `action.setTitle()` text carries the authoritative state, countdown/elapsed timing, iteration, and attention explanation.
-- For multiple nonterminal runs, the global action and any tab with multiple runs show a deterministic run count rather than choosing one run as canonical. Per-tab overrides show the single local run when exactly one run targets that tab.
-- The toolbar controller tracks tab IDs it has written and clears stale per-tab badge/title overrides after terminal completion, failure, target removal, or other changes that leave no relevant run for that tab. Global badge/title likewise reset to empty badge + application title when no nonterminal run remains.
-- Manager mutations and tab-registry changes request toolbar refresh. Worker startup/recovery creates a fresh controller and rebuilds status from `manager.list()` plus current tab targets; service-worker globals are cache/control objects, not state authority.
-- Countdown and response-elapsed title changes use a presentation-only next-boundary `setTimeout` while the worker is alive. The timer reads durable run snapshots and recomputes pure projections; it never queries ChatGPT, advances a run, completes a delay, or acts as execution authority. If the worker terminates, correctness is unaffected and the next worker reconstruction refreshes the action from durable truth.
-- Toolbar writes are serialized so overlapping run/tab refresh notifications cannot leave an older projection as the final action state. Individual action-write errors (for example a tab disappearing during a per-tab write) are reported but do not affect run authority.
-- Toolbar click remains `sidePanel.setPanelBehavior({ openPanelOnActionClick: true })`; `action.default_popup` does not exist. No popup entrypoint was added.
-- Badge background color is not used as state authority; badge text and accessible title are always sufficient.
-- STEP-05 introduces no schema, DB, portable-format, permission, host-scope, dependency, or execution-engine change.
+- `src/presentation/inpage-controller.ts` owns the safe mini-controller projection/client contract. A status response contains only schema/time/collapse state, local active-run count, run ID + generation fence for an unambiguous local run, and `RunPresentationProjection`; it never exports `messageTemplate`, Queue content, active message, composer draft, assistant text, history, or configuration payloads.
+- `src/runtime/inpage-controller-runtime-server.ts` owns the background command boundary. Router authorization permits only the explicit `inpage.*` operations from verified top-frame ChatGPT content callers; another tab/window run cannot be operated.
+- `src/runtime/run-control.ts` is the shared Pause/Resume/Stop transition + coordinator-side-effect path used by both Side Panel run runtime and mini-controller runtime. Do not fork these controls into a second execution path.
+- Resume from the mini controller performs current target/conversation reconciliation before the shared transition. If the conversation changed, Resume fails closed and the user must open the Side Panel for explicit rebind. Stop remains safely available for the run bound to the caller tab even when the conversation is mismatched.
+- Multiple nonterminal runs targeting one tab deliberately produce an ambiguous/read-only mini-controller state. The mini surface must not choose one run as canonical.
+- `src/presentation/inpage-controller-dom.ts` owns a **closed Shadow DOM** UI host appended under `document.documentElement`. The page surface is disposable presentation only; removing/reloading it cannot stop or corrupt the durable background run.
+- Page action listeners require trusted user events. Expanded mode has one polite atomic status region, keyboard-operable native buttons, Escape collapse, and 44px-class button height.
+- The default STEP-06 placement is a provisional top-right fixed position. Freeform drag, canonical docking/snap, composer collision handling, viewport/zoom recovery, and normalized placement persistence remain STEP-07 and must not be backfilled into STEP-06 history.
+- Collapse preference is background-owned in the trusted local Chrome-storage tier at `inpageController.v1`; content scripts still have no direct storage authority.
+- Run mutations emit lightweight in-page invalidation hints. Temporal countdown/elapsed text advances locally from the received projection using presentation-only boundary timers; there is no periodic ChatGPT/status polling loop.
+- The optional Start default Preset control remains absent because no explicit mini-controller quick-start setting exists. Do not add it implicitly.
+- Open Side Panel uses the verified caller tab and `sidePanel.open({tabId})` from the user-initiated page action. Existing toolbar `openPanelOnActionClick` behavior is unchanged.
+- STEP-06 introduces no schema, DB, portable-format, permission, host-scope, dependency, toolbar-popup, or workflow-domain change.
 
 ## Sole next authorized implementation
 
-**`v0.0.22 / ROADMAP-0002 STEP-06 — Minimal In-Page Run Controller`**
+**`v0.0.23 / ROADMAP-0002 STEP-07 — Mini Controller Docking, Dragging, Accessibility, and Position Recovery`**
 
 A continuation should begin by reading:
 
 1. this ROADMAP-0002 file and `iteration_manifest.yaml`;
-2. `src/presentation/run-projection.ts` and `src/presentation/toolbar-status.ts`;
-3. `entrypoints/background.ts` for current action/status wiring and sender-derived authority;
-4. `entrypoints/content.ts` plus `src/chatgpt/` for the centralized DOM adapter boundary;
-5. `src/runtime/message-router.ts`, `src/runtime/run-runtime-server.ts`, and `src/runs/manager.ts` before exposing narrow content-origin commands;
-6. the original immutable userscript donor under `dumps/donors/userscript/` for interaction shape only.
+2. `src/presentation/inpage-controller.ts` and `src/presentation/inpage-controller-dom.ts`;
+3. `src/presentation/run-projection.ts` and `src/presentation/toolbar-status.ts`;
+4. `src/runtime/inpage-controller-runtime-server.ts`, `src/runtime/run-control.ts`, and `src/runtime/message-router.ts`;
+5. `entrypoints/chatgpt.content.ts` and `entrypoints/background.ts`;
+6. the current ChatGPT composer evidence in `REFERENCE-0006` before defining collision zones.
 
-## STEP-06 implementation cautions
+## STEP-07 implementation cautions
 
-- Build a **secondary in-page Shadow DOM controller**, not a conventional Chrome toolbar popup and not a replacement for the Side Panel.
-- The controller must consume the STEP-04 shared projection vocabulary; do not introduce a third lifecycle/status mapping.
-- Content-origin command authority remains sender-derived and same-tab bounded. Only the explicitly authorized narrow controls (Pause/Resume/Stop/Open Side Panel, plus any roadmap-bounded optional default-preset path) may be exposed.
-- Do not move durable run/configuration state, timers, scheduler authority, IndexedDB ownership, or direct send orchestration into the page.
-- Do not add freeform drag/placement persistence early; that remains STEP-07.
-- Keep raw prompt/history content out of the collapsed/normal mini-controller surface.
-- Preserve toolbar-click -> Side Panel and current toolbar status behavior.
-- Keep physical IndexedDB v1 and current permissions unless a genuine owning-step need proves otherwise.
+- Keep the mini controller secondary and keep the current closed Shadow DOM / trusted-event / background-authority boundaries.
+- Add canonical normalized dock/snap positions; do not persist arbitrary unbounded pixel coordinates.
+- Current top-right placement is provisional. STEP-07 owns real collision avoidance against the sticky composer/control safe area and must handle narrow/wide viewport, resize, zoom, and corrupted preference recovery.
+- Optional dragging must use a dedicated handle/header and snap to canonical positions. Every drag result must also be reachable/reset with non-drag single-pointer controls; dragging can never be the only placement method.
+- Preserve keyboard focus, 44px-class touch targets where practical, forced-colors, reduced-motion, and non-color state cues.
+- Persist only normalized placement/collapse UI preference in extension-owned trusted small storage. Do not move run/configuration authority into content.
+- Preserve event-driven invalidation and presentation-only temporal timers; do not introduce ChatGPT polling.
+- Keep physical IndexedDB v1, logical/run v4, portable v1, current permissions/hosts, and no toolbar popup unless a genuine owning-step need proves otherwise.
 - Do not retry unavailable WXT/npm infrastructure as ceremony.
 
 ## Environment status carried forward
 
-At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-05 changes no dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
+At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build existed. STEP-06 changes no dependencies and does not own package/install closure, so WXT prepare/full Vue typecheck/build/package remains inherited `deferred_environment` until the environment materially changes or STEP-09 owns the closure lane.
 
 ## What not to infer
 
@@ -880,3 +895,4 @@ At v0.0.16 closure, npm dependency hydration timed out and no hydrated WXT build
 | 2026-08-24 | 3 | Complete STEP-03 at v0.0.19: add semantic conversation context, durable independent conversation binding, one-time new-chat adoption, fail-closed same-tab mismatch suspension/rebind, point-of-click conversation verification, and shared Repeat/Queue guarding; close P1 and authorize STEP-04 only. | active |
 | 2026-08-24 | 4 | Complete STEP-04 at v0.0.20: freeze paused delay as durable remaining duration, resume from a fresh due time, add response elapsed authority, introduce the pure shared RunPresentationProjection and centralized semantic tones, move the Side Panel run card to that projection, advance logical/run schema to v4 only, and authorize STEP-05. | active |
 | 2026-08-24 | 5 | Complete STEP-05 at v0.0.21: add a background-owned toolbar badge/title adapter over RunPresentationProjection, deterministic global/per-tab multi-run aggregation, presentation-only countdown/elapsed boundary refresh, stale action cleanup and worker reconstruction from durable runs; preserve toolbar-click to Side Panel, no popup, no schema/permission change, and authorize STEP-06. | active |
+| 2026-08-24 | 6 | Complete STEP-06 at v0.0.22: add a secondary closed-Shadow-DOM in-page status/controller over RunPresentationProjection, sender-derived same-tab generation-fenced Pause/Resume/Stop, explicit conversation-guarded Resume, background-owned collapse preference, trusted-event controls, event-driven invalidation and presentation-only temporal updates; preserve Side Panel primary authority, no quick-start opt-in, no schema/permission/popup change, and authorize STEP-07. | active |

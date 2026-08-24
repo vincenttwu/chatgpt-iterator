@@ -710,6 +710,24 @@
   "toolbarNeedsAttention": {
     "message": "need attention"
   },
+  "inPageController": {
+    "message": "ChatGPT Iterator mini controller"
+  },
+  "expandInPageController": {
+    "message": "Expand ChatGPT Iterator"
+  },
+  "collapseInPageController": {
+    "message": "Collapse ChatGPT Iterator"
+  },
+  "inPageNoActiveRun": {
+    "message": "No active run on this ChatGPT tab."
+  },
+  "inPageMultipleRuns": {
+    "message": "Multiple active runs target this tab. Open the Side Panel to manage them."
+  },
+  "openSidePanel": {
+    "message": "Open Side Panel"
+  },
   "eligibleTabs": {
     "message": "Eligible tabs"
   },

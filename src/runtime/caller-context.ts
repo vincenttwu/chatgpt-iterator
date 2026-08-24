@@ -27,8 +27,9 @@ export interface RuntimeCallerContext extends JsonObject {
   readonly url: string;
 }
 
-export const FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS = Object.freeze(['pause', 'resume', 'stop'] as const);
-export type FutureMiniControllerAction = (typeof FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS)[number];
+export const MINI_CONTROLLER_ALLOWED_RUN_ACTIONS = Object.freeze(['pause', 'resume', 'stop'] as const);
+export const FUTURE_MINI_CONTROLLER_ALLOWED_ACTIONS = MINI_CONTROLLER_ALLOWED_RUN_ACTIONS;
+export type FutureMiniControllerAction = (typeof MINI_CONTROLLER_ALLOWED_RUN_ACTIONS)[number];
 
 function isChatGptOrigin(value: string): boolean {
   return value === 'https://chatgpt.com' || value === 'https://chat.openai.com';
