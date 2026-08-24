@@ -1,31 +1,34 @@
 schema_version: 1
 project: chatgpt-iterator
-version: v0.0.16
-status: accepted_roadmap_closure
+version: v0.0.17
+status: accepted_successor_planning
 iteration:
-  kind: closure
-  roadmap: ROADMAP-0001
-  roadmap_status: closed
-  step: STEP-16
+  kind: planning
+  roadmap: ROADMAP-0002
+  roadmap_status: active
+  step: STEP-01
   step_status: complete
-  phase: P4
-  phase_status: complete
+  phase: P1
+  phase_status: active
 baseline:
-  working_parent: v0.0.15
+  working_parent: v0.0.16
+  prior_roadmap: ROADMAP-0001
+  prior_roadmap_status: closed
   originally_requested: chatgpt-iterator-v0.0.0
   exact_original_available: false
   exact_original_reconciliation: deferred_provenance
 validation:
-  focused_step16: "9/9 pass"
-  accumulated_repository_suite: "133/133 pass"
-  strict_dependency_free_typescript: "pass across 96 source files with TypeScript 5.8.3"
-  crsniffer_ui_matrix: pass
-  localization_projection: "298/298 keys and values aligned"
-  permissions_csp_remote_code: pass
-  package_hydration: "deferred_environment: one fresh npm install attempt timed out after 120 seconds and produced neither node_modules nor package-lock.json"
-  wxt_prepare_typecheck_build_package: deferred_environment
-  packaged_chrome_install_upgrade: "deferred_environment: Chromium present but no hydrated WXT build exists to launch"
+  successor_roadmap_self_contained: pass
+  v0_0_16_code_boundary_audit: pass
+  current_chatgpt_html_evidence_recorded: pass
+  current_chrome_wcag_authority_refreshed: pass
+  product_runtime_source: unchanged_from_v0.0.16
+  product_test_suite: "not rerun: planning-only iteration; inherited v0.0.16 closure baseline is 133/133"
+  package_hydration: inherited_deferred_environment
+  wxt_prepare_typecheck_build_package: inherited_deferred_environment
 next:
-  status: not_authorized
-  version: null
-  roadmap: null
+  status: authorized
+  version: v0.0.18
+  roadmap: ROADMAP-0002
+  step: STEP-02
+  title: Runtime Caller Authority and Privacy-Minimal Adapter Contract
